@@ -38,7 +38,7 @@ typedef struct
     Gto::Writer *m_writer;
     
     // property currently being written
-    int m_propCount;
+    unsigned int m_propCount;
     bool m_beginDataCalled;
     
 } gtoWriter_PyObject;

@@ -43,7 +43,7 @@ class Reader : public Gto::Reader
 {
 public:
     Reader( PyObject *callingInstance ) : 
-        m_callingInstance( callingInstance ), Gto::Reader() {}
+        Gto::Reader(), m_callingInstance( callingInstance ) {}
 
     virtual Request object( const std::string& name,
                             const std::string& protocol,
