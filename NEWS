@@ -1,3 +1,7 @@
+* Version 3.1
+
+      o Added the ability to access random objects in a gto file from the
+        Python module.
 
 * Version 3.0
 

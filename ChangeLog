@@ -1,3 +1,16 @@
+2004-06-04  Mike Root  <mike@tweakfilms.com>
+
+	* Added random object access capabilities to Python gto module
+
+	* Changed Python gto module "constants" to be all caps, as is standard 
+	in Python.
+
+	* Added "deferred read" capability to gtoContainer Python module
+
+	* Added readMode() method to Gto::Reader
+
+	* Updated inherited constructor call in Gto::RawDataBaseReader
+
 2004-05-24  Mike Root  <mike@tweakfilms.com>
 
 	* Added a fail() method to Reader, to allow external code to stop the
