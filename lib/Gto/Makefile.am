@@ -8,8 +8,8 @@ SUBDIRS = test
 INCLUDES = -I$(top_srcdir)/lib
 LIBS = -L$(top_srcdir)/lib
 
-lib_LIBRARIES = libgto.a
+lib_LTLIBRARIES = libgto.la
 
-libgto_a_SOURCES = Writer.cpp Reader.cpp RawData.cpp Utilities.cpp
-libgto_a_LIBS = @LIBS@
+libgto_la_SOURCES = Writer.cpp Reader.cpp RawData.cpp Utilities.cpp
+libgto_la_LIBS = @LIBS@
 

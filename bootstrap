@@ -12,6 +12,6 @@ if ! test -e config/ltmain.sh; then
 fi
 
 aclocal \
-&& automake --gnu --add-missing \
+&& automake --gnu --add-missing --copy\
 && autoconf
 rm -rf autom4te.cache
