@@ -582,7 +582,7 @@ the binaries and library. Note that you may need to become root for
 
 @example
     sh> cd gto-x.x
-    sh> ./confuigure
+    sh> ./configure
     sh> make
     sh> make install
 @end example
@@ -621,13 +621,13 @@ install the following:
     compat-libstdc++-devel-7.3-2.96.110.i386.rpm
 @end example
 
-In that case, the compiler will be called gcc-2.96 and you will need
+In that case, the compiler will be called gcc296 and you will need
 to do this before running configure:
 
 @example
-    sh> CC=gcc-2.96
+    sh> CC=gcc296
     sh> export CC
-    sh> CXX=g++-2.96
+    sh> CXX=g++296
     sh> export CXX
 @end example
 
@@ -1808,7 +1808,7 @@ The left-hand-side and right-hand-side of the connection.
 
 @itemize @bullet
 @item
-If the connection is directinal, then an arrow indicating the
+If the connection is directional, then an arrow indicating the
 direction would have its tail on the left-hand-side and its head
 pointing at the right-hand-side.
 
@@ -2224,7 +2224,7 @@ other facilities.
 
 If you are using the format for academic purposes and are looking for
 a specific tool to munge GTO files, we may already have that tool
-eventhough it is not released. Contact us; we might be able to help
+even though it is not released. Contact us; we might be able to help
 you out.
 
 We have been using the format since summer 2002 on a regular basis in
@@ -2671,13 +2671,12 @@ The reader will be used in its standard @emph{streaming} mode. The
 reader will attempt to read all the data in the file. This is the
 default value (or 0).
 
-@item gto.Reader.HeaderOnly   (@emph{Not yet available})
+@item gto.Reader.HeaderOnly   (@emph{Not yet implemented})
 The reader will stop once it has read the header sections of the GTO file. 
 
-@item gto.Reader.RandomAccess   (@emph{Not yet available})
+@item gto.Reader.RandomAccess   (@emph{Not yet implemented})
 The reader will read the header sections but not the data, however, it
 will initialize for use of the @code{Reader::accessObject()} function.
-
 @end table
 
 @end deftypefn
@@ -2693,31 +2692,34 @@ The return value @var{wants} should evaluate to True or False, indicating
 whether or not the base class should read the object data. @var{name} and
 @var{protocol} are strings declaring name and protocol of the object,
 @var{protocolVersion} is an integer. @var{objectInfo} is an instance of a 
-generic class which mimicks the behavior of the ObjectInfo C++ struct.
+generic class which contains the same information as the Gto::ObjectInfo 
+C++ struct.
 @end deftypefn
 
-@deftypefn {Method} {@var{wants}} gto.Reader.component (@var{name}, @var{componentInfo})
+@deftypefn {Method} {@var{wants}} gto.Reader.component (@var{name}, @var{interpretation}, @var{componentInfo})
 This function is called by the base class to declare a component in the GTO
 file. The return value @var{wants} should evaluate to True or False, indicating
 whether or not the base class should read the component data.  @var{name} is a
 string declaring the component name. @var{componentInfo} is an instance of
-a generic class which mimicks the behavior of the ComponentInfo C++ struct.
+a generic class which contains the same information as the Gto::ComponentInfo 
+C++ struct.
 @end deftypefn
 
-@deftypefn {Method} {@var{wants}} gto.Reader.property (@var{name}, @var{propertyInfo})
+@deftypefn {Method} {@var{wants}} gto.Reader.property (@var{name}, @var{interpretation}, @var{propertyInfo})
 This function is called by the base class to declare a property in the GTO
 file. The return value @var{wants} should evaluate to True or False, indicating
 whether or not the base class should read the property data.  @var{name} is a
 string declaring the full property name. @var{propertyInfo} is an instance of a
-generic class which mimicks the behavior of the PropertyInfo C++ struct.
+generic class which contains the same information as the Gto::PropertyInfo 
+C++ struct.
 @end deftypefn
 
 @deftypefn {Method} {} gto.Reader.dataRead (@var{name}, @var{data}, @var{propertyInfo})
 If a property has been requested, the dataRead() function will eventually be
 called by the base class with the actual data in the file. The @var{name} is
-the name of property, @var{data} is a tuple containing the property data,
-@var{propertyInfo} is an instance of a generic class which mimicks the behavior
-of the PropertyInfo C++ struct.
+the name of a property, @var{data} is a tuple containing the property data,
+@var{propertyInfo} is an instance of a generic class which contains the same 
+information as the Gto::PropertyInfo C++ struct.
 @end deftypefn
 
 
@@ -2729,10 +2731,12 @@ of the PropertyInfo C++ struct.
 Creates a new writer instance, no arguments needed.
 @end deftypefn
 
-@deftypefn {Method} {} gto.Writer.open (@var{filename})
+@deftypefn {Method} {} gto.Writer.open (@var{filename}, @var{compression})
 Open the file. The Writer will attempt to open file 
 @var{filename}.  If the file is not writable for whatever reason, the
-function will raise a Python exception.
+function will raise a Python exception.  The @var{compression} argument can 
+be @emph{True} (the default) or @emph{False}.
+
 @end deftypefn
 
 @deftypefn {Method} {} gto.Writer.close ( )
@@ -2751,7 +2755,7 @@ string indicating how the object data will be interpreted and the
 does not verify that the data output conforms to the protocol.
 @end deftypefn
 
-@deftypefn {Method} {} gto.Writer.beginComponent (@var{name}, @var{transposed}) 
+@deftypefn {Method} {} gto.Writer.beginComponent (@var{name}, @var{interpretation}, @var{transposed}) 
 Declares a component. The component properties must be declared before
 a call to endComponent(). The @var{name} is the name of the component
 as it will appear in the gto file. The @var{transposed} flag is
@@ -2759,7 +2763,7 @@ optional and indicates whether or not the component property data
 should be output transposed or one property at a time (the default).
 @end deftypefn
 
-@deftypefn {Method} {} gto.Writer.property (@var{name}, @var{type}, @var{numElements}, @var{partsPerElement})
+@deftypefn {Method} {} gto.Writer.property (@var{name}, @var{type}, @var{numElements}, @var{partsPerElement}, @var{interpretation})
 Declare a property. The @var{name} is the name of the property as it
 appears in the gto file. The @var{type} is one of gto.Double,
 gto.Float, gto.Int, gto.String, gto.Byte, gto.Half, or
@@ -2830,6 +2834,8 @@ method for that.
 @node PyStructs,  , PyWriter, Module
 @section Classes used by gto.Reader
 
+Note that as of the 3.0 release, these classes will contain the actual strings
+rather than string table IDs.
 
 @deftp {Class} gto.ObjectInfo
 This class emulates the Gto::ObjectInfo struct from the C++ Gto library.  It is
@@ -2837,10 +2843,11 @@ passed by the Python gto.Reader class to your derived @code{object()} method.
 The only method implemented is @code{__getattr__}.  Available attributes are:
 
 @itemize
-@item @code{name} - Integer string table ID
-@item @code{protocol} - Integer string table ID
+@item @code{name} - String
+@item @code{protocol} - String
 @item @code{protocolVersion}  - Integer 
 @item @code{numComponents} - Integer
+@item @code{pad} - Integer
 @end itemize
 
 @end deftp
@@ -2852,9 +2859,11 @@ method.  The only method implemented is @code{__getattr__}.  Available
 attributes are:
 
 @itemize
-@item @code{name} - Integer string table ID    
+@item @code{name} - String
 @item @code{numProperties} - Integer
 @item @code{flags} - Integer
+@item @code{interpretation} - String
+@item @code{pad} - Integer
 @item @code{object} - Instance of gto.ObjectInfo
 @end itemize
 
@@ -2867,10 +2876,12 @@ is passed by the Python gto.Reader class to your derived @code{property()} and
 Available attributes are:
 
 @itemize
-@item @code{name} - Integer string table ID
+@item @code{name} - String
 @item @code{size} - Integer
 @item @code{type} - Integer
 @item @code{width} - Integer
+@item @code{interpretation} - String
+@item @code{pad} - Integer
 @item @code{component} - Instance of gto.ComponentInfo
 @end itemize
 
@@ -2885,7 +2896,7 @@ Available attributes are:
 @menu
 Command line tools
 
-* gtoinfo::      Find out what's in the gto file.
+* gtoinfo::      Find out what's in a gto file.
 * gtofilter::    Filter properties out of a gto file.
 * gtomerge::     Merge the contents of multiple gto files into one.
 * gto2obj::      Wavefront .obj translator.
