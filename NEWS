@@ -8,6 +8,14 @@
       DynamicLoad, you may be able to use RiProcedural RunProgram with 
       RiGtoRibOut.  See the documentation for more details.
 
+      o There is now an online GTO discussion forum.  Hopefully this will
+      help to keep protocols standard across facilities as much as possible,
+      as well as serve as a repository of GTO software knowlege.  As always,
+      if you're using GTO, we'd love to hear from you!  You can find the 
+      board at:
+      
+            http://www.tweakfilms.com/gtoforum/
+      
       o I added an "html" target in the ./doc directory.  It isn't built by
       default, but just type "make html" in there if you want html docs.
 
