@@ -7,13 +7,16 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(gto_maya_location)/include
 
 AM_CXXFLAGS = -fno-exceptions -D_BOOL -D__USER__=\"$$USER\"
 
-plugindir = $(MAYADIR)/bin/plug-ins/
+plugindir = $(gto_maya_location)/bin/plug-ins
+meldir = $(gto_maya_location)/scripts/others
 
 if GTO_BUILD_MAYA
 
-plugin_LTLIBRARIES = libGtoIO.la
+plugin_PROGRAMS = GtoIO.so
 
-libGtoIO_la_SOURCES = GtoInDataBase.cpp \
+mel_SCRIPTS = gtoExportOptions.mel gtoExportSet.mel
+
+GtoIO_so_SOURCES = GtoInDataBase.cpp \
                    GtoInNURBS.cpp \
                    GtoInObject.cpp \
                    GtoInParticle.cpp \
@@ -37,7 +40,12 @@ EXTRA_DIST = GtoInDataBase.h \
              GtoOut.h \
              version.h 
 
-
-libGtoIO_la_LIBS = -lGto -lOpenMaya -lOpenMayaAnim -lOpenMayaRender @LIBS@ -lm -lstdc++ 
+GtoIO_so_LDFLAGS = -shared \
+                   -L$(top_srcdir)/lib/Gto \
+                   -L$(gto_maya_location)/lib \
+                   -lGto \
+                   -lOpenMaya \
+                   -lOpenMayaAnim \
+                   -lOpenMayaRender 
 
 endif

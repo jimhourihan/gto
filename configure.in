@@ -68,12 +68,10 @@ AC_ARG_WITH([maya-dir],
 
 
 AC_ARG_ENABLE([maya-plugin],
-          [AC_HELP_STRING([--enable-maya-plugin],
-                         [Build GtoIO plugin for Maya 4.x (default=yes)])],
+          [AC_HELP_STRING([--disble-maya-plugin],
+                         [Build GtoIO plugin for Maya 4.x (default=no)])],
           [gto_build_maya=$enableval],
-          [gto_build_maya=yes])
-
-echo $gto_build_maya
+          [gto_build_maya=no])
 
 AM_CONDITIONAL(GTO_BUILD_MAYA, test x$gto_build_maya = xyes)
 
@@ -110,6 +108,7 @@ AC_MSG_CHECKING(for ios_base)
     [AC_MSG_RESULT(no)])
 
 if test "x$gto_build_maya" = xyes; then
+if test `uname` == Linux; then
     AC_MSG_CHECKING([for gcc 2.96])
     AC_RUN_IFELSE([AC_LANG_PROGRAM([],[
         if( ! ( ( __GNUC__ == 2 )
@@ -127,9 +126,21 @@ and re-run configure with CXX=g++296.
     compat-gcc-c++-7.3-2.96.110
     compat-libstdc++-7.3-2.96.110
     compat-libstdc++-devel-7.3-2.96.110
+]) # end AC_MSG_ERROR
+]) # end AC_RUN_IFELSE
+else
+AC_MSG_WARN([
+
+The Maya plugin currently only builds on Linux.  It has been
+gotten to work on Windows, but we haven't ported all the changes
+required back to the main source tree yet.  If you can get this
+to work on OSX or IRIX, please let us know!
+
 ])
-])
-fi
+
+fi # end if test `uname`...
+fi # end if test "x$gto_build_maya"...
+
 
 
 dnl ********************** Output:
