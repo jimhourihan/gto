@@ -24,6 +24,7 @@ regex_t includeRegex;
 struct FullProperty
 {
     string     name;
+    string     interp;
     Object*    object;
     Component* component;
     Property*  property;
@@ -54,6 +55,7 @@ void gather(RawDataBase* db, FullProperties& all)
                 fp.object = o;
                 fp.component = c;
                 fp.property = p;
+                fp.interp = p->interp;
         
                 all.push_back(fp);
             }

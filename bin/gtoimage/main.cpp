@@ -187,16 +187,18 @@ makeImageObject(Image* image, const char* inFile)
 
     Property* p;
 
-    p = new Property("originalFile", String, 1, 1, true);
+    p = new Property("originalFile", "filename", String, 1, 1, true);
     p->stringData[0] = inFile;
     c[0]->properties.push_back(p);
 
-    p = new Property("originalEncoding", String, 1, 1, true);
+    p = new Property("originalEncoding", "filetype", String, 1, 1, true);
     p->stringData[0] = "TIFF";
     c[0]->properties.push_back(p);
+    
+    const char *itype = image->channels == 3 ? "RGB" : "RGBA";
 
     p = new Property(GTO_PROPERTY_TYPE, String, 1, 1, true);
-    p->stringData[0] = image->channels == 3 ? "RGB" : "RGBA";
+    p->stringData[0] = itype;
     c[0]->properties.push_back(p);
 
     p = new Property(GTO_PROPERTY_SIZE, Int, 2, 1, true);
@@ -204,7 +206,7 @@ makeImageObject(Image* image, const char* inFile)
     p->int32Data[1] = image->h;
     c[0]->properties.push_back(p);
 
-    p = new Property(GTO_PROPERTY_PIXELS, (Gto::DataType)image->type, 
+    p = new Property(GTO_PROPERTY_PIXELS, itype, (Gto::DataType)image->type, 
                      image->w * image->h, image->channels, false);
     p->voidData = image->voidData;
     c[0]->properties.push_back(p);

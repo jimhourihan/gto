@@ -121,7 +121,9 @@ ObjReader::finished()
 
     Property* p;
 
-    p = new Property(GTO_PROPERTY_POSITION, Float, m_vertices.size() / 3, 3, true);
+    p = new Property(GTO_PROPERTY_POSITION, 
+                     GTO_INTERPRET_COORDINATE,
+                     Float, m_vertices.size() / 3, 3, true);
     copy(m_vertices.begin(), m_vertices.end(), p->floatData);
     c[0]->properties.push_back(p);
 
@@ -131,7 +133,9 @@ ObjReader::finished()
 
     if (!m_normals.empty())
     {
-        p = new Property(GTO_PROPERTY_NORMAL, Float, m_normals.size() / 3, 3, true);
+        p = new Property(GTO_PROPERTY_NORMAL, 
+                         GTO_INTERPRET_NORMAL,
+                         Float, m_normals.size() / 3, 3, true);
         copy(m_normals.begin(), m_normals.end(), p->floatData);
         c[1]->properties.push_back(p);
     }
@@ -142,7 +146,9 @@ ObjReader::finished()
 
     if (!m_sts.empty())
     {
-        p = new Property(GTO_PROPERTY_ST, Float, m_sts.size() / 2, 2, true);
+        p = new Property(GTO_PROPERTY_ST, 
+                         GTO_INTERPRET_COORDINATE,
+                         Float, m_sts.size() / 2, 2, true);
         copy(m_sts.begin(), m_sts.end(), p->floatData);
         c[2]->properties.push_back(p);
     }
@@ -151,7 +157,9 @@ ObjReader::finished()
     //  Elements properties
     //
 
-    p = new Property(GTO_PROPERTY_SIZE, Short, m_sizes.size(), 1, true);
+    p = new Property(GTO_PROPERTY_SIZE, 
+                     GTO_INTERPRET_SIZE,
+                     Short, m_sizes.size(), 1, true);
     copy(m_sizes.begin(), m_sizes.end(), p->uint16Data);
     c[3]->properties.push_back(p);
 
@@ -163,20 +171,26 @@ ObjReader::finished()
     //  Indices properties
     //
 
-    p = new Property(GTO_PROPERTY_VERTEX, Int, m_indices.size(), 1, true);
+    p = new Property(GTO_PROPERTY_VERTEX, 
+                     GTO_INTERPRET_INDICES,
+                     Int, m_indices.size(), 1, true);
     copy(m_indices.begin(), m_indices.end(), p->int32Data);
     c[4]->properties.push_back(p);
 
     if (!m_nindices.empty())
     {
-        p = new Property(GTO_PROPERTY_NORMAL, Int, m_nindices.size(), 1, true);
+        p = new Property(GTO_PROPERTY_NORMAL, 
+                         GTO_INTERPRET_INDICES,
+                         Int, m_nindices.size(), 1, true);
         copy(m_nindices.begin(), m_nindices.end(), p->int32Data);
         c[4]->properties.push_back(p);
     }
 
     if (!m_stindices.empty())
     {
-        p = new Property(GTO_PROPERTY_ST, Int, m_stindices.size(), 1, true);
+        p = new Property(GTO_PROPERTY_ST, 
+                         GTO_INTERPRET_INDICES,
+                         Int, m_stindices.size(), 1, true);
         copy(m_stindices.begin(), m_stindices.end(), p->int32Data);
         c[4]->properties.push_back(p);
     }
