@@ -32,7 +32,7 @@ namespace Gto {
 //
 
 #define GTO_MAGIC   671
-#define GTO_VERSION 2
+#define GTO_VERSION 3
 
 typedef unsigned int        uint32;
 typedef int                 int32;
@@ -63,8 +63,17 @@ struct Header
 
 struct ObjectHeader
 {
-    uint32        name;
-    uint32        protocolName;
+    uint32        name;             // string
+    uint32        protocolName;     // string
+    uint32        protocolVersion;
+    uint32        numComponents;
+    uint32        pad;
+};
+
+struct ObjectHeader_v2
+{
+    uint32        name;             // string
+    uint32        protocolName;     // string
     uint32        protocolVersion;
     uint32        numComponents;
 };
@@ -81,7 +90,16 @@ enum ComponentFlags
 
 struct ComponentHeader
 {
-    uint32        name;
+    uint32        name;             // string
+    uint32        numProperties;
+    uint32        flags;
+    uint32        interpretation;
+    uint32        pad;
+};
+
+struct ComponentHeader_v2
+{
+    uint32        name;             // string
     uint32        numProperties;
     uint32        flags;
 };
@@ -106,6 +124,16 @@ enum DataType
 
 
 struct PropertyHeader
+{
+    uint32        name;             // string
+    uint32        size;
+    uint32        type;
+    uint32        width;
+    uint32        interpretation;   // string
+    uint32        pad;
+};
+
+struct PropertyHeader_v2
 {
     uint32        name;
     uint32        size;

@@ -74,10 +74,15 @@ public:
 
     //
     //  beginComponent() -- declare a component. This can only be
-    //  called after begin() and before end()
+    //  called after begin() and before end(). You call one or the
+    //  other of these functions.
     //
 
     void            beginComponent(const char* name, unsigned int flags=0);
+
+    void            beginComponent(const char* name, 
+                                   const char* interp,
+                                   unsigned int flags=0);
 
     //
     //  delcare a property of a component
@@ -86,7 +91,8 @@ public:
     void            property(const char* name,
                              Gto::DataType,
                              size_t numElements,
-                             size_t partsPerElement=1);
+                             size_t width=1,
+                             const char* interp=0);
 
     void            endComponent();
 

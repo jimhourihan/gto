@@ -30,8 +30,6 @@
 #define GTO_PROTOCOL_DIFFERENCE          "difference"
 #define GTO_PROTOCOL_SORTED              "sorted"
 #define GTO_PROTOCOL_IMAGE               "image"
-
-// PROPOSED
 #define GTO_PROTOCOL_MATERIAL            "material"
 #define GTO_PROTOCOL_GROUP               "group"
 
@@ -85,5 +83,22 @@
 #define GTO_SMOOTHING_METHOD_FACETED        2
 #define GTO_SMOOTHING_METHOD_PARTITIONED    3
 #define GTO_SMOOTHING_METHOD_DISCONTINUOUS  4
+
+#define GTO_INTERPRET_COORDINATE   "coordinate"
+#define GTO_INTERPRET_NORMAL       "normal"
+#define GTO_INTERPRET_SIZE         "size"
+#define GTO_INTERPRET_4X4          "4x4"
+#define GTO_INTERPRET_3X3          "3x3"
+#define GTO_INTERPRET_ROW_MAJOR    "row-major"
+#define GTO_INTERPRET_COLUMN_MAJOR "column-major"
+#define GTO_INTERPRET_QUATERNION   "quaternion"
+#define GTO_INTERPRET_COMPLEX      "complex"
+#define GTO_INTERPRET_INDICES      "indices"
+#define GTO_INTERPRET_BBOX         "bbox"
+#define GTO_INTERPRET_HOMOGENEOUS  "homogeneous"
+#define GTO_INTERPRET_RGB          "RGB"
+#define GTO_INTERPRET_RGBA         "RGBA"
+#define GTO_INTERPRET_BGR          "BGR"
+#define GTO_INTERPRET_ABGR         "ABGR"
 
 #endif // __Gto__Protocols__h__

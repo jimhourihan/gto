@@ -38,6 +38,8 @@
 #define GTO_EXT_PROTOCOL_ISECT_EMITTER        "isect emitter"
 #define GTO_EXT_PROTOCOL_POINT_EMITTER        "point emitter"
 #define GTO_EXT_PROTOCOL_PRESSURE_FIELD       "pressure"
+#define GTO_EXT_PROTOCOL_SPHPRESSURE_FIELD    "SPH pressure"
+#define GTO_EXT_PROTOCOL_GOOP_FIELD           "goop"
 #define GTO_EXT_PROTOCOL_RIGID_BODY           "rigid body"
 #define GTO_EXT_PROTOCOL_SCENE                "scene"
 #define GTO_EXT_PROTOCOL_SPLASH_EMITTER       "splash emitter"
@@ -46,6 +48,7 @@
 #define GTO_EXT_PROTOCOL_SURFACE_EMITTER      "surface emitter"
 #define GTO_EXT_PROTOCOL_WIND_FIELD           "wind"
 #define GTO_EXT_PROTOCOL_HGT_VEL_FIELD        "hgt vel field"
+#define GTO_EXT_PROTOCOL_LEADING_EDGE_EMITTER "leading edge emitter"
 
 #define GTO_EXT_COMPONENT_BODIES             "bodies"
 #define GTO_EXT_COMPONENT_TETRAHEDRA         "tetrahedra"

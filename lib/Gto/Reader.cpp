@@ -40,7 +40,7 @@ Reader::Reader(unsigned int mode)
     : m_in(0), 
       m_gzfile(0), 
       m_gzrval(0), 
-      m_error(0), 
+      m_error(false), 
       m_needsClosing(false),
       m_mode(mode)
 {
@@ -59,7 +59,7 @@ Reader::open(istream& i, const char *name)
     m_in            = &i;
     m_needsClosing  = false;
     m_inName        = name;
-    m_error         = 0;
+    m_error         = false;
 
     return read();
 }
@@ -79,13 +79,11 @@ Reader::open(const char *filename)
         
         if (!m_gzfile)
         {
-            m_error = 1;
-            m_why = "file open failed";
+            fail( "file open failed" );
             return false;
         }
 #else
-        m_error = 1;
-        m_why = "this library was not compiled with zlib support";
+        fail( "this library was not compiled with zlib support" );
         return false;
 #endif
     }
@@ -110,8 +108,7 @@ Reader::open(const char *filename)
         if ( !(*m_in) )
         {
             m_in = 0;
-            m_error = 1;
-            m_why = "stream failed to open";
+            fail( "stream failed to open" );
             return false;
         }
         m_in->seekg(bytes, IOS_BEG);
@@ -119,7 +116,7 @@ Reader::open(const char *filename)
     }
 
     m_needsClosing = true;
-    m_error = 0;
+    m_error = false;
     return read();
 }
 
@@ -148,6 +145,24 @@ Reader::Request Reader::component(const string&, const ComponentInfo &) { return
 Reader::Request Reader::property(const string&, const PropertyInfo &) { return Request(true); }
 void* Reader::data(const PropertyInfo&, size_t) { return 0; }
 void Reader::dataRead(const PropertyInfo&) {}
+
+Reader::Request 
+Reader::component(const string& name, 
+                  const string& interp, 
+                  const ComponentInfo &c) 
+{ 
+    // make it backwards compatible with version 2
+    return component(name, c);
+}
+
+Reader::Request 
+Reader::property(const string& name, 
+                 const string& interp,
+                 const PropertyInfo &p) 
+{
+    // make it backwards compatible with version 2
+    return property(name, p);
+}
 
 static void
 swapWords(void *data, size_t size)
@@ -196,18 +211,16 @@ Reader::readHeader()
     }
     else if (m_header.magic != Header::Magic)
     {
-        m_error = 2;
-        m_why = "bad magic number";
+        fail( "bad magic number" );
         return;
     }
 
-    if (m_header.version != GTO_VERSION)
+    if (m_header.version != GTO_VERSION && m_header.version != 2)
     {
-        m_error = 1;
-        m_why = "version mismatch";
+        fail( "version mismatch" );
         cerr << "ERROR: Gto::Reader: gto file version == " 
-             << m_header.version << ", but I can only read v"
-             << GTO_VERSION << " files\n";
+             << m_header.version << ", which is not readable by this version (v"
+             << GTO_VERSION << ")\n";
         return;
     }
 
@@ -239,7 +252,17 @@ Reader::readObjects()
     for (int i=0; i < m_header.numObjects; i++)
     {
         ObjectInfo o;
-        read((char*)&o, sizeof(ObjectHeader));
+
+        if (m_header.version == 2)
+        {
+            read((char*)&o, sizeof(ObjectHeader_v2));
+            o.pad = 0;
+        }
+        else
+        {
+            read((char*)&o, sizeof(ObjectHeader));
+        }
+
         if (m_error) return;
 
         if (m_swapped) swapWords(&o, sizeof(ObjectHeader) / sizeof(int));
@@ -282,7 +305,18 @@ Reader::readComponents()
         for (int q=0; q < o.numComponents; q++)
         {
             ComponentInfo c;
-            read((char*)&c, sizeof(ComponentHeader));
+
+            if (m_header.version == 2)
+            {
+                read((char*)&c, sizeof(ComponentHeader_v2));
+                c.pad = 0;
+                c.interpretation = 0;
+            }
+            else
+            {
+                read((char*)&c, sizeof(ComponentHeader));
+            }
+
             if (m_error) return;
 
             if (m_swapped) swapWords(&c, sizeof(ComponentHeader) / sizeof(int));
@@ -293,10 +327,14 @@ Reader::readComponents()
 
             if (o.requested && !(m_mode & RandomAccess))
             {
-                stringFromId(c.name);
+                stringFromId(c.name);       // sanity checks
+                stringFromId(c.interpretation);
                 if (m_error) return;
 
-                Request r = component(stringFromId(c.name), c);
+                Request r = component(stringFromId(c.name), 
+                                      stringFromId(c.interpretation),
+                                      c);
+
                 c.requested = r.m_want;
                 c.componentData = r.m_data;
             }
@@ -321,7 +359,17 @@ Reader::readProperties()
         {
             PropertyInfo p;
             
-            read((char*)&p, sizeof(PropertyHeader));
+            if (m_header.version == 2)
+            {
+                read((char*)&p, sizeof(PropertyHeader_v2));
+                p.pad = 0;
+                p.interpretation = 0;
+            }
+            else
+            {
+                read((char*)&p, sizeof(PropertyHeader));
+            }
+
             if (m_error) return;
 
             if (m_swapped) 
@@ -334,9 +382,13 @@ Reader::readProperties()
             if (c.requested && !(m_mode & RandomAccess))
             {
                 stringFromId(p.name);
+                stringFromId(p.interpretation);
                 if (m_error) return;
 
-                Request r = property(stringFromId(p.name), p);
+                Request r = property(stringFromId(p.name), 
+                                     stringFromId(p.interpretation),
+                                     p);
+
                 p.requested = r.m_want;
                 p.propertyData = r.m_data;
             }
@@ -367,8 +419,8 @@ Reader::accessObject(ObjectInfo& o)
         {
             assert( (o.coffset+q) < m_components.size() );
             ComponentInfo& c = m_components[o.coffset + q];
-            const std::string &nme = stringFromId( c.name );
-            Request        r = component( nme, c);
+            const std::string &nme = stringFromId(c.name);
+            Request        r = component(nme, c);
             c.requested      = r.m_want;
             c.componentData  = r.m_data;
 
@@ -377,7 +429,9 @@ Reader::accessObject(ObjectInfo& o)
                 for (int j=0; j < c.numProperties; j++)
                 {
                     PropertyInfo& p = m_properties[c.poffset + j];
-                    Request       r = property(stringFromId(p.name), p);
+                    Request       r = property(stringFromId(p.name), 
+                                               stringFromId(p.interpretation),
+                                               p);
                     p.requested     = r.m_want;
                     p.propertyData  = r.m_data;
 
@@ -538,8 +592,7 @@ Reader::read(char *buffer, size_t size)
             std::cerr << "ERROR: Gto::Reader: Failed to read gto file: '";
             std::cerr << m_inName << "': " << std::endl;
             memset( buffer, 0, size );
-            m_error = 1;
-            m_why = "stream fail";
+            fail( "stream fail" );
         }
 #endif
     }
@@ -554,8 +607,7 @@ Reader::read(char *buffer, size_t size)
             std::cerr << gzerror( m_gzfile, &zError );
             std::cerr << std::endl;
             memset( buffer, 0, size );
-            m_error = 1;
-            m_why = "gzread fail";
+            fail( "gzread fail" );
         }
     }
 #endif
@@ -577,6 +629,12 @@ Reader::get(char &c)
 #endif
 }
 
+void Reader::fail( std::string why )
+{
+    m_error = true;
+    m_why = why;
+}
+
 const std::string& Reader::stringFromId(unsigned int i)
 {
     static std::string empty( "" );
@@ -584,8 +642,7 @@ const std::string& Reader::stringFromId(unsigned int i)
     {
         std::cerr << "WARNING: Gto::Reader: Malformed gto file: ";
         std::cerr << "invalid string index" << std::endl;
-        m_error = 1;
-        m_why = "malformed file, invalid string index";
+        fail( "malformed file, invalid string index" );
         return empty;
     }
 

@@ -39,6 +39,13 @@ namespace Gto {
 struct Property
 {
     Property(const std::string& n,
+             const std::string& i,
+             Gto::DataType t,
+             size_t s,
+             size_t w,
+             bool allocate=false);
+
+    Property(const std::string& n,
              Gto::DataType t,
              size_t s,
              size_t w,
@@ -47,6 +54,7 @@ struct Property
     ~Property();
 
     std::string     name;
+    std::string     interp;
     Gto::DataType   type;
     size_t          size;
     size_t          width;
@@ -70,10 +78,15 @@ typedef std::vector<Property*> Properties;
 
 struct Component
 {
+    Component(const std::string& n, 
+              const std::string& i, 
+              uint16 f) : name(n), interp(i), flags(f) {}
     Component(const std::string& n, uint16 f) : name(n), flags(f) {}
+
     ~Component();
 
     std::string     name;
+    std::string     interp;
     uint16          flags;
     Properties      properties;
 };
@@ -141,9 +154,11 @@ protected:
                                const ObjectInfo &header);
 
     virtual Request     component(const std::string& name,
+                                  const std::string& interp,
                                   const ComponentInfo &header);
 
     virtual Request     property(const std::string& name,
+                                 const std::string& interp,
                                  const PropertyInfo &header);
 
     virtual void*       data(const PropertyInfo&, size_t bytes);

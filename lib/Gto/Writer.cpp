@@ -197,7 +197,7 @@ Writer::beginObject(const char* name,
     ObjectHeader header;
     header.numComponents   = 0;
     header.name            = m_names.size() - 2;
-    header.protocolName    = m_names.size() -1;
+    header.protocolName    = m_names.size() - 1;
     header.protocolVersion = version;
 
     m_objects.push_back(header);
@@ -210,9 +210,34 @@ Writer::beginComponent(const char* name, unsigned int flags)
     m_objects.back().numComponents++;
     ComponentHeader header;
     
+    header.numProperties  = 0;
+    header.flags          = flags;
+    header.name           = m_names.size() - 1;
+    header.pad            = 0;
+
+    m_names.push_back("");
+    header.interpretation = m_names.size() - 1;
+
+    m_components.push_back(header);
+}
+
+void
+Writer::beginComponent(const char* name, 
+                       const char* interp,
+                       unsigned int flags)
+{
+    m_names.push_back(name);
+    m_objects.back().numComponents++;
+    ComponentHeader header;
+    
     header.numProperties = 0;
-    header.flags = flags;
-    header.name = m_names.size() - 1;
+    header.flags         = flags;
+    header.name          = m_names.size() - 1;
+    header.pad           = 0;
+
+    if (!interp) interp = "";
+    m_names.push_back(interp);
+    header.interpretation = m_names.size() - 1;
 
     m_components.push_back(header);
 }
@@ -231,7 +256,8 @@ void
 Writer::property(const char* name,
                  DataType type,
                  size_t numElements,
-                 size_t partsPerElement)
+                 size_t partsPerElement,
+                 const char *interp)
 {
     m_names.push_back(name);
     m_components.back().numProperties++;
@@ -241,6 +267,11 @@ Writer::property(const char* name,
     header.type   = type;
     header.width  = partsPerElement;
     header.name   = m_names.size() - 1;
+    header.pad    = 0;
+
+    if (!interp) interp = "";
+    m_names.push_back(interp);
+    header.interpretation = m_names.size() - 1;
 
     m_properties.push_back(header);
 }
@@ -251,7 +282,7 @@ Writer::constructStringTable()
 {
     intern( "(Gto::Writer compiled " __DATE__ 
             " " __TIME__ 
-            ", $Id: Writer.cpp,v 1.2 2004/04/26 17:13:07 jimh Exp $)" );
+            ", $Id: Writer.cpp,v 1.3 2004/05/25 00:39:18 mike Exp $)" );
 
     for (int i=0; i < m_names.size(); i++)
     {
@@ -259,9 +290,9 @@ Writer::constructStringTable()
     }
 
     //
-    //        Assign numbers -- note, this is a workaround for the fact that
-    //        set does not implement operator-() for its
-    //        iterators. Otherwise, we could use a set instead of a map.
+    //  Assign numbers -- note, this is a workaround for the fact that
+    //  set does not implement operator-() for its
+    //  iterators. Otherwise, we could use a set instead of a map.
     //
 
     int count = 0;
@@ -276,7 +307,7 @@ Writer::constructStringTable()
     }
 
     //
-    //        Find all the name ids for the header structs
+    //  Find all the name ids for the header structs
     //
 
     for (int o=0, c=0, p=0, n=0; o < m_objects.size(); o++)
@@ -289,11 +320,13 @@ Writer::constructStringTable()
         {
             ComponentHeader &ch = m_components[c];
             ch.name = m_strings[m_names[n++]];
+            ch.interpretation = m_strings[m_names[n++]];
 
             for (int q=0; q < ch.numProperties; q++, p++)
             {
                 PropertyHeader &ph = m_properties[p];
                 ph.name = m_strings[m_names[n++]];
+                ph.interpretation = m_strings[m_names[n++]];
             }
         }
     }

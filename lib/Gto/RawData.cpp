@@ -23,11 +23,32 @@ namespace Gto {
 using namespace std;
 
 Property::Property(const std::string& n,
+                   const std::string& i,
                    Gto::DataType t,
                    size_t s,
                    size_t w,
                    bool allocate)
-    : name(n), type(t), size(s), width(w), voidData(0)
+    : name(n), interp(i), type(t), size(s), width(w), voidData(0)
+{
+    if (allocate)
+    {
+        if (t == String)
+        {
+            stringData = new string[w * s];
+        }
+        else
+        {
+            voidData = new char[dataSize(t) * w * s];
+        }
+    }
+}
+
+Property::Property(const std::string& n,
+                   Gto::DataType t,
+                   size_t s,
+                   size_t w,
+                   bool allocate)
+    : name(n), interp(""), type(t), size(s), width(w), voidData(0)
 {
     if (allocate)
     {
@@ -135,20 +156,25 @@ RawDataBaseReader::object(const string& name,
 }
 
 Reader::Request
-RawDataBaseReader::component(const string& name, const ComponentInfo& info)
+RawDataBaseReader::component(const string& name,
+                             const string& interp,
+                             const ComponentInfo& info)
 {
     Object *o    = reinterpret_cast<Object*>(info.object->objectData);
-    Component *c = new Component(name, info.flags);
+    Component *c = new Component(name, interp, info.flags);
     o->components.push_back(c);
     return Request(true, c);
 }
 
 Reader::Request
-RawDataBaseReader::property(const string& name, const PropertyInfo& info)
+RawDataBaseReader::property(const string& name, 
+                            const string& interp,
+                            const PropertyInfo& info)
 {
     Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
-    Property *p  = new Property(name, (DataType)info.type, info.size, info.width);
+    Property *p  = new Property(name, interp, 
+                                (DataType)info.type, info.size, info.width);
     c->properties.push_back(p);
     return Request(true, p);
 }
@@ -204,7 +230,8 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
         m_writer.property(property->name.c_str(),
                           property->type,
                           property->size,
-                          property->width);
+                          property->width,
+                          property->interp.c_str());
 
         if (property->type == Gto::String)
         {
@@ -273,7 +300,8 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
 
     if (props.size())
     {
-        m_writer.beginComponent(component->name.c_str());
+        m_writer.beginComponent(component->name.c_str(),
+                                component->interp.c_str());
 
         for (int i=0; i < props.size(); i++)
         {
@@ -288,7 +316,8 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
 }
 
 bool
-RawDataBaseWriter::write(const char *filename, const RawDataBase& db, 
+RawDataBaseWriter::write(const char *filename,
+                         const RawDataBase& db, 
                          bool compress)
 {
     if (!m_writer.open(filename, compress))

@@ -121,6 +121,7 @@ public:
     //
     //  If it failed. why() will return a description.
     //
+    void                fail( std::string why = "" );
 
     const std::string&  why() const { return m_why; }
 
@@ -173,10 +174,29 @@ public:
         friend class Reader;
     };
 
+    //
+    //  Version 3 API
+    //
+
     virtual Request     object(const std::string& name,
                                const std::string& protocol,
                                unsigned int protocolVersion,
                                const ObjectInfo &header);
+
+
+    virtual Request     component(const std::string& name,
+                                  const std::string& interp,
+                                  const ComponentInfo &header);
+
+
+    virtual Request     property(const std::string& name,
+                                 const std::string& interp,
+                                 const PropertyInfo &header);
+
+    //
+    //  Version 2 API still works, if the version 3 API (above) is not
+    //  overriden. New applications should not use these functions.
+    //
 
     virtual Request     component(const std::string& name,
                                   const ComponentInfo &header);
@@ -227,7 +247,7 @@ private:
     int                 m_gzrval;
     std::string         m_inName;
     bool                m_needsClosing;
-    int                 m_error;
+    bool                m_error;
     std::string         m_why;
     bool                m_swapped;
     unsigned int        m_mode;
