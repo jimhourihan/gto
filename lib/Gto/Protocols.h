@@ -32,6 +32,7 @@
 #define GTO_PROTOCOL_IMAGE               "image"
 #define GTO_PROTOCOL_MATERIAL            "material"
 #define GTO_PROTOCOL_GROUP               "group"
+#define GTO_PROTOCOL_STRAND              "strand"
 
 #define GTO_COMPONENT_POINTS             "points"
 #define GTO_COMPONENT_SURFACE            "surface"

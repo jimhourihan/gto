@@ -1,21 +1,6 @@
-//
-// Copyright (C) 2004 Tweak Films
-//
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2 of
-// the License, or (at your option) any later version.
-//
-// This library is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-// Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-// USA
-//
+//******************************************************************************
+// Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
+//******************************************************************************
 
 #include <sstream>
 #include "gtoWriter.h"
@@ -53,6 +38,10 @@ template<typename T> int flatten( PyObject *object,
     if( start )
     {
         pos = 0;
+    }
+    if( pos > maxItems )
+    {
+        return pos;
     }
 
     // If we come across a class instance, do we know what to do with it?
@@ -717,7 +706,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
 
     // Determine how many elements we have in the data
     int dataSize = prop.size * prop.width;
-
+    
     // Write that data!
     if( prop.type == Gto::Int )
     {
