@@ -1,10 +1,129 @@
 
-Please read and understand the copy of the LGPL license that should have
+                 The GTO file format
+
+                 http://www.tweakfilms.com/
+                 gto@tweakfilms.com
+
+
+Contents:
+    1. Overview
+    2. License Brief
+    3. Build Notes
+
+
+--------
+
+Here's the Overview section from the documentation.  For the rest, see 
+"doc/gto.texi" (can be easily converted to HTML with texi2html)
+
+
+1. Overview
+
+
+    The GTO format's primary usage is storage of static geometric data. The
+types of data you might find in a GTO file are things like polygonal meshes,
+various types of subdivision surfaces, NURBS or UBS surfaces, coordinate
+systems, hierarchies of objects, material bindings, and even images. In our
+facility -- Tweak Films -- the data in GTO files are rendered directly by
+entropy (a prman compatible rib renderer) and used for modeling and 3D paint.
+We also use the GTO format in place of the venerable and yet nasty PDB file
+format for particles.
+
+    From a historic point of view, the GTO file format is most closely related
+to the original inventor file format, the Stanford PLY format and the PDB
+particle format. Like the Wavefont PDB file format, there are a limited number
+of simple GTO data types (float, int, string, boolean). Like the inventor file
+format, a GTO can hold an entire transformation hierarchy including geometric
+leaf nodes. Like the PLY format, the GTO format can contain an arbitrary amount
+of data per primitive. Most importantly however, the GTO file format is
+intended to be very OBJ-like; its relatively easy to read and write and easy to
+ignore data you don't want or know about.
+
+    GTO files are binary files. There is currently no ASCII/Unicode or other
+human readable version of the file other than the output of the gtoinfo
+program. Therefore we provide code for the binary format to give implementors a
+head start. The file is either big or little endian on disk, but should be
+readable on any platform.
+
+    The GTO reader we provide can be linked against libz, so it can read
+gzipped GTO files natively. We find that gzipping GTO files from most 3D
+programs can reduce the size by approximately 60%. The file itself contains
+Objects which are composed of Components. Components are further composed of
+Properties. A Property contains an array of one of the predefined data types
+with a specified width. For example, you might have an object which looks
+something like this:
+
+      Object "cube"
+          Component "points"
+              Property float[3][8] "position"
+              Property float[1][8] "mass"
+          Component "elements"
+              Property byte[1][8] "type"
+              Property short[1][8] "size"
+          Component "indices"
+              Property int[1][32] "vertex"
+
+    Using the terminology above, the object "cube" contains five properties:
+"position", "mass", "type", "size", and "vertex". The "points" component
+describes the points that make up the cube vertices. Each point has a position
+and mass stored in properties of the same name. The position property data is
+composed of eight float[3] data items (or 8 3D points). The "mass" property is
+composed of a 8 scalar floating point values (one for each point).
+
+    The "elements" component contains two properties. "type" indicates the type
+of the element (for example, triangle, quad, or triangle strip). In this case
+the elements might all be quads. "size" indicates the number of vertices in
+each of the eight faces (elements) of the cube -- (4 for a cube). The "vertex"
+property of the "indices" component contains the actual indices: 4 per face for
+a total of 32.
+
+    Of course you could store much more data with the cube object if you wanted
+to. For example, if you wanted velocity or color per point, this would be
+another property in the "points" component.
+
+    The meaning of this data is another story altogether. Its all handled by
+protocol. One application may store things in the GTO file that another
+application has no method of interpreting even though it can read that data and
+modify it. In the example above, you need to know to expect that polygonal data
+is stored in the given properties. The same data could be stored with different
+property names and a more complex layout. (The "polygon" protocol described
+later in this document is different and more involved than the above example.)
+
+
+-----
+
+2. License Brief
+
+    Please read and understand the copy of the LGPL license that should have
 been provided in the file COPYING with the source code. If you use this
 library in a product you are bound by the license to provide this source
 code for the library with your product. 
 
-If you extend, repair, or invent a new protocol for the Gto format and
+    If you extend, repair, or invent a new protocol for the Gto format and
 would like it incorporated in our tree drop us a line at gto@tweakfilms.com.
 Or just drop us a line telling us you're using it. 
+
+
+-----
+
+3. Notes on building:
+
+    1. Currently, the Maya plugin is known to work on Maya 4.0 and 4.5 on 
+       Linux.  We will soon be distributing a Windows version as well.  We
+       suspect that it could be made to work on OSX if we had the right 
+       compiler...
+       
+    2. Building the Maya plugin on Linux requires gcc 2.96.
+    
+    3. The Python module is known to work with Python 2.2.x.  It ought to
+       work with other versions, but it's not tested.
+    
+    4. If you want to build the Python module, you have to do so manually for
+       now:
+            cd plugins/python
+            ./setup.py build
+            su
+            ./setup.py install
+            exit
+
 
