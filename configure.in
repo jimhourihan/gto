@@ -2,7 +2,7 @@ dnl
 dnl Process this file with autoconf to produce a configure script.
 dnl 
 
-dnl A few non-standard check definitions:
+dnl ********************** Macro definitions:
 
 AC_DEFUN([AC_CXX_NAMESPACES],
 [AC_CACHE_CHECK(whether the compiler implements namespaces,
@@ -39,8 +39,7 @@ if test "$ac_cv_cxx_have_stl" = yes; then
 fi
 ])
 
-
-dnl ********************** Starts here...
+dnl ********************** Processing starts here...
 
 AC_PREREQ(2.57)
 
@@ -51,13 +50,34 @@ AC_CONFIG_AUX_DIR(config)
 AM_INIT_AUTOMAKE()
 AC_LANG(C++)
 AC_PROG_CC
+AC_PROG_INSTALL
 AC_PROG_CXX
 
-dnl This is the version info according to the libtool versioning system.
-dnl It does *not* correspond to the release number.
+SHARED_VERSION_INFO="2:0:0"
 AC_DISABLE_SHARED
 AC_PROG_LIBTOOL
 
+if test $MAYA_LOCATION; then :; else
+    MAYA_LOCATION=/usr/aw/maya
+fi
+
+AC_SUBST(gto_maya_location,$MAYA_LOCATION)
+
+AC_ARG_WITH([maya-dir],
+            [AC_HELP_STRING([--with-maya-dir=DIR],
+                            [Maya 4.x install location])],
+            [gto_maya_location=$withval])
+
+
+gto_build_maya=yes
+AC_ARG_ENABLE([maya-plugin],
+          AC_HELP_STRING([--enable-maya-plugin],
+                         [Build GtoIO plugin for Maya 4.x (default=yes)]),
+          gto_build_maya=yes,
+          gto_build_maya=no)
+
+
+dnl ********************** System Checks:
 
 AC_HEADER_STDC
 AC_C_CONST
@@ -73,18 +93,42 @@ if test "$ac_cv_cxx_have_stl" != yes; then
 fi
 
 AC_MSG_CHECKING(for istream::fail())
-        AC_TRY_COMPILE(
-        [
-        #include <iostream>
-        ],
-        [
-        std::istream *xxx;
-        if(xxx->fail());
-        ],
-        [AC_MSG_RESULT(yes)
-        AC_DEFINE(HAVE_FULL_IOSTREAMS)],
-        [AC_MSG_RESULT(no)])
+    AC_TRY_COMPILE(
+    [
+    #include <iostream>
+    ],
+    [
+    std::istream *xxx;
+    if(xxx->fail());
+    ],
+    [AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_FULL_IOSTREAMS)],
+    [AC_MSG_RESULT(no)])
 
+if test "$gto_build_maya"="yes"; then
+    AC_MSG_CHECKING([for gcc 2.96])
+    AC_RUN_IFELSE([AC_LANG_PROGRAM([],[
+        if( ! ( ( __GNUC__ == 2 )
+          && ( __GNUC_MINOR__ == 96 ) ) ) return 1;])],
+    [AC_MSG_RESULT(yes)],
+    [AC_MSG_ERROR(
+[
+
+Building the Maya plugin requires gcc 2.96
+
+If you are using RedHat 8.0, install the following RPMs,
+and re-run configure with CXX=g++296.
+
+    compat-gcc-7.3-2.96.110
+    compat-gcc-c++-7.3-2.96.110
+    compat-libstdc++-7.3-2.96.110
+    compat-libstdc++-devel-7.3-2.96.110
+])
+])
+fi
+
+
+dnl ********************** Output:
 
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
