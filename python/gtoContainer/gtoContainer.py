@@ -1082,16 +1082,26 @@ class gtoContainer( gto.Reader ):
             writer.beginObject( objName, objProtocol, objProtocolVersion )
             for comp in obj.components():
                 compName = comp.name()
+                compInterp = comp.interp()
                 compFlags = comp.flags()
-                writer.beginComponent( compName, compFlags )
+                if compInterp:
+                    writer.beginComponent( compName, compInterp, compFlags )
+                else:
+                    writer.beginComponent( compName, compFlags )
                 for prop in comp.properties():
                     propName = prop.name()
                     propType = prop.type()
                     propSize = prop.size()
                     propWidth = prop.width()
-                    writer.property( propName, propType, propSize, propWidth )
+                    propInterp = prop.interp()
                     if propType == gto.STRING:
                         writer.intern( prop() )
+                    if propInterp:
+                        writer.property( propName, propType, propSize, 
+                                         propWidth, propInterp )
+                    else:
+                        writer.property( propName, propType, propSize, 
+                                         propWidth )
                 writer.endComponent()
             writer.endObject()
 
