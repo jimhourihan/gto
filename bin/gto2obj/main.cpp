@@ -324,7 +324,7 @@ writeObj(ostream& out, Object* o)
     {
         //  should really check to make sure this data is not bogus
         uint16 s = sizes->uint16Data[i];
-        uint16 t = types->uint16Data[i];
+        uint8 t = types->uint8Data[i];
 
         if (t == GTO_POLYGON_POLYGON ||
             t == GTO_POLYGON_TRIANGLE ||
