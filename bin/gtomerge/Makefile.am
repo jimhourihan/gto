@@ -7,5 +7,5 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 
 bin_PROGRAMS = gtomerge
 
-gtoinfo_SOURCES = main.cpp
-gtoinfo_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@
+gtomerge_SOURCES = main.cpp
+gtomerge_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@

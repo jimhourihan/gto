@@ -90,6 +90,8 @@ AC_MSG_CHECKING(for istream::fail())
 AC_CONFIG_FILES([Makefile
                  bin/Makefile
                  bin/gtoinfo/Makefile
+                 bin/gtofilter/Makefile
+                 bin/gtomerge/Makefile
                  lib/Gto/Makefile
                  lib/Gto/test/Makefile
                  lib/Makefile])

@@ -7,5 +7,5 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 
 bin_PROGRAMS = gtofilter
 
-gtoinfo_SOURCES = main.cpp
-gtoinfo_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@
+gtofilter_SOURCES = main.cpp
+gtofilter_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@
