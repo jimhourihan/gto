@@ -5,7 +5,11 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib
 
+if GTO_BUILD_GTOIMAGE
+
 bin_PROGRAMS = gtoimage
 
 gtoimage_SOURCES = main.cpp
 gtoimage_LDADD = $(top_srcdir)/lib/Gto/libGto.la -ltiff @LIBS@ 
+
+endif

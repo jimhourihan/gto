@@ -11,5 +11,5 @@ LIBS = -L$(top_srcdir)/lib/Gto
 TESTS = test
 
 test_SOURCES = main.cpp
-test_LDADD = -lgto -lz
+test_LDADD = -lGto @LIBS@
 

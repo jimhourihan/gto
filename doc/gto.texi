@@ -75,13 +75,16 @@ This document applies to version 2 of the file format.
 
 @menu
 * Copying::              GTO licensing terms.
+* Installation::         Compiling and Installing.
 * Overview::             Uses for the GTO format.
 * Format::               File format on disk.
 * Types::                Types of property data that can be stored.
 * Protocols::            How to interpret the data.
 * Names::                Naming Convensions.
 * Issues::               Problems and questionable aspects of the format.
-* Library::              Reading and Writing use the C++ library.
+* Extending::            Extending protocols or the file format.
+* Library::              Reading and Writing using the C++ library.
+* Module::               Reading and Writing using the Python module.
 * Utilities::            Utility Programs and Plug-ins.
 * Reference::            Index of functions, types, and variables.
 @end menu
@@ -89,7 +92,7 @@ This document applies to version 2 of the file format.
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
      
-@node Copying, Overview, Top, Top
+@node Copying, Installation, Top, Top
 @unnumbered GNU LESSER GENERAL PUBLIC LICENSE
 @center Version 2.1, February 1999
 
@@ -565,9 +568,116 @@ DAMAGES.
 @center		     END OF TERMS AND CONDITIONS
 
 @c ----------------------------------------------------------------------
+
+@c ----------------------------------------------------------------------
+@node Installation, Overview, Copying, Top
+@chapter Installation
+
+The GTO source code is built using the GNU autotools. When you unpack
+the source code, the following should successfully build and install
+the binaries and library. Note that you may need to become root for
+@command{make install} to succeed.
+
+@example
+    sh> cd gto-x.x
+    sh> ./confuigure
+    sh> make
+    sh> make install
+@end example
+
+If you have Maya installed, the Maya I/O plugin can be compiled. You
+can give the @option{--enable-maya-plugin} argument to the configure
+script to have the plugin built. See the INSTALL file at the top of
+the source code tree for more information on using configure.
+
+@menu
+
+Operating system specific instructions
+
+* Linux::                  GNU/Linux
+* OSX::                    Mac OS X
+* Windows::                Microsoft Windows 2000/XP
+@end menu
+
+@c ----------------------------------------------------------------------
+@node Linux, OSX, Installation, Installation
+@section GNU/Linux
+
+The Maya plugin almost certainly requires a specific compiler for
+GNU/Linux installation with Maya 4.x or 3.x. On versions of Red Hat
+Linux 7.x the default compiler should be used; this should be gcc
+2.96. On later versions of Red Hat, 8.x and 9.x, you will need to
+install the following:
+
+@example 
+    compat-gcc-7.3-2.96.110.i386.rpm
+    compat-gcc-c++-7.3-2.96.110.i386.rpm
+    compat-libstdc++-7.3-2.96.110.i386.rpm
+    compat-libstdc++-devel-7.3-2.96.110.i386.rpm
+@end example
+
+In that case, the compiler will be called gcc-2.96 and you will need
+to do this before running configure:
+
+@example
+    sh> CC=gcc-2.96
+    sh> export CC
+    sh> CXX=g++-2.96
+    sh> export CXX
+@end example
+
+If you are not using the Maya plugin, or you want to use the GTO
+library, but using a different compiler, you may need to run the build
+and installation process more than once with different compiler
+settings. 
+
+On non Red Hat or home grown GNU/Linux systems, the library and binary
+tools should build and install using the normal proceedure. Here at
+Tweak, we typically build the library and binary tools using gcc 3.1
+or greater.
+
+@c ----------------------------------------------------------------------
+@node OSX, Windows, Linux, Installation
+@section Mac OS X
+
+The GTO library and binaries should build normally on OS X if you have
+installed the developer tools. You should have a version of the
+developer tools that uses gcc 3.1 or better.
+
+At the time of this writing, IBM has just released the XL compilers
+for OS X. We have not yet attempted to compile the GTO tools and
+library using this compiler.
+
+The Maya plugin on Mac OS X requires the use of CodeWarrior to compile
+a CFM shared object for Maya versions 4.x and 5.x. In addition, for
+the 4.x versions, you will need to hack the CodeWarrior system header
+files to get the build to work. We have not had much success in
+getting the plugin to compile for OS X since the header munging
+instructions did not work for us. However, there is no reason to
+suspect that givin the proper CodeWarrior version and modifications
+that it would not compile.
+
+We would be very obliged if someone figures out how to get that to
+work.
+
+@c ----------------------------------------------------------------------
+@node Windows,  , OSX, Installation
+@section Microsoft Windows 2000/XP
+
+In theory, you can compile the library and binary tools using the
+Cygwin environment and gcc 3.x but we have not tested it.
+
+Maya on Windows requires the use of Visual C++. This compiler does not
+come close to complying with the ANSI C++ standard and requires many
+work arounds to compile the GTO library and Maya plugin. Because of
+this, the library and tools are currently unsupported on Windows.
+
+Your mileage may vary for other Windows compilers.
+
+@c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
      
-@node    Overview, Format, Copying, Top
+@node Overview, Format, Installation, Top
 @chapter Overview
 
 The GTO format's primary usage is storage of static geometric
@@ -593,13 +703,12 @@ to be very OBJ-like; its relatively easy to read and write and easy to
 ignore data you don't want or know about.
 
 GTO files are binary files. There is currently no ASCII/Unicode or
-other human readable version of the file. Although the format is meant
-to be reasonably simple, an ASCII parser of the GTO data would be
-decidedly non-trivial. Therefore we provide code for the binary format
-to give implementors a head start. The file is either big or little
-endian on disk, but should be readable on any platform. 
+other human readable version of the file other than the output of the
+@command{gtoinfo} program. Therefore we provide code for the binary
+format to give implementors a head start. The file is either big or
+little endian on disk, but should be readable on any platform.
 
-The GTO reader we provide is linked against libz, so it can read
+The GTO reader we provide can be linked against libz, so it can read
 gzipped GTO files natively. We find that gzipping GTO files from most
 3D programs can reduce the size by approximately 60%.
 
@@ -834,7 +943,6 @@ stored as properties. The currently defined types are:
 16 bit ``IEEE floating point'' number as defined by ILM's OpenEXR
 Imath library half data type. Currently a bit exotic. You can find the
 code via SourceForge @url{http://sourceforge.net/projects/openexr}.  
-Not currently implemented.
 @end deftp
 
 @deftp {Property Type} int
@@ -933,6 +1041,10 @@ Major (Object) Protocols
 * NURBS Surfaces::              NURBS and fewer letter (UBS) surfaces.
 * Polygonal Surfaces::          Polygons, in all their gory mess.
 * Subdivision Surfaces::        Catmull-Clark and Loop surfaces.
+* Image::                       Image Object.
+* Material::                    @strong{PROPOSED} Material definition.
+* Group::                       @strong{PROPOSED} Object grouping.
+
 * Inter-Object Connections::    Object Relationship Information.
 
 Minor Protocols
@@ -940,9 +1052,6 @@ Minor Protocols
 * Difference::                  Difference Files.
 * Sorted Shells::               Special ordering for Polygonal Surfaces.
 
-Deprecated Protocols
-
-* Material Bindings::           Texture map and material assignments.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -1345,7 +1454,7 @@ There five defined smoothing methods (0 through 4). They are:
 
 @c ----------------------------------------------------------------------
 
-@node Subdivision Surfaces, Inter-Object Connections, Polygonal Surfaces, Protocols
+@node Subdivision Surfaces, Image, Polygonal Surfaces, Protocols
 @section Subdivision Surface Protocols
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1371,7 +1480,103 @@ surfaces need to be manifold. Some applications can deal with special
 cases better than others.
 
 @c ----------------------------------------------------------------------
-@node Inter-Object Connections, Material Bindings, Subdivision Surfaces, Protocols
+
+@node Image, Material, Subdivision Surfaces, Protocols
+@section Image Protocol
+
+The Image protocol describes image data in the form of an object. This
+data makes it possible to store texture maps, backgrounds, etc,
+directly in the GTO file. The GTO format is not intended as a general
+purpose image file format. Better formats for general purpose image
+storage are TIFF and OpenEXR.  
+
+When images are stored in a GTO file, use of Gzip compression is
+highly recommended since this protocol specifies no compression
+itself. The example GTO reader library can handle Gzip compressed GTO
+files. Gzip provides decent image data compression ratios.
+
+@deftypevr {Required Component} {} {image}
+The image data and other information will be stored in the
+@strong{image} component.
+@end deftypevr
+
+@deftypevr {Required Property} {int[1][]} {image.size}
+The size (and dimension) of the image. There will be N sizes in this
+property corresponding to the N dimensions of the image.
+@end deftypevr
+
+@deftypevr {Required Property} {string[1][1]} {image.type}
+The image type. For interactive purposes, the image channels may
+correspond to a particular fast hardware layout.
+
+@itemize @bullet
+@item @code{RGB}
+Three channels corresponding to red, green, and blue in that order.
+@item @code{BGR}
+Three channels corresponding to blue, green, and red in that order.
+@item @code{RGBA}
+Four channels corresponding to red, green, blue, and alpha in that
+order.
+@item @code{ABGR}
+Four channels corresponding to alpha, blue, green, and red in that
+order.
+@item @code{L}
+One channel corresponding to luminance.
+@item @code{HSV}
+Three channels corresponding to hue, saturation, and value. (The HSV
+color space).
+@item @code{HSL}
+Three channels corresponding to hue, saturation, and lightness. (The
+HSL color space).
+@item @code{YUV}
+Three channels corresponding to the YUV color space.
+@end itemize
+@end deftypevr
+
+
+@deftypevr {Optional Property} {int[1]} {image.cs}
+The coordinate system of the image. The value of @strong{image.cs} can
+be any one of the following:
+
+@table @strong
+    @item 0 -- Lower left origin.
+The first pixel in the image data is the lower left corner of the
+image data and corresponds to NDC coordinate (0,0). 
+
+    @item 1 -- Upper left origin.
+The first pixel in the image data is the upper left corner of the
+image data and corresponds to NDC coordinate (0,0).
+@end table
+@end deftypevr
+
+Any one of the following properties are required to hold the actual
+image data:
+
+@deftypevr  {Property} {byte[N][]} {image.pixels}
+@deftypevrx {Property} {short[N][]} {image.pixels}
+@deftypevrx {Property} {half[N][]} {image.pixels}
+@deftypevrx {Property} {float[N][]} {image.pixels}
+The element width determines the number of channels in the image. For
+example, the type @code{byte[3][]} indicate a 3 channel 8-bit per
+channel image. The number of elements in this property should be equal
+to @code{image.size[0] * image.size[1] * ... image.size[N]} where
+@strong{image.size} is the property defined above.
+@end deftypevr
+
+
+@c ----------------------------------------------------------------------
+
+@node Material, Group, Image, Protocols
+@section @strong{PROPOSED} Material Protocol
+
+@c ----------------------------------------------------------------------
+
+@node Group, Inter-Object Connections, Material, Protocols
+@section @strong{PROPOSED} Group Protocol
+
+
+@c ----------------------------------------------------------------------
+@node Inter-Object Connections, Difference, Group, Protocols
 @section Inter-Object Connection Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1436,7 +1641,9 @@ The GTO specification includes a couple of basic connection types.
 Connection Types Defined by the Spec
 
 * parent_of::             Transformation hierarcies.
-* texture::               Texture map assignments.
+* texture::               @strong{PROPOSED} Texture map assignments.
+* material::              @strong{PROPOSED} Material assignments.
+* contains::              @strong{PROPOSED} Group/Container assignment.
 
 @end menu
 
@@ -1455,19 +1662,19 @@ probably an error for most applications. To be safe the topology of a
 ``parent_of'' network should be a tree.
 
 @c ----------------------------------------
-@node texture,  , parent_of, Inter-Object Connections
-@subsection Texture Map Assignment
+@node texture, material, parent_of, Inter-Object Connections
+@subsection @strong{PROPOSED} Texture Map Assignment
 
 The ``texture'' connection type indicates a texture map assignment to
-an object. The left-hand-side of the texture connection is the name of
-(or path to) a texture map. The map may be a file on disk or an image
-in the GTO file. The right-hand-side name is an object in the GTO file
-that is assigned to the left-hand-side texture map.
+an object. The left-hand-side name is an object in the GTO file. The
+right-hand-side of the texture connection is the name of (or path to)
+a texture map. The map may be a file on disk or an image object in the
+GTO file.
 
 The ``texture'' connection type requires two additional properties and
 optionally may have a third:
 
-@deftypevr {Required Property} {byte[1][]} {mapType}
+@deftypevr {Required Property} {byte[1][]} {type}
 The type of map. 1 indicates a color map.
 @end deftypevr
 
@@ -1482,46 +1689,27 @@ used to pass texture data to arbitrary shader parameters in a
 renderer. An empty string denotes not-a-channel.
 @end deftypevr
 
-@c ----------------------------------------------------------------------
+@c ----------------------------------------
+@node material, contains, texture, Inter-Object Connections
+@subsection @strong{PROPOSED} Material Assignment
 
-@node Material Bindings, Difference, Inter-Object Connections, Protocols
-@section Material Binding Protocols
+The ``material'' connection type indicates a material assignment to an
+object. The left-hand-side name is an object in the GTO file that is
+assigned to the left-hand-side texture map.  The right-hand-side of
+the material connection is the name of (or path to) a material. The
+material may be a file on disk or an object in the GTO file.
 
-@strong{WARNING --- THIS PROTOCOL IS DEPRECATED}
+@c ----------------------------------------
+@node contains,  , material, Inter-Object Connections
+@subsection @strong{PROPOSED} Container Assignment
 
-This protocol has been made redundant and deprecated by the
-@strong{connection} protocol.@xref{Inter-Object Connections}.
-
-There is one protocol defined so far for texture map assignment. There
-are currently no material definition protocols. The texture map
-assignment protocol used at Tweak Films is called ``texChannel''. The
-information in the file binds surfaces (other gto objects) to texture
-map names. There can be multiple @strong{texChannel} objects in a gto
-file each describing a different texture channel.
-
-@deftypevr {Required Component} {} {assignments}
-@end deftypevr
-
-@deftypevr {Required Property} {string[1][]} {assignments.surface}
-The names of surfaces to apply texture maps to.
-@end deftypevr
-
-@deftypevr {Required Property} {string[1][]} {assignments.texture}
-The path to texture maps assigned to surfaces.
-@end deftypevr
-
-@deftypevr {Required Property} {int[1][]} {assignments.mapType}
-The type of map. 1 indicates a color map.
-@end deftypevr
-
-@deftypevr {Required Property} {float[16][]} {assignments.transform}
-Matrix that should be applied to texture parameterization for each
-object.
-@end deftypevr
+The ``contains'' connection type indicates membership in a group or
+similar type of container object. The LHS is the group or container,
+the RHS is the object which is a member.
 
 @c ----------------------------------------------------------------------
 
-@node Difference, Sorted Shells, Material Bindings, Protocols
+@node Difference, Sorted Shells, Inter-Object Connections, Protocols
 @section Difference File Protocol
 
 If the @strong{object.protocol} property contains the string
@@ -1700,23 +1888,19 @@ component are data that is associated with the properties
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
 
-@node Issues, Library, Names, Top
+@node Issues, Extending, Names, Top
 @chapter Issues and Questionable Aspects of the Format
 
 @itemize @bullet
-@item
-At Tweak Films, we generate gto files that are the difference between
-a reference file and a frame of deformed animation. These files are
-considerably smaller than writing out all the (not changing)
-information about a model for every frame. This means that eventhough
-we write a file with protocol @strong{polygon} for example, the file
-does not contain all the required properties. It seems like there
-should be an obivious way to tell one of these ``difference'' files
-(which is incomplete according to the protocol spec) from a reference
-file which is well formed.
 
-@emph{NOTE}: this has been resolved by making a minor protocol
-called @strong{difference}. @xref{Difference}.
+@item
+There is no ASCII version of a GTO file. Currently the closest thing
+to that is to use the @command{gtoinfo} command to dump the contents
+as ASCII. There is no program which takes that output and creates a
+binary GTO file, nor is there a reader or writer class for outputing
+ASCII GTO data. Ideally, there would be a dedicated ASCII format which
+is as analogous as possible to the binary format as well as support
+for the ASCII file type in the supplied reader and writer classes.
 
 @item
 There are currently no tools which verify that a file claiming to
@@ -1770,16 +1954,64 @@ know which properties are indexes and which are not. Index properties
 must be offset to be combined.
 
 @item
-The Boolean and Half data types are not implemented in the supplied
-library. 
+The Boolean (bit fields) and Half data types are not implemented in
+the supplied writer library. Both of these types are useful in
+compressing geometric (and image) data.
+
+@item
+Material, Texture, and similar assignments and storage are usually
+very specialized at any particular production facility. The idea that
+a single method of encoding this information can be determined or
+enforced --- or even usefully be stored in a GTO file --- is not
+realistic. However, we hope that some method can be determined that at
+least preserves a good portion of common data for transfer. 
+
+All of the protocols related to these concepts are marked
+@strong{PROPOSED} in this
+document.
+@xref{Material}. @xref{texture}. @xref{material}.
+
+@item
+The writer class is not currently capable of directly writing a
+.gto.gz file eventhough the reader is capable of reading them
+natively. 
 
 @end itemize
 
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
 
-@node Library, Utilities, Issues, Top
-@chapter Library
+@node Extending, Library, Issues, Top
+@chapter Extending Protocols or the File Format
+
+If you have an extension to a protocol or would like to change an
+existing protocol, we would like to hear about it. You can send mail
+to @email{gto@@tweakfilms.com} with the changes you're using or would
+like made. We will collect ideas and proposals and try to make
+releases in a timely manner. We'd also like to hear from you if you're
+using it unmodified.
+
+There is currently a small number of facilities that use the GTO
+format, but there is a large collection of tools that use it. Most
+proposals should maintain some backwards compatibility. However, we
+recognize that the there may be flaws that require revamping
+significant pieces and we're open to making changes to accomidate
+other facilities.
+
+If you are using the format for academic purposes and are looking for
+a specific tool to munge GTO files, we may already have that tool
+eventhough it is not released. Contact us; we might be able to help
+you out.
+
+We have been using the format since summer 2002 on a regular basis in
+production at Tweak Films and have found it stable and useful. The
+version of the code we use is identical to the released version.
+
+@c -------------------------------------------------------------------------
+@c -------------------------------------------------------------------------
+
+@node Library, Module, Extending, Top
+@chapter C++ Library
 
 The GTO Reader/Writer library is written in a subset of C++. The
 intention was to make the library as portable as
@@ -1937,6 +2169,20 @@ Returns a reference to an std::vector of Reader::ObjectInfo
 structures. These are only valid after @code{Reader::open()} has
 returned. You can use these structures when calling
 @code{Reader::accessObject()}. 
+@end deftypefn
+
+@deftypefn {Method} {const Reader::Components&} Reader::components ()
+Returns a reference to an std::vector of Reader::ComponentInfo
+structures. These are only valid after @code{Reader::open()} has
+returned. This method is most useful when deciding how to call the
+@code{accessObject} function.
+@end deftypefn
+
+@deftypefn {Method} {const Reader::Properties&} Reader::properties ()
+Returns a reference to an std::vector of Reader::PropertyInfo
+structures. These are only valid after @code{Reader::open()} has
+returned. This method is most useful when deciding how to call the
+@code{accessObject} function.
 @end deftypefn
 
 @deftypefn {Method} {void} Reader::accessObject (const ObjectInfo&)
@@ -2148,8 +2394,169 @@ data.
 
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
+@node Module, Utilities, Library, Top
+@chapter Python Module
 
-@node Utilities, Reference, Library, Top
+The @code{gto} module implements a reader/writer library for the
+Python language. The module is implemented on top of the C++ reader
+and writer classes. The API is similar to the C++ API, but takes
+advantage of Python's dynamic typing to ``simplify'' the design.
+
+@menu
+* PyReader::      Read GTO files
+* PyWriter::      Write GTO files
+@end menu
+
+@c -------------------------------------------------------------------------
+@node PyReader, PyWriter, Module, Module
+@section gto.Reader
+
+The Reader class is designed as a fill-in-the-blank API much like the
+C++ library. The user of the class derives from it; the base class
+defines a number of functions which you override to pass data to the
+derived class and receive data from it.
+
+As the file is read, the Reader class will call specific functions in
+itself to declare objects in the file. The derived class is handed
+data or asked to return whether or not it is interested in specific
+properties in the file.
+
+@deftypefn {Method} {@var{status}} gto.Reader.open (@var{filename})
+Opens and reads the GTO file @var{filename}. The function will return
+0 for @var{status} on success and 1 on failure.
+@end deftypefn
+
+@deftypefn {Method} {@var{wants}} gto.Reader.object (@var{name}, @var{protocol}, @var{numComponents})
+This function is called by the base class to declare an object in the
+GTO file. The return value @var{wants} should be a integer 0 or 1
+indicating whether or not the base class should read the object data.
+@var{name} and @var{protocol} are string objects declaring name and
+protocol of the object. @var{numComponents} is an integer indicating
+the number of components in the object.
+@end deftypefn
+
+@deftypefn {Method} {@var{wants}} gto.Reader.component (@var{name}, @var{numProperties}, @var{flags})
+This function is called by the base class to declare a component in
+the GTO file. The return value @var{wants} should be a integer 0 or 1
+indicating whether or not the base class should read the component
+data.  @var{name} is a string object declaring the full component
+name. @var{numProperties} is an integer indicating the number of
+properties in the component.
+@end deftypefn
+
+@deftypefn {Method} {@var{wants}} gto.Reader.property (@var{name}, @var{size}, @var{type}, @var{width})
+This function is called by the base class to declare a property in
+the GTO file. The return value @var{wants} should be a integer 0 or 1
+indicating whether or not the base class should read the property
+data.  @var{name} is a string object declaring the full property
+name. @var{size} is the number of elements in the property,
+@var{width} is the width of an element, and @var{type} indicates the
+type of data in the property.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.data (@var{name}, @var{size}, @var{type}, @var{width}, @var{data})
+If a property has been requested, the data() function will eventually
+be called by the base class with the actual data in the file. The
+@var{name} is the full name of property
+(@code{object.component.name}), the @var{size} is the number of
+elements of type @var{type} and the @var{width} is the width of the
+element. @var{data} is a tuple containing the property data.
+@end deftypefn
+
+@c -------------------------------------------------------------------------
+@node PyWriter,  , PyReader, Module
+@section gto.Writer
+
+@deftypefn {Method} bool gto.Writer.open (@var{filename})
+Open the file. The Writer will attempt to open file 
+@var{filename}.  If the file is not writable for whatever reason, the
+function will return false.
+@end deftypefn
+
+@deftypefn {Method} gto.Writer.close ()
+Close the file and clean up temporary data. If the stream constructor
+was used, the stream is @emph{not} closed.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.beginObject (@var{name}, @var{protocol}, @var{version}) 
+Declares an object, its components, and properties must be declared
+before endObject() is called. The @var{name} is the name of the object
+as it will appear in the gto file. The @var{protocol} is the protocol
+string indicating how the object data will be interpreted and the
+@var{version} number indicates the protocol version. The Writer class
+does not verify that the data output conforms to the protocol.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.beginComponent (@var{name}, @var{transposed}) 
+Declares a component. The component properties must be declared before
+a call to endComponent(). The @var{name} is the name of the component
+as it will appear in the gto file. The @var{transposed} flag is
+optional and indicates whether or not the component property data
+should be output transposed or one property at a time (the default).
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.property (@var{name}, @var{type}, @var{numElements}, @var{partsPerElement})
+Declare a property. The @var{name} is the name of the property as it
+appears in the gto file. The @var{type} is one of Gto::Double,
+Gto::Float, Gto::Int, Gto::String, Gto::Byte, Gto::Half, or
+Gto::Short. @var{numElements} indicates the number of elements of size
+@var{partsPerElement} that will be in the property data. So for
+example, if the property is declared as a Gto::Float of
+with @var{partsPerElement} of 3 and there 10 of them, then the writer
+will expect an array of 30 floats when the propertyData is finally
+passed to it.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.endComponent ()
+Closes the declaration of a component started by beginComponent().
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.endObject ()
+Closes the declaration of an object started by beginObject().
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.intern (@var{string})
+Declares a string to the Writer for inclusion in the file string
+table. When writing properties of type Gto::String, its necessary to
+call this function before the beginData() is called. Each string in
+the property data must be interned. When outputing the property, the
+property will be an array of Gto::Int in which each int is the result
+of the lookup() function which retrieves a unique int corresponding to
+interned strings. 
+@end deftypefn
+
+@deftypefn {Method} {int} gto.Writer.lookup (@var{string})
+Retrieve the identifier of the previously interned string
+@var{string}. 
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.beginData ()
+Begins data declaration to the Writer class. Only calls to lookup(),
+propertyData(), propertyDataInContainer(), and endData() are legal
+after beginData() is called.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.propertyData (@var{container})
+propertyDataInContainer() is a template function which takes an
+stl-like container as an argument. The data must be the same as
+declared earlier by the property() function. Calls to propertyData()
+and propertyDataInContainer() must appear in the same order as the
+property() declarations calls. This function is a convenience
+function; it calls propertyData() to actually output the data. This
+function may make a copy of the data in the container.
+@end deftypefn
+
+@deftypefn {Method} {void} gto.Writer.endData ()
+Closes the definition of data started by beginData() and finishes
+writing the gto file.
+@end deftypefn
+
+
+
+@c -------------------------------------------------------------------------
+@c -------------------------------------------------------------------------
+
+@node Utilities, Reference, Module, Top
 @chapter Utilities
 
 @menu
@@ -2158,6 +2565,8 @@ Command line tools
 * gtoinfo::      Find out what's in the gto file.
 * gtofilter::    Filter properties out of a gto file.
 * gtomerge::     Merge the contents of multiple gto files into one.
+* gto2obj::      Wavefront .obj translator.
+* gtoimage::     Make an image into a GTO object.
 
 Maya plug-in.
 
@@ -2169,7 +2578,9 @@ Maya plug-in.
 @node gtoinfo, gtofilter, Utilities, Utilities
 @section The @command{gtoinfo} Utility
 
-Usage: @command{gtoinfo [options] @var{infile.gto}}
+Usage: @command{gtoinfo [OPTIONS] @var{infile.gto}}
+
+Options:
 
 @table @option
 @item -a/-all
@@ -2195,6 +2606,13 @@ Output sting data as the raw string id instead of the string itself.
 Force reading of the enitre gto file even if only the header is being
 output.
 
+@item -f/--filter expression
+Only output information for properties who's long name
+(object.component.propname) matches the shell-like
+@emph{expression}. @ref{gtofilter} for examples of filter
+expressions. This option is similar to @command{gtofilter}
+@option{--include} option.
+
 @item --help
 Output usage message.
 
@@ -2210,7 +2628,9 @@ getting a quick understanding of what a gto file contains.
 @node gtofilter, gtomerge, gtoinfo, Utilities
 @section The @command{gtofilter} Utility
 
-Usage: @samp{gtofilter [options] -o @var{out.gto} @var{in.gto}}
+Usage: @samp{gtofilter [OPTIONS] -o @var{out.gto} @var{in.gto}}
+
+Options:
 
 @table @option
 
@@ -2271,10 +2691,12 @@ or if you wanted to pass through only the positions:
 
 @c -------------------------------------------------------------------------
 
-@node gtomerge, gtoIO, gtofilter, Utilities
+@node gtomerge, gto2obj, gtofilter, Utilities
 @section The @command{gtomerge} Utility
 
 Usage: @samp{gtomerge -o @var{outfile.gto} @var{infile1.gto} @var{infile2.gto} ...}
+
+Options:
 
 @table @option
 @item -o outfile.gto
@@ -2297,11 +2719,73 @@ final file like this:
 
 @c -------------------------------------------------------------------------
 
-@node gtoIO,  , gtomerge, Utilities
+@node gto2obj, gtoimage, gtomerge, Utilities
+@section The @command{gto2obj} Utility
+
+Usage: @samp{gto2obj [OPTIONS] @var{infile} @var{outfile}}
+
+Options:
+
+@table @option
+@item -o NAME
+When outputing GTO files, the name of an object in the GTO file to
+output. If not specified, the translator will output the first
+polygon, or subdivision surface it finds.
+
+@item -c
+When outputing GTO files, this option will force the protocol to be
+"catmull-clark".
+
+@item -l
+When outputing GTO files, this option will force the protocol to be
+"loop".
+@end table
+
+@command{gto2obj} takes either an input GTO file or Wavefront .obj
+file and outputs the other file type.
+
+@example
+    gto2obj in.obj out.gto
+    gto2obj in.gto out.obj
+    gto2obj -c in.obj out.gto ## output obj as subdivision surface
+@end example
+
+@c -------------------------------------------------------------------------
+
+@node gtoimage, gtoIO, gto2obj, Utilities
+@section The @command{gtoimage} Utility
+
+Usage: @samp{gtoimage @var{infile} @var{outfile}}
+
+@command{gtoimage} reads a TIFF file and converts it into a GTO file
+containing one image object. 32 bit floating point images, 16 bit and
+8 bit integral images are directly converted. @command{gtoimage}
+expects the image to be two dimensional with three or four channels
+where the fourth channel is an optional alpha value. The output object
+conforms to the @strong{image} protocol. @xref{Image}.
+
+You can use @command{gtomerge} to merge the image object into another
+GTO file. @xref{gtomerge}.
+
+It is highly recommend that the resulting output GTO file be gzipped
+to reduce its size. Gzipped GTO files can be read directly by the
+supplied readers.
+
+@c -------------------------------------------------------------------------
+
+@node gtoIO,  , gtoimage, Utilities
 @section The @command{gtoIO.so} Maya Plug-In
 
-This section documents the Maya GTO plugin and accompanying MEL
-script.
+The Maya plugin comes in two parts: the C++ plugin which implements a
+Maya scene translator and an accompanying MEL script which implements
+the user interface.
+
+The plugin handles export of NURBS surfaces (but not trim curves),
+polygonal geometry (which can be written as sub-division surfaces),
+particles, and generic transforms. Additional user defined attributes
+can be emitted into the GTO file.
+
+The plugin can import everything that it exports.
 
 @c -------------------------------------------------------------------------
 

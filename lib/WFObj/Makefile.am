@@ -8,6 +8,10 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 lib_LTLIBRARIES = libWFObj.la
 
 libWFObj_la_SOURCES = Reader.cpp Grammar.cpp Lexer.cpp
-noinst_libWFObj_la_EXTRA = Grammar.y Lexer.l Grammar.h Reader.h
+noinst_HEADERS = Grammar.h Reader.h
+
 libWFObj_la_LIBS = @LIBS@
+
+EXTRA_DIST = Grammar.y Lexer.l 
+
 

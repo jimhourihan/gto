@@ -7,4 +7,17 @@ AUTOMAKE_OPTIONS = 1.7.5
 
 SUBDIRS = lib bin doc plugins
 
-EXTRA_DIST = examples/plane.gto examples/cube.gto
+EXTRA_DIST = examples/plane.gto \
+             examples/cube.gto \
+             plugins/python/setup.py \
+             plugins/python/src/gtoHeader.cpp \
+             plugins/python/src/gtoHeader.h \
+             plugins/python/src/gtomodule.cpp \
+             plugins/python/src/gtomodule.h \
+             plugins/python/src/gtoReader.cpp \
+             plugins/python/src/gtoReader.h \
+             plugins/python/src/gtoWriter.cpp \
+             plugins/python/src/gtoWriter.h \
+             plugins/python/examples/example.py \
+             plugins/python/examples/example2.py
+
