@@ -185,10 +185,11 @@ void *Poly::data( const PropertyInfo &pinfo,
     }
     else if ( ((int)propertyData) == NORMALS_NORMAL_P )
     {
-        delete[] m_stIndices;
-        m_stIndicesSize = pinfo.size * pinfo.width;
-        m_stIndices = new int[m_stIndicesSize];
-        return (void *)m_stIndices;
+        delete[] m_normalValues;
+
+        m_normalValuesSize = pinfo.size * pinfo.width;
+        m_normalValues = new float[m_normalValuesSize];
+        return (void *)m_normalValues;
     }
     else if ( ((int)propertyData) == INDICES_VERTEX_P )
     {

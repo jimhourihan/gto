@@ -2317,7 +2317,7 @@ was used, the stream is @emph{not} closed.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::beginObject (const char* @var{name}, const char* @var{protocol}, unsigned int @var{version}) const
-Declares an object, its components, and properties must be declared
+Declares an object. Its components and properties must be declared
 before endObject() is called. The @var{name} is the name of the object
 as it will appear in the gto file. The @var{protocol} is the protocol
 string indicating how the object data will be interpreted and the
@@ -2457,14 +2457,17 @@ give a good indication how to do so.
 @node Module, Utilities, Library, Top
 @chapter Python Module
 
-The @code{gto} module implements a reader/writer library for the
-Python language. The module is implemented on top of the C++ reader
-and writer classes. The API is similar to the C++ API, but takes
-advantage of Python's dynamic typing to ``simplify'' the design.
+The @code{gto} module implements a reader/writer library for the Python
+language. The module is implemented on top of the C++ reader and writer
+classes. The API is similar to the C++ API, but takes advantage of Python's
+dynamic typing to ``simplify'' the design.  The Python module also implements a
+significant number of safety checks not present in the C++ library, making it
+an ideal way of exploring the Gto file format.
 
 @menu
 * PyReader::      Read GTO files
 * PyWriter::      Write GTO files
+* PyStructs::     Classes used by gto.Reader
 @end menu
 
 @c -------------------------------------------------------------------------
@@ -2481,65 +2484,94 @@ itself to declare objects in the file. The derived class is handed
 data or asked to return whether or not it is interested in specific
 properties in the file.
 
-@deftypefn {Method} {@var{status}} gto.Reader.open (@var{filename})
-Opens and reads the GTO file @var{filename}. The function will return
-0 for @var{status} on success and 1 on failure.
+The biggest difference from the C++ Reader class is that the data() method of
+the C++ class, which returns allocated memory for the library to read data
+into, cannot be overloaded in Python.  Instead, the dataRead() method of the
+Python gto.Reader class is handed pre-allocated Python objects containing the
+data.
+
+@deftypefn {Constructor} {@var{status}} gto.Reader (@var{mode})
+Create a new gto.Reader instance.  Possible values for @var{mode}:
+
+@table @strong
+@item gto.Reader.None
+The reader will be used in its standard @emph{streaming} mode. The
+reader will attempt to read all the data in the file. This is the
+default value (or 0).
+
+@item gto.Reader.HeaderOnly   (@emph{Not yet available})
+The reader will stop once it has read the header sections of the GTO file. 
+
+@item gto.Reader.RandomAccess   (@emph{Not yet available})
+The reader will read the header sections but not the data, however, it
+will initialize for use of the @code{Reader::accessObject()} function.
+
+@end table
+
 @end deftypefn
 
-@deftypefn {Method} {@var{wants}} gto.Reader.object (@var{name}, @var{protocol}, @var{numComponents})
-This function is called by the base class to declare an object in the
-GTO file. The return value @var{wants} should be a integer 0 or 1
-indicating whether or not the base class should read the object data.
-@var{name} and @var{protocol} are string objects declaring name and
-protocol of the object. @var{numComponents} is an integer indicating
-the number of components in the object.
+@deftypefn {Method} gto.Reader.open (@var{filename})
+Opens and reads the GTO file @var{filename}. The function will raise a Python
+exception if the file cannot be opened.
 @end deftypefn
 
-@deftypefn {Method} {@var{wants}} gto.Reader.component (@var{name}, @var{numProperties}, @var{flags})
-This function is called by the base class to declare a component in
-the GTO file. The return value @var{wants} should be a integer 0 or 1
-indicating whether or not the base class should read the component
-data.  @var{name} is a string object declaring the full component
-name. @var{numProperties} is an integer indicating the number of
-properties in the component.
+@deftypefn {Method} {@var{wants}} gto.Reader.object (@var{name}, @var{protocol}, @var{protocolVersion}, @var{objectInfo})
+This function is called by the base class to declare an object in the GTO file.
+The return value @var{wants} should evaluate to True or False, indicating
+whether or not the base class should read the object data. @var{name} and
+@var{protocol} are strings declaring name and protocol of the object,
+@var{protocolVersion} is an integer. @var{objectInfo} is an instance of a 
+generic class which mimicks the behavior of the ObjectInfo C++ struct.
 @end deftypefn
 
-@deftypefn {Method} {@var{wants}} gto.Reader.property (@var{name}, @var{size}, @var{type}, @var{width})
-This function is called by the base class to declare a property in
-the GTO file. The return value @var{wants} should be a integer 0 or 1
-indicating whether or not the base class should read the property
-data.  @var{name} is a string object declaring the full property
-name. @var{size} is the number of elements in the property,
-@var{width} is the width of an element, and @var{type} indicates the
-type of data in the property.
+@deftypefn {Method} {@var{wants}} gto.Reader.component (@var{name}, @var{componentInfo})
+This function is called by the base class to declare a component in the GTO
+file. The return value @var{wants} should evaluate to True or False, indicating
+whether or not the base class should read the component data.  @var{name} is a
+string declaring the component name. @var{componentInfo} is an instance of
+a generic class which mimicks the behavior of the ComponentInfo C++ struct.
 @end deftypefn
 
-@deftypefn {Method} {} gto.Reader.data (@var{name}, @var{size}, @var{type}, @var{width}, @var{data})
-If a property has been requested, the data() function will eventually
-be called by the base class with the actual data in the file. The
-@var{name} is the full name of property
-(@code{object.component.name}), the @var{size} is the number of
-elements of type @var{type} and the @var{width} is the width of the
-element. @var{data} is a tuple containing the property data.
+@deftypefn {Method} {@var{wants}} gto.Reader.property (@var{name}, @var{propertyInfo})
+This function is called by the base class to declare a property in the GTO
+file. The return value @var{wants} should evaluate to True or False, indicating
+whether or not the base class should read the property data.  @var{name} is a
+string declaring the full property name. @var{propertyInfo} is an instance of a
+generic class which mimicks the behavior of the PropertyInfo C++ struct.
 @end deftypefn
+
+@deftypefn {Method} {} gto.Reader.dataRead (@var{name}, @var{data}, @var{propertyInfo})
+If a property has been requested, the dataRead() function will eventually be
+called by the base class with the actual data in the file. The @var{name} is
+the name of property, @var{data} is a tuple containing the property data,
+@var{propertyInfo} is an instance of a generic class which mimicks the behavior
+of the PropertyInfo C++ struct.
+@end deftypefn
+
 
 @c -------------------------------------------------------------------------
-@node PyWriter,  , PyReader, Module
+@node PyWriter, PyStructs, PyReader, Module
 @section gto.Writer
 
-@deftypefn {Method} bool gto.Writer.open (@var{filename})
-Open the file. The Writer will attempt to open file 
-@var{filename}.  If the file is not writable for whatever reason, the
-function will return false.
+@deftypefn {Constructor} {} gto.Writer ( )
+Creates a new writer instance, no arguments needed.
 @end deftypefn
 
-@deftypefn {Method} gto.Writer.close ()
-Close the file and clean up temporary data. If the stream constructor
-was used, the stream is @emph{not} closed.
+@deftypefn {Method} {} gto.Writer.open (@var{filename})
+Open the file. The Writer will attempt to open file 
+@var{filename}.  If the file is not writable for whatever reason, the
+function will raise a Python exception.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Writer.close ( )
+Close the file and clean up temporary data.  Because of Python's
+garbage-collection, you can never be sure when a class's destructor will be
+called.  Therefore, it is @emph{highly} recommended that you call this method to
+close your file when it's done writing.  You have been warned.
 @end deftypefn
 
 @deftypefn {Method} {} gto.Writer.beginObject (@var{name}, @var{protocol}, @var{version}) 
-Declares an object, its components, and properties must be declared
+Declares an object. Its components and properties must be declared
 before endObject() is called. The @var{name} is the name of the object
 as it will appear in the gto file. The @var{protocol} is the protocol
 string indicating how the object data will be interpreted and the
@@ -2557,13 +2589,13 @@ should be output transposed or one property at a time (the default).
 
 @deftypefn {Method} {} gto.Writer.property (@var{name}, @var{type}, @var{numElements}, @var{partsPerElement})
 Declare a property. The @var{name} is the name of the property as it
-appears in the gto file. The @var{type} is one of Gto::Double,
-Gto::Float, Gto::Int, Gto::String, Gto::Byte, Gto::Half, or
-Gto::Short. @var{numElements} indicates the number of elements of size
+appears in the gto file. The @var{type} is one of gto.Double,
+gto.Float, gto.Int, gto.String, gto.Byte, gto.Half, or
+gto.Short. @var{numElements} indicates the number of elements of size
 @var{partsPerElement} that will be in the property data. So for
-example, if the property is declared as a Gto::Float of
+example, if the property is declared as a gto.Float of
 with @var{partsPerElement} of 3 and there 10 of them, then the writer
-will expect an array of 30 floats when the propertyData is finally
+will expect a sequence of 30 floats when the propertyData is finally
 passed to it.
 @end deftypefn
 
@@ -2576,42 +2608,101 @@ Closes the declaration of an object started by beginObject().
 @end deftypefn
 
 @deftypefn {Method} {} gto.Writer.intern (@var{string})
-Declares a string to the Writer for inclusion in the file string
-table. When writing properties of type Gto::String, its necessary to
-call this function before the beginData() is called. Each string in
-the property data must be interned. When outputing the property, the
-property will be an array of Gto::Int in which each int is the result
-of the lookup() function which retrieves a unique int corresponding to
-interned strings. 
+Declares a string to the Writer for inclusion in the file string table. When
+writing properties of type gto.String, its necessary to call this function for
+each string in the property data before the beginData() is called.  The Python
+version of intern() can accept individual strings, as well as lists or tuples
+of strings.
 @end deftypefn
 
 @deftypefn {Method} {int} gto.Writer.lookup (@var{string})
-Retrieve the identifier of the previously interned string
-@var{string}. 
+Retrieve the identifier of the previously interned string.  Valid only after
+beginData() has been called.
 @end deftypefn
 
 @deftypefn {Method} {} gto.Writer.beginData ()
 Begins data declaration to the Writer class. Only calls to lookup(),
-propertyData(), propertyDataInContainer(), and endData() are legal
-after beginData() is called.
+propertyData(), and endData() are legal after beginData() is called.
 @end deftypefn
 
-@deftypefn {Method} {} gto.Writer.propertyData (@var{container})
-propertyDataInContainer() is a template function which takes an
-stl-like container as an argument. The data must be the same as
-declared earlier by the property() function. Calls to propertyData()
-and propertyDataInContainer() must appear in the same order as the
-property() declarations calls. This function is a convenience
-function; it calls propertyData() to actually output the data. This
-function may make a copy of the data in the container.
+@deftypefn {Method} {} gto.Writer.propertyData (@var{data})
+
+The propertyData() function must get exactly @emph{one} parameter.  That
+parameter can be any of the following:
+
+@itemize 
+@item
+A single int, float, string, etc.
+@item
+An instance of mat3, vec3, mat4, vec4, or quat
+(@url{http://cgkit.sourceforge.net/}).  DO NOT explicitly cast mat3 or mat4 into a
+tuple or list: @code{tuple(mat4(1))}.  It will be silently transposed (a bug in the
+cgtypes code?).  ADDING it to a tuple or list is fine:  @code{(mat4(1),)}
+@item
+A tuple or list of any combination of the above that makes sense.
+@end itemize
+
+Tuples and lists are flattened out before they are written.  As long as the
+number of atoms is equal to size x width, it'll work.  Calls to propertyData()
+must appear in the same order as declared with the property() method.
+
 @end deftypefn
 
 @deftypefn {Method} {void} gto.Writer.endData ()
 Closes the definition of data started by beginData() and finishes
-writing the gto file.
+writing the gto file.  Does @emph{not} actually close the file--use the close()
+method for that.
 @end deftypefn
 
+@c -------------------------------------------------------------------------
+@node PyStructs,  , PyWriter, Module
+@section Classes used by gto.Reader
 
+
+@deftp {Class} gto.ObjectInfo
+This class emulates the Gto::ObjectInfo struct from the C++ Gto library.  It is
+passed by the Python gto.Reader class to your derived @code{object()} method. 
+The only method implemented is @code{__getattr__}.  Available attributes are:
+
+@itemize
+@item @code{name} - Integer string table ID
+@item @code{protocol} - Integer string table ID
+@item @code{protocolVersion}  - Integer 
+@item @code{numComponents} - Integer
+@end itemize
+
+@end deftp
+
+@deftp {Class} gto.ComponentInfo
+This class emulates the Gto::ComponentInfo struct from the C++ Gto library.  It
+is passed by the Python gto.Reader class to your derived @code{component()}
+method.  The only method implemented is @code{__getattr__}.  Available
+attributes are:
+
+@itemize
+@item @code{name} - Integer string table ID    
+@item @code{numProperties} - Integer
+@item @code{flags} - Integer
+@item @code{object} - Instance of gto.ObjectInfo
+@end itemize
+
+@end deftp
+
+@deftp {Class} gto.PropertyInfo
+This class emulates the Gto::PropertyInfo struct from the C++ Gto library.  It
+is passed by the Python gto.Reader class to your derived @code{property()} and
+@code{dataRead()} methods.  The only method implemented is @code{__getattr__}. 
+Available attributes are:
+
+@itemize
+@item @code{name} - Integer string table ID
+@item @code{size} - Integer
+@item @code{type} - Integer
+@item @code{width} - Integer
+@item @code{component} - Instance of gto.ComponentInfo
+@end itemize
+
+@end deftp
 
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
