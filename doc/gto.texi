@@ -2942,10 +2942,13 @@ Command line tools
 * gtomerge::     Merge the contents of multiple gto files into one.
 * gto2obj::      Wavefront .obj translator.
 * gtoimage::     Make an image into a GTO object.
+* RiGtoRibOut::  Convert GTO files to ASCII RIB.
 
-Maya plug-in.
+Plug-ins:
 
 * gtoIO::        Maya likes gto files.
+* RiGtoPlugin::  Render gto files directly.
+
 @end menu
 
 @c -------------------------------------------------------------------------
@@ -3155,6 +3158,37 @@ It is highly recommend that the resulting output GTO file be written
 with compression or gzipped to reduce its size. Gzipped GTO files can
 be read directly by the supplied readers.
 
+@c -------------------------------------------------------------------------
+
+@node RiGtoRibOut, gtoIO, gtoimage, Utilities
+@section The @command{RiGtoRibOut} Utility
+
+The @command{RiGtoRibOut} command is useful for:
+
+@itemize  
+
+@item
+It can be used as a debugging tool for the RiGtoPlugin Renderman® plugin.
+
+@item
+It can be used as a drop-in replacement for RiGtoPlugin, for RIB renderers that
+do not support @code{Procedural DynamicLoad}, but that @emph{do} support
+@code{Procedural RunProgram}.  Note that this is substantially slower than
+using RiGtoPlugin, as all data needs to be translated to ASCII and back.  It
+does have the one space-saving advantage of not needing to save ASCII RIB on
+disk.
+
+@item
+It could be used to generate RIB files that are read with @code{ReadArchive}. 
+This is not recommended, as it negates all the advantages of using GTO in the
+first place.  But if nothing else works, this should.
+
+@end itemize
+
+The command-line parameters are the same as the @var{CONFIG_STRING} for 
+RiGtoPlugin.  @xref{RiGtoPlugin}
+
+
 
 @c -------------------------------------------------------------------------
 
@@ -3179,6 +3213,311 @@ The internal perfomance of Maya has changed between the 4.x and 5.0
 versions. In Maya 5.0, the Maya plugin is @emph{extremely} slow when
 importing polygonal normals.  A fix has yet to be identified, so 
 importing of normals is disabled in Maya 5.0.
+
+@c -------------------------------------------------------------------------
+
+@node RiGtoPlugin, Changes, Utilities, Top
+@section The @command{RiGtoPlugin} Renderman® plugin
+
+Here you will find information on using the GTO Renderman® plugin.  The
+documentation is complete enough to get started with, but should be considered
+a work in progress.
+
+@menu
+
+* RIB Instantiation::           How to call the plugin from a RIB file
+* Config String Syntax::        Syntax of the Config String
+* On-List/Off-List Syntax::     How to hide/show parts of a GTO file
+* Cache Management::            Controlling RiGto's cache
+* Environment Variables::       Environment Variables affecting RiGtoPlugin
+* Usage Strategy::              How to use the Plugin
+* Miscellaneous Renderman® Stuff:: Additional data that might be useful
+
+@end menu
+
+@c -------------------------------------------------------------------------
+
+@node RIB Instantiation, Changes, Utilities, Top
+@section RIB Instantiation
+
+The plugin is instantiated in a RIB Stream using the standard
+DynamicLoad procedural mechanism, like so:
+
+@example
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "@var{CONFIG_STRING}" ] [ @var{Bounding Box} ]
+@end example
+
+
+If a bounding box is not known, the infinite box may be used:
+
+@example 
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "@var{CONFIG_STRING}" ] [ -1e6 1e6 -1e6 1e6 -1e6 1e6 ]
+@end example
+
+
+@c -------------------------------------------------------------------------
+
+@node Config String Syntax, Changes, Utilities, Top
+@section Config String Syntax
+
+The configuration string passed into RiGtoPlugin consists
+of a variable number of space-separated tokens. They are, 
+in order:
+
+@enumerate
+@item
+Reference Pose GTO File Name
+@item
+Shutter Open GTO File Name (optional)
+@item
+Shutter Close GTO File Name (optional)
+@item
+Primary On List (optional)
+@item
+Primary Off List (optional)
+@item
+Secondary On List (optional)
+@item
+Secondary Off List (optional)
+@end enumerate
+
+As shown, the only necessary element is the reference GTO file.
+For objects which do not have movement and do not require on lists
+or off lists, this is completely sufficient.
+
+The logic behind the geometry instantiation mechanism is as follows:
+
+@itemize @bullet
+@item
+Read Reference GTO file
+The plugin reads all of the geometry in the reference GTO file. As a
+starting point, the shutter open and close geometry is set equal to the
+reference geometry. 
+
+@item
+If requested, read Shutter Open GTO file
+The plugin then reads any geometry from the Shutter Open file that matches the
+name and geometry type of geometry that has already been read from the
+reference file - this geometry is stored as both the shutter open AND close
+geometry.
+
+@item
+If requested, read Shutter Close GTO file
+The plugin then reads any geometry from the Shutter Close file that matches the
+name and geometry type of geometry that has already been read from the
+reference file - this geometry is stored as the shutter close geometry
+
+@item
+Instantiate Geometry:
+For any piece of geometry that appears in BOTH on-lists and does 
+not appear in EITHER off-lists, the plugin calls the appropriate RIB functions
+to create the requested geometry.
+
+@end itemize
+
+@c -------------------------------------------------------------------------
+
+@node On-List/Off-List Syntax, Changes, Utilities, Top
+@section On-List/Off-List Syntax
+
+The syntax of the on-lists and off-lists is as follows:
+
+@code{NULL} is a special on-list/off-list which is interpreted as
+@emph{all on} or @emph{none off}.
+
+Otherwise, the on-lists and off-lists are essentially shell-like regular
+expressions.  The following rules apply:
+
+@itemize
+@item 
+The @code{*} character matches any number of characters
+@item 
+The @code{?} character matches any single of character
+@item 
+Bracket expressions @code{[]} are supported. (See @code{man 7 regex})
+@item 
+Multiple patterns can be strung together with the @code{|} character.
+@item 
+The pattern must match the @emph{whole} object name.  Thus, the pattern 
+"@code{*Sphere1}" will match the object @code{nurbsSphere1} but @emph{not}
+@code{nurbsSphere1Shape}.  This is a very common "gotcha".
+
+@end itemize
+
+
+@end enumerate
+
+As an example, suppose you wanted to turn off all of the geometry
+named @code{LeftLeg*Shape*} and @code{RightLeg*Shape*} in a render - you would 
+create an off-list that looked like:
+
+@example
+"LeftLeg*Shape*|RightLeg*Shape*"
+@end example
+
+
+
+@c -------------------------------------------------------------------------
+
+@node Cache Management, Changes, Utilities, Top
+@section Cache Management
+
+By default, RiGtoPlugin maintains an internal cache 
+of all of the file sets it has read. The cache is keyed
+off of Ref-Open-Close filename triplets.  The reason for
+this is to facilitate easy material assignment, which will
+be discussed in greater detail below in the "Strategy"
+section.
+
+In situations where memory is precious and the renderer
+needs as much memory as it can get, it may be advantageous
+to force RiGtoPlugin to discard its cached file sets. There
+is special syntax to facilitate this.
+
+@itemize @bullet
+@item
+To erase everything in RiGtoPlugin's cache:
+
+@example
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "__FLUSH__" ] [ @var{Bounding Box} ]
+@end example
+
+@item
+To erase the cache associated with a given file triplet:
+(Using REF.gto, OPEN.gto and CLOSE.gto as standins for whatever
+files were actually passed in)
+
+@example
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "@var{REF}.gto @var{OPEN}.gto @var{CLOSE}.gto __FLUSH__" ] [ @var{Bounding Box} ]
+@end example
+
+@end itemize
+
+There is also an environment variable, @code{TWK_RI_GTO_NO_CACHE}, which if
+defined and set to anything other than "0", "FALSE", "False" or "false", will
+cause caching to be disabled entirely.
+
+
+@c -------------------------------------------------------------------------
+
+@node Environment Variables, Changes, Utilities, Top
+@section Environment Variables
+
+@defvr {Environment Variable} @code{TWK_RI_GTO_NO_SUBDS}
+If this environment variable is defined and set to anything 
+except "0", "FALSE", "False", or "false", RiGtoPlugin will
+treat all catmull-clark subdivision surfaces read from a GTO
+file as polygons instead. 
+@end defvr
+
+@defvr {Environment Variable} @code{TWK_RI_GTO_NO_CACHE}
+If this environment variable is defined and set to anything 
+except "0", "FALSE", "False", or "false", RiGtoPlugin will
+disable all caching of geometry data to save memory.
+@end defvr
+
+@c -------------------------------------------------------------------------
+
+@node Usage Strategy, Changes, Utilities, Top
+@section Usage Strategy
+
+The RiGtoPlugin was designed with a particular data structure in
+mind. Used ideally, there would be a GTO file consisting of all of
+the geometry corresponding to a particular high-level creature or
+set in the scene. All of the surfaces corresponding to a hippo or
+a giraffe or a cyborg-monkey would be in a single GTO file. The
+animation data for this geometry would be contained in light-weight
+GTO files that contain only points that have moved and transformation
+matrices that have moved. The RiGtoPlugin only reads points and 
+matrices from the Shutter-Open and Shutter-Close file, facilitating
+very light-weight "difference" files for animation data.
+
+Because all of the geometry in a creature will have different 
+materials assigned to it, on-lists and off-lists can be used to
+separate out only the geometry that shares a particular material.
+
+Suppose we have a creature consisting of many surfaces but only
+three different materials - skinMtl, eyeMtl and hairMtl. The
+parts of the model have been named intelligently (for this example)
+such that the skin parts all have names like Skin*Shape*, the eye
+parts all have names like Eye*Shape*, and the hair parts all have
+names like Hair*Shape*. Then, the RIB for declaring this creature
+with material assignments might look like this:
+
+@example
+AttributeBegin
+Surface "skinShader" [ @var{shader param settings} ]
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "thing.ref.gto thing.0013.open.gto thing.0013.close.gto Skin*Shape*" ][-1e6 1e6 -1e6 1e6 -1e6 1e6]
+AttributeEnd
+
+AttributeBegin
+Surface "hairShader" [ @var{shader param settings} ]
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "thing.ref.gto thing.0013.open.gto thing.0013.close.gto Hair*Shape*" ][-1e6 1e6 -1e6 1e6 -1e6 1e6]
+AttributeEnd
+
+AttributeBegin
+Surface "eyeShader" [ @var{shader param settings} ]
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "thing.ref.gto thing.0013.open.gto thing.0013.close.gto Eye*Shape*" ][-1e6 1e6 -1e6 1e6 -1e6 1e6]
+AttributeEnd
+@end example
+
+Because of RiGtoPlugin's cache mechanism, the geometry associated with
+the file-set thing.*.gto is only read and interpreted one time - the
+on-lists control which parts of the geometry are instantiated at which
+times. To nuke the cache of these files (if memory is important), you
+would use the syntax:
+
+@example
+Procedural "DynamicLoad" [ "RiGtoPlugin.so" "thing.ref.gto thing.0013.open.gto thing.0013.close.gto __FLUSH__" ][-1e6 1e6 -1e6 1e6 -1e6 1e6]
+@end example
+
+
+@c -------------------------------------------------------------------------
+
+@node Miscellaneous Renderman® Stuff, Changes, Utilities, Top
+@section Miscellaneous Renderman® Stuff
+
+
+RiGtoPlugin stores some useful data in attributes that
+can be used by shaders if desired.
+
+@defvr {Shader parameter} Pref 
+On ALL geometry RiGtoPlugin creates "varying point Pref" as
+part of its geometry declaration. This data can be accessed by
+simply putting "varying point Pref" in your shader parameters. The
+position of the model in the reference GTO file is always used for
+this parameter value.
+@end defvr
+
+@defvr {RIB Attribute} Name
+RiGtoPlugin always places the name of the geometry, as retrieved from
+the GTO file, in an attribute that may be queried. It is exactly as
+if the following line of RIB were declared before the geometry were
+instantiated:
+
+@example
+Attribute "identifier" "name" ["whatever my name is"]
+@end example
+
+@end defvr
+
+@defvr {RIB Attribute} RefToWorld matrix
+RiGtoPlugin places the transformation matrix @var{objectToWorld} from the
+reference model into a user attribute called @code{refToWorld}. To prevent
+this attribute from being munged by the current transformation matrix,
+it is cast as a float[16] instead of a matrix. It is equivalent to
+this line of RIB:
+
+@example
+Attribute "user" "float refToWorld[16]" [ @var{the matrix values} ]
+@end example
+
+@end defvr
+
+
+
+
+
 
 @c -------------------------------------------------------------------------
 
