@@ -5,7 +5,7 @@
 
 EXTRA_PROGRAMS = test
 
-INCLUDES = -I$(top_srcdir)/lib
+AM_CPPFLAGS = -I$(top_srcdir)/lib
 LIBS = -L$(top_srcdir)/lib/Gto
 
 TESTS = test
