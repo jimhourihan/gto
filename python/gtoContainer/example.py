@@ -69,7 +69,7 @@ for obj in gc:
 
 print
 print ">>> gc"
-print "<gtoContainer file: ../../examples/cube.gto>"
+print `gc`
 
 interact("")
 
