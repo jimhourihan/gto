@@ -6,8 +6,8 @@
 @c %**end of header
 
 @ifinfo
-This file documents version 2.1 of the "GTO" File Format, Protocols, and
-Utilities.
+This file documents version 3.0 of the "GTO" File Format, Protocols,
+and Utilities.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -70,24 +70,25 @@ manual under the conditions for verbatim copying, provided that the entire
 resulting derived work is distributed under the terms of a permission
 notice identical to this one.
 
-This document applies to version 2.1 of the file format.
+This document applies to version 3.0 of the file format.
 @end ifnottex
 
 @menu
-* Copying::              GTO licensing terms.
-* Installation::         Compiling and Installing.
-* Overview::             Uses for the GTO format.
-* Format::               File format on disk.
-* Types::                Types of property data that can be stored.
-* Protocols::            How to interpret the data.
-* Names::                Naming Convensions.
-* Issues::               Problems and questionable aspects of the format.
-* Extending::            Extending protocols or the file format.
-* Library::              Reading and Writing using the C++ library.
-* Module::               Reading and Writing using the Python module.
-* Utilities::            Utility Programs and Plug-ins.
-* Changes::              Changes between versions.
-* Reference::            Index of functions, types, and variables.
+* Copying::                 GTO licensing terms.
+* Installation::            Compiling and Installing.
+* Overview::                Uses for the GTO format.
+* Format::                  File format on disk.
+* Types::                   Types of property data that can be stored.
+* Interpretation Strings::  Indicating intended use of property data.
+* Object Protocols::        How to interpret the data.
+* Names::                   Naming Convensions.
+* Issues::                  Problems and questionable aspects of the format.
+* Extending::               Extending protocols or the file format.
+* Library::                 Reading and Writing using the C++ library.
+* Module::                  Reading and Writing using the Python module.
+* Utilities::               Utility Programs and Plug-ins.
+* Changes::                 Changes between versions.
+* Reference::               Index of functions, types, and variables.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -831,6 +832,7 @@ file, there will be N ObjectHeaders.
         uint32      protocolName;       // a string table index
         uint32      protocolVersion;
         uint32      numComponents;
+        uint32      pad;                // unused
     @};
 
 @end example
@@ -855,6 +857,8 @@ properties in the component and the name of the component.
         uint32      name;               // a string table index
         uint32      numProperties;
         uint32      flags;
+        uint32      interpretation;     // a string table index
+        uint32      pad;                // unused
     @};
 
 @end example
@@ -882,10 +886,12 @@ of the property.
 
     struct PropertyHeader
     @{
-        uint32      name;   // string table index
+        uint32      name;           // string table index
         uint32      size;
-        uint32      type;   // DataType enum value
+        uint32      type;           // DataType enum value
         uint32      width;
+        uint32      interpretation; // string table index
+        uint32      pad;            // unused
     @};
 
 @end example
@@ -934,7 +940,7 @@ In (Text) diagram form the file looks something like this:
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
      
-@node    Types, Protocols, Format, Top
+@node    Types, Interpretation Strings, Format, Top
 @chapter Types of Property Data.
 
 The GTO format pre-defines a small number of data types that can be
@@ -963,7 +969,7 @@ documentation at @url{http://www.openexr.org/}.
 @end deftp
 
 @deftp {Property Type} byte
-8 bit unsigned integer.
+8 bit unsigned integer (char).
 @end deftp
 
 @deftp {Property Type} bool
@@ -1000,12 +1006,146 @@ type forms:
 
 @end itemize
 
+@c -------------------------------------------------------------------------
+
+@node Interpretation Strings, Object Protocols, Types, Top
+@chapter Interpretation Strings
+
+Each property can have an additional string stored with it call the
+``interpretation''. The intent is to allow applications to provide
+specific information about the property. For example, a property of
+type @code{float[4]} can be interpreted as a homogeneous 3D
+coordinate, a quaternion, or an RGBA value. The interpretation field
+can be used to distinguish between them.
+
+Why not just make new primitive GTO types for these? The format's only
+purposes is storage of data. By decoupling the interpretation of the
+data from its storage, each application is allowed to make its own
+policy while maintaining flexibility for simpler applications.
+
+Here's a simple example of @command{gtoinfo} output of a file with an
+image object in it created with @command{gtoimage}:
+
+@example
+    object "image" protocol "image" v1
+      component "image"
+        property string[1][1] "originalFile" interpret as "filename" 
+        property string[1][1] "originalEncoding" interpret as "filetype" 
+        property string[1][1] "type"
+        property int[1][2] "size"
+        property float[3][199168] "pixels" interpret as "RGB" 
+@end example
+
+The example illustrates two points: the interpretation string can be
+used to better determine the data type of the property (as is the case
+with the ``RGB'' string) and it can also be used to interpret the
+usage (the ``filename''). 
+
+Some of the stings will be application specific. Programs that
+generically edit GTO files should attempt to preserve the
+interpretation strings.
+
+It is not an error to define the interpretation for a property as the
+empty string -- in other words, unspecified. 
+
+The following strings are not currently part of the format
+specification but are used by the sample implementation. In a future
+release we may make these ``official''. Its ok to have multiple space
+seperated strings in the interpretation strings (e.g. ``4x4
+row-major").
+
+@deftp {Interpretation String} coordinate
+The data can be of any width or type. For width @code{N} the data
+represents a point in @code{N} dimensional space.
+@end deftp
+
+@deftp {Interpretation String} normal
+The data can be of any width or type. For width @code{N} the data
+represents a unit vector prependicular to an @code{N} dimensional
+surface or in the case of @code{N} == 2, a curve.
+@end deftp
+
+@deftp {Interpretation String} 4x4
+The width of the property data should be 16. The data is intended to
+be interpreted as a 4x4 matrix. For example, the
+@strong{object.globalMatrix} property of the @strong{Coordinate
+System} protocol would be a ``4x4'' 
+property.
+@end deftp
+
+@deftp {Interpretation String} 3x3
+The width of the property data should be 9. The data is intended to
+be interpreted as a 3x3 matrix. 
+@end deftp
+
+@deftp {Interpretation String} row-major
+Indicates that matrix data is in row major ordering.
+@end deftp
+
+@deftp {Interpretation String} column-major
+Indicates that matrix data is in column major ordering.
+@end deftp
+
+@deftp {Interpretation String} quaternion
+The width of the property should be four. The data should be
+interpreted as a quaternion. Presumably the type of a quaternion
+property would be @code{float[4]} or @code{double[4]} since these are
+the only types that make sense. The first element of the data is the
+real part followed by the ``i'', ``j'', and ``k'' imaginary
+components.
+@end deftp
+
+@deftp {Interpretation String} complex
+The width of the property should be two. The data is interpreted as a
+complex number with the first element being the real part and the
+second element the imaginary part. 
+@end deftp
+
+@deftp {Interpretation String} indices
+The data type should be an integral type. The property contains
+indices. 
+@end deftp
+
+@deftp {Interpretation String} bbox
+The data type should have an even width. The property contains
+bounding boxes.
+@end deftp
+
+@deftp {Interpretation String} homogeneous 
+The width of the property should be two or more. If the width is
+three, then the data is a two dimensional homogeneous coordinate. If
+the width is four, then the data is a three dimensional homogeneous
+coordinate. So for data of width @code{N} the data represents a
+homogeneous coordinate in @code{N-1} dimensions.
+@end deftp
+
+@deftp {Interpretation String} RGB
+The width of the property should be three. The data represents a color
+with red, green, and blue components.
+@end deftp
+
+@deftp {Interpretation String} BGR
+The width of the property should be three. The data represents a color
+with blue, green, and red components. (Reversed @code{RGB})
+@end deftp
+
+@deftp {Interpretation String} RGBA
+The width of the property should be four. The data represents a color
+(or pixel) with red, green, blue, and alpha components.
+@end deftp
+
+@deftp {Interpretation String} ABGR
+The width of the property should be four. The data represents a color
+(or pixel) with alpha, blue, green, and red components. (Reversed
+@code{RGBA})
+@end deftp
+
 
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
 
-@node Protocols, Names, Types, Top
-@chapter Protocols
+@node Object Protocols, Names, Interpretation Strings, Top
+@chapter Object Protocols
 
 The Object data interpretation is not defined by the GTO
 format. However, there are currently some protocols in use that are
@@ -1051,8 +1191,8 @@ Major (Object) Protocols
 * Polygonal Surfaces::    Polygons, in all their gory mess.
 * Subdivision Surfaces::  Catmull-Clark and Loop surfaces.
 * Image::                 Image Object.
-* Material::              @strong{PROPOSED} Material definition.
-* Group::                 @strong{PROPOSED} Object grouping.
+* Material::              Material definition.
+* Group::                 Object grouping.
 
 * Inter-Object::          Object Relationship Information.
 
@@ -1066,7 +1206,7 @@ Minor Protocols
 
 @c ----------------------------------------------------------------------
 
-@node Object, Coordinate Systems, Protocols, Protocols
+@node Object, Coordinate Systems, Object Protocols, Object Protocols
 @section Object Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1117,7 +1257,7 @@ optionally stored here.
 
 @c ----------------------------------------------------------------------
 
-@node Coordinate Systems, Particles, Object, Protocols
+@node Coordinate Systems, Particles, Object, Object Protocols
 @section Coordinate System Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1152,7 +1292,7 @@ elegant manner @xref{Inter-Object}.}
 
 @c ----------------------------------------------------------------------
 
-@node Particles, NURBS Surfaces, Coordinate Systems, Protocols
+@node Particles, NURBS Surfaces, Coordinate Systems, Object Protocols
 @section Particle Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1223,7 +1363,7 @@ giga-particle renderers, this can be a huge memory savings.
 
 @c ----------------------------------------------------------------------
 
-@node NURBS Surfaces, Polygonal Surfaces, Particles, Protocols
+@node NURBS Surfaces, Polygonal Surfaces, Particles, Object Protocols
 @section NURBS Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1283,7 +1423,7 @@ non-rational uniform knots.
 
 @c ----------------------------------------------------------------------
 
-@node Polygonal Surfaces, Subdivision Surfaces, NURBS Surfaces, Protocols
+@node Polygonal Surfaces, Subdivision Surfaces, NURBS Surfaces, Object Protocols
 @section Polygon Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1472,7 +1612,7 @@ There five defined smoothing methods (0 through 4). They are:
 
 @c ----------------------------------------------------------------------
 
-@node Subdivision Surfaces, Image, Polygonal Surfaces, Protocols
+@node Subdivision Surfaces, Image, Polygonal Surfaces, Object Protocols
 @section Subdivision Surface Protocols
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1499,7 +1639,7 @@ cases better than others.
 
 @c ----------------------------------------------------------------------
 
-@node Image, Material, Subdivision Surfaces, Protocols
+@node Image, Material, Subdivision Surfaces, Object Protocols
 @section Image Protocol
 
 The Image protocol describes image data in the form of an object. This
@@ -1584,8 +1724,8 @@ to @code{image.size[0] * image.size[1] * ... image.size[N]} where
 
 @c ----------------------------------------------------------------------
 
-@node Material, Group, Image, Protocols
-@section @strong{PROPOSED} Material Protocol
+@node Material, Group, Image, Object Protocols
+@section Material Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
 ``material''. The material protocol groups a parameters and a method
@@ -1628,12 +1768,12 @@ The set of parameters corresponding to the @strong{material.type}.
 
 @c ----------------------------------------------------------------------
 
-@node Group, Inter-Object, Material, Protocols
-@section @strong{PROPOSED} Group Protocol
+@node Group, Inter-Object, Material, Object Protocols
+@section Group Protocol
 
 
 @c ----------------------------------------------------------------------
-@node Inter-Object, Difference, Group, Protocols
+@node Inter-Object, Difference, Group, Object Protocols
 @section Inter-Object Connection Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1698,8 +1838,8 @@ The GTO specification includes a couple of basic connection types.
 Connection Types Defined by the Spec
 
 * parent_of::             Transformation hierarcies.
-* material::              @strong{PROPOSED} Material assignments.
-* contains::              @strong{PROPOSED} Group/Container assignment.
+* material::              Material assignments.
+* contains::              Group/Container assignment.
 
 @end menu
 
@@ -1719,7 +1859,7 @@ probably an error for most applications. To be safe the topology of a
 
 @c ----------------------------------------
 @node material, contains, parent_of, Inter-Object
-@subsection @strong{PROPOSED} Material Assignment
+@subsection Material Assignment
 
 The ``material'' connection type indicates a material assignment to an
 object. The left-hand-side name is a renderable object in a GTO file
@@ -1728,7 +1868,7 @@ file.
 
 @c ----------------------------------------
 @node contains,  , material, Inter-Object
-@subsection @strong{PROPOSED} Container Assignment
+@subsection Container Assignment
 
 The ``contains'' connection type indicates membership in a group or
 similar type of container object. The LHS is the group or container,
@@ -1736,7 +1876,7 @@ the RHS is the object which is a member.
 
 @c ----------------------------------------------------------------------
 
-@node Difference, Sorted Shells, Inter-Object, Protocols
+@node Difference, Sorted Shells, Inter-Object, Object Protocols
 @section Difference File Protocol
 
 If the @strong{object.protocol} property contains the string
@@ -1755,7 +1895,7 @@ reconstruct the file represented by the difference file using the
 
 @c ----------------------------------------------------------------------
 
-@node Sorted Shells, Channels, Difference, Protocols
+@node Sorted Shells, Channels, Difference, Object Protocols
 @section Sorted Shell File Protocol
 
 If the @strong{object.protocol} property contains the string
@@ -1783,7 +1923,7 @@ shell.
 
 @c ----------------------------------------------------------------------
 
-@node Channels,  , Sorted Shells, Protocols
+@node Channels,  , Sorted Shells, Object Protocols
 @section Channels Protocol
 
 This minor protocol declares data mapped onto geometric
@@ -1846,7 +1986,7 @@ string[1] cube.channels.bump     = [ "st" "cube_bump.tif" ]
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
 
-@node Names, Issues, Protocols, Top
+@node Names, Issues, Object Protocols, Top
 @chapter Naming Conventions
 
 GTO files can contain cross references to parts of themselves, objects
@@ -2542,7 +2682,7 @@ will initialize for use of the @code{Reader::accessObject()} function.
 
 @end deftypefn
 
-@deftypefn {Method} gto.Reader.open (@var{filename})
+@deftypefn {Method} {} gto.Reader.open (@var{filename})
 Opens and reads the GTO file @var{filename}. The function will raise a Python
 exception if the file cannot be opened.
 @end deftypefn
@@ -2785,6 +2925,9 @@ Output sting table data.
 @item -n/--numeric-strings
 Output sting data as the raw string id instead of the string itself.
 
+@item -i/--interpretation-strings
+Output interpretation string data for components and properties if it exists.
+
 @item -r/--readall
 Force reading of the enitre gto file even if only the header is being
 output.
@@ -2990,6 +3133,27 @@ importing polygonal normals. A fix has yet to be identified.
 
 
 @itemize @bullet
+
+@item Version 3.0
+
+@itemize @bullet
+
+@item
+An interpretation string has been added to the property header.
+
+@item
+An additional uint32 has been added as padding to the object, component,
+and property headers for future expansion slop.
+
+@item
+A section on interpretation strings has been added to the
+documentation and to the reader/writer classes.
+
+@item
+Added a type reference to the documentation.
+
+@end itemize
+
 @item Version 2.1
 
 @itemize @bullet
@@ -3046,5 +3210,8 @@ File headers changed. The format is not compatible with 1.0.
 
 @heading Functions
 @printindex fn
+
+@heading Types
+@printindex tp
 
 @bye

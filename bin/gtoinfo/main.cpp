@@ -1,7 +1,21 @@
-//******************************************************************************
-// Copyright (c) 2002 Tweak Inc. 
-// All rights reserved.
-//******************************************************************************
+// 
+//  Copyright (c) 2003 Tweak Films
+//
+//  This program is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU General Public License as
+//  published by the Free Software Foundation; either version 2 of the
+//  License, or (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+//  02111-1307, USA.
+// 
 #include <Gto/Reader.h>
 #include <fstream>
 #include <iostream>
@@ -20,6 +34,7 @@ bool formatData     = false;
 bool readAll        = false;
 bool numericStrings = false;
 bool filtered       = false;
+bool outputInterp   = false;
 
 typedef set<const Gto::Reader::PropertyInfo*> PropertySet;
 typedef set<const Gto::Reader::ObjectInfo*>   ObjectSet;
@@ -51,9 +66,11 @@ public:
 			       const Gto::Reader::ObjectInfo &header);
 
     virtual Request	component(const std::string& name,
+                                  const std::string& interp,
 				  const Gto::Reader::ComponentInfo &header);
 
     virtual Request	property(const std::string& name,
+                                 const std::string& interp,
 				 const Gto::Reader::PropertyInfo &header);
 
     virtual void*	data(const PropertyInfo&, size_t bytes);
@@ -113,8 +130,16 @@ Reader::headerOutput(const Gto::Reader::PropertyInfo& pinfo)
 
 	cout << "  component \""
 	     << stringFromId(m_componentName)
-	     << "\""
-	     << endl;
+	     << "\"";
+
+        if (outputInterp && stringFromId(cinfo->interpretation) != "")
+        {
+            cout << " interpret as \"" 
+                 << stringFromId(cinfo->interpretation)
+                 << "\" ";
+        }
+
+        cout << endl;
     }
 }
 
@@ -174,13 +199,16 @@ Reader::object(const std::string &name,
 
 Reader::Request
 Reader::component(const std::string &n,
+                  const std::string &i,
 		  const Gto::Reader::ComponentInfo& c)
 {
     return Request(true);
 }
 
 Reader::Request
-Reader::property(const std::string &, const Gto::Reader::PropertyInfo &info)
+Reader::property(const std::string&, 
+                 const std::string&,
+                 const Gto::Reader::PropertyInfo &info)
 {
     if (outputHeader)
     {
@@ -203,8 +231,7 @@ Reader::outputPropertyHeader(const Gto::Reader::PropertyInfo &info)
 {
     headerOutput(info);
 
-    const char *type;
-    const char *scheme;
+    const char* type;
     
     switch (info.type)
     {
@@ -224,15 +251,50 @@ Reader::outputPropertyHeader(const Gto::Reader::PropertyInfo &info)
 	 << "[" << info.size << "]"
 	 << " \"" 
 	 << stringFromId(info.name)
-	 << "\" " 
-	 << endl;
+	 << "\"";
+
+    if (outputInterp && stringFromId(info.interpretation) != "")
+    {
+        cout << " interpret as \"" 
+             << stringFromId(info.interpretation)
+             << "\" ";
+    }
+    
+    cout << endl;
 }
 
 void*
-Reader::data(const PropertyInfo&, size_t bytes)
+Reader::data(const PropertyInfo& info, size_t bytes)
 {
-    m_buffer.resize(bytes);
-    return &m_buffer.front();
+    if (bytes)
+    {
+        m_buffer.resize(bytes);
+        return &m_buffer.front();
+    }
+    else
+    {
+        switch (info.type)
+        {
+          case Gto::Float:
+              data(info, (float*)0, info.size);
+              break;
+          case Gto::Double:
+              data(info, (double*)0, info.size);
+              break;
+          case Gto::Int:
+          case Gto::String:
+              data(info, (int*)0, info.size);
+              break;
+          case Gto::Short:
+              data(info, (unsigned short*)0, info.size);
+              break;
+          case Gto::Byte:
+              data(info, (unsigned char*)0, info.size);
+              break;
+          case Gto::Boolean:
+              break;
+        }
+    }
 }
 
 void
@@ -600,16 +662,16 @@ void usage()
 {
     cout << "gtoinfo [options] file.gto\n"
          << endl
-         << "-a/--all               dump data and header\n"
-         << "-d/--dump              dump data (no header)\n"
-         << "-l/--line              dump data/strings one per line\n"
-         << "-h/--header            header only (default)\n"
-         << "-s/--strings           output strings table\n"
-         << "-n/--numeric-strings   output string properties as string numbers\n"
-         << "-f/--filter expr       filter shell-like expression\n"
-         << "-r/--readall           force data read\n"
-        
-         << "--help                 usage\n"
+         << "-a/--all                       dump data and header\n"
+         << "-d/--dump                      dump data (no header)\n"
+         << "-l/--line                      dump data/strings one per line\n"
+         << "-h/--header                    header only (default)\n"
+         << "-s/--strings                   output strings table\n"
+         << "-n/--numeric-strings           output string properties as string numbers\n"
+         << "-i/--interpretation-strings    output interpretation strings\n"
+         << "-f/--filter expr               filter shell-like expression\n"
+         << "-r/--readall                   force data read\n"
+         << "--help                         usage\n"
          << endl;
     
     exit(-1);
@@ -638,6 +700,7 @@ int main(int argc, char *argv[])
 	    {
 		outputData   = true;
 		outputHeader = true;
+                outputInterp = true;
 	    }
 	    else if (!strcmp(arg, "-h") ||
 		     !strcmp(arg, "--header"))
@@ -666,6 +729,11 @@ int main(int argc, char *argv[])
                      !strcmp(arg, "--numeric-strings"))
             {
                 numericStrings = true;
+            }
+            else if (!strcmp(arg, "-i") ||
+                     !strcmp(arg, "--interpretation-strings"))
+            {
+                outputInterp = true;
             }
             else if (!strcmp(arg, "-f") ||
                      !strcmp(arg, "--filter-expression"))
