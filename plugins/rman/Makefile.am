@@ -39,9 +39,10 @@ noinst_HEADERS = RiGtoDataBase.h \
                  RiGtoSubd.h \
                  Stubs.h 
 
-RiGto_so_LDFLAGS = -shared \
-                   -L$(top_srcdir)/lib/Gto \
-                   -L$(gto_rman_location)/lib \
-                   -lGto 
+RiGtoRibOut_LDADD = $(top_srcdir)/lib/Gto/libGto.la \
+                    $(top_srcdir)/lib/RiGto/libRiGto.la \
+                    $(top_srcdir)/lib/RiGtoStub/libRiGtoStub.la \
 
-endif
+RiGto_so_LDFLAGS = -shared 
+
+endif # GTO_BUILD_RMAN
