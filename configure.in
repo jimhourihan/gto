@@ -41,7 +41,7 @@ fi
 
 dnl ********************** Processing starts here...
 
-AC_INIT(Gto, 2.0.4)
+AC_INIT(Gto, 2.0.5)
 AC_PREREQ(2.57)
 
 AC_CONFIG_AUX_DIR(config)
@@ -57,7 +57,7 @@ if test `uname` = Darwin ; then
     LDFLAGS="$LDFLAGS -L/sw/lib"
 fi
 
-SHARED_VERSION_INFO="2:0:4"
+SHARED_VERSION_INFO="2:0:5"
 AC_DISABLE_SHARED()
 AC_PROG_LIBTOOL()
 

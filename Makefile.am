@@ -30,4 +30,6 @@ EXTRA_DIST = examples/plane.gto				\
 	     plugins/maya/GtoInTransform.h		\
 	     plugins/maya/GtoIO.h			\
 	     plugins/maya/GtoOut.h			\
-	     plugins/maya/version.h
+	     plugins/maya/version.h 			\
+	     plugins/maya/gtoExportOptions.mel		\
+	     plugins/maya/gtoExportSet.mel
