@@ -2722,6 +2722,46 @@ the name of a property, @var{data} is a tuple containing the property data,
 information as the Gto::PropertyInfo C++ struct.
 @end deftypefn
 
+@deftypefn {Method} {} gto.Reader.stringFromID (@var{id})
+Returns the stringTable entry for the given string table id.  Since the
+Python gto module returns strings directly, it is unlikely that you'll need
+to use this.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.stringTable ()
+Returns the entire stringTable as a list of strings.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.isSwapped ()
+Returns True if the file on disk is not in the machine's native byte order.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.objects ()
+Returns a list of the gto.ObjectInfo instances for all the objects in the
+file.  This method is only available if the file was opened with
+gto.Reader.RANDOMACCESS.  Usable at any time after the constructor is called.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.components ()
+Returns a list of the gto.ComponentInfo instances for all the components in the
+file.  This method is only available if the file was opened with
+gto.Reader.RANDOMACCESS.  Usable at any time after the constructor is called.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.properties ()
+Returns a list of the gto.PropertyInfo instances for all the properties in the
+file.  This method is only available if the file was opened with
+gto.Reader.RANDOMACCESS.  Usable at any time after the constructor is called.
+@end deftypefn
+
+@deftypefn {Method} {} gto.Reader.accessObject (@var{objInfo})
+Given an instance of gto.ObjectInfo (obtained via gto.Reader.objects(), 
+gto.Reader.components(), or gto.Reader.properties()), tells the reader
+to access that object directly.  This will cause the gto.Reader.object(),
+gto.Reader.component(), and gto.Reader.dataRead() methods to be called
+with the information from the given object.
+@end deftypefn
+
 
 @c -------------------------------------------------------------------------
 @node PyWriter, PyStructs, PyReader, Module
