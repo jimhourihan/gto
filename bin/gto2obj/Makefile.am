@@ -5,7 +5,9 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib
 
-bin_PROGRAMS = gtofilter
+bin_PROGRAMS = gto2obj
 
-gtofilter_SOURCES = main.cpp
-gtofilter_LDADD = $(top_srcdir)/lib/Gto/libGto.la @LIBS@
+gto2obj_SOURCES = main.cpp
+gto2obj_LDADD = $(top_srcdir)/lib/Gto/libGto.la \
+                $(top_srcdir)/lib/WFObj/libWFObj.la \
+                @LIBS@ 

@@ -5,7 +5,7 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib
 
-bin_PROGRAMS = gtofilter
+bin_PROGRAMS = gtoimage
 
-gtofilter_SOURCES = main.cpp
-gtofilter_LDADD = $(top_srcdir)/lib/Gto/libGto.la @LIBS@
+gtoimage_SOURCES = main.cpp
+gtoimage_LDADD = $(top_srcdir)/lib/Gto/libGto.la -ltiff @LIBS@ 
