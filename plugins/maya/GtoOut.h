@@ -35,6 +35,8 @@ namespace GtoIOPlugin {
 #define GTO_POLYGON_VERSION 2
 #define GTO_CATMULL_CLARK_VERSION 2
 #define GTO_NURBS_VERSION 1
+#define GTO_CAMERA_VERSION 1
+#define GTO_LIGHT_VERSION 1
 
 #define GTO_MAYA_USER_PROTOCOL_ATTRIBUTE "GTO_protocol"
 #define GTO_MAYA_USER_PROTOCOL_VERSION_ATTRIBUTE "GTO_protocolVersion"
@@ -78,10 +80,14 @@ public:
     void DagHeader(MDagPath&);
     void DagData(MDagPath&);
 
-    void PolygonHeader( MDagPath &, 
-                        const char *protocol,
-                        unsigned int );
+    void PolygonHeader( MDagPath &, const char *protocol, unsigned int );
     void PolygonData( MDagPath & );
+
+    void CameraHeader( MDagPath &, int protocolVersion );
+    void CameraData( MDagPath & );
+
+    void LightHeader( MDagPath &, int protocolVersion );
+    void LightData( MDagPath & );
 
     MStatus doFrame( MTime );
 

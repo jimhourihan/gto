@@ -30,6 +30,12 @@
 #include <maya/MSelectionList.h>
 #include <maya/MFnNurbsSurface.h>
 #include <maya/MFnMesh.h>
+#include <maya/MFnCamera.h>
+#include <maya/MFnLight.h>
+#include <maya/MFnPointLight.h>
+#include <maya/MFnSpotLight.h>
+#include <maya/MFnDirectionalLight.h>
+#include <maya/MColor.h>
 #include <maya/MFloatPointArray.h>
 #include <maya/MItMeshPolygon.h>
 #include <maya/MItSurfaceCV.h>
@@ -80,6 +86,12 @@ GtoExporter::GtoExporter( MTime fs,
 // *****************************************************************************
 GtoExporter::~GtoExporter()
 {
+}
+
+// *****************************************************************************
+static float radToDeg( float rad )
+{
+    return rad * 57.2957795130823230; // == 180.0 / PI
 }
 
 // *****************************************************************************
@@ -450,6 +462,28 @@ void GtoExporter::output( MDagPath &dp, bool data, int recursionLevel )
             }
         }
     }
+    else if( object.hasFn( MFn::kCamera ) )
+    {
+        if( data )
+        {
+            CameraData( dp );
+        }
+        else
+        {
+            CameraHeader( dp, GTO_CAMERA_VERSION );
+        }
+    }
+    else if( object.hasFn( MFn::kLight ) )
+    {
+        if( data )
+        {
+            LightData( dp );
+        }
+        else
+        {
+            LightHeader( dp, GTO_LIGHT_VERSION );
+        }
+    }
     else
     {
         MString er = "gtoOut: the object \"";
@@ -503,7 +537,9 @@ void GtoExporter::TransformHeader( MDagPath &dp )
     m_writer->property( GTO_PROPERTY_GLOBAL_MATRIX, Gto::Float, 
                         numInstances, 16 );
 
-    if( dp.apiType() != MFn::kTransform )
+    if( dp.apiType() != MFn::kTransform 
+        && ! dp.hasFn( MFn::kCamera )
+        && ! dp.hasFn( MFn::kLight ) )
     {
         m_writer->property( GTO_PROPERTY_BOUNDINGBOX, Gto::Float, 
                             numInstances, 6 );
@@ -550,7 +586,9 @@ void GtoExporter::TransformData( MDagPath &dp )
     m_writer->propertyData( outG );
     delete [] outG;
     
-    if( dp.apiType() != MFn::kTransform )
+    if( dp.apiType() != MFn::kTransform 
+        && ! dp.hasFn( MFn::kCamera )
+        && ! dp.hasFn( MFn::kLight ) )
     {
         // Write boundingBox for each instance, ref or difference
         float *bboxes = new float[6 * numInstances];
@@ -1108,6 +1146,181 @@ void GtoExporter::PolygonData( MDagPath &dp )
             m_writer->propertyData( &method );
         }
     }
+
+    // Output the transform, unless this is a difference file and
+    // we didn't ask for difference matrices
+    if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
+    {
+        TransformData( dp );
+    }
+}
+
+//******************************************************************************
+void GtoExporter::CameraHeader( MDagPath &dp, int protocolVersion )
+{
+    m_writer->intern( m_objectName.asChar() );
+
+    m_writer->beginObject( m_objectName.asChar(), "camera", protocolVersion );
+
+    m_writer->beginComponent( "camera" );
+    m_writer->property( "fov", Gto::Float, 1, 1 );
+    m_writer->property( "near", Gto::Float, 1, 1 );
+    m_writer->property( "far", Gto::Float, 1, 1 );
+    m_writer->property( "aspect", Gto::Float, 1, 1 );
+    m_writer->endComponent();
+
+    // Output the transform header, unless this is a difference file and
+    // we didn't ask for difference matrices
+    if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
+    {
+        TransformHeader( dp );
+    }
+
+    m_writer->endObject();
+}
+
+//******************************************************************************
+void GtoExporter::CameraData( MDagPath &dp )
+{
+    MFnCamera camera( dp.node() );
+    
+
+    float fov = camera.verticalFieldOfView() 
+                        * 57.2957795130823230; // == 180.0 / PI;
+    float near = camera.nearClippingPlane();
+    float far = camera.farClippingPlane();
+    float aspect = camera.aspectRatio();
+    
+    m_writer->propertyData( &fov );
+    m_writer->propertyData( &near );
+    m_writer->propertyData( &far );
+    m_writer->propertyData( &aspect );
+
+    // Output the transform, unless this is a difference file and
+    // we didn't ask for difference matrices
+    if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
+    {
+        TransformData( dp );
+    }
+}
+
+//******************************************************************************
+void GtoExporter::LightHeader( MDagPath &dp, int protocolVersion )
+{
+    MFnLight light( dp.node() );
+
+    m_writer->intern( m_objectName.asChar() );
+
+    m_writer->beginObject( m_objectName.asChar(), "light", protocolVersion );
+
+    m_writer->beginComponent( "shader" );
+
+    // Name of light shader
+    m_writer->property( "name", Gto::String, 1, 1 );
+
+    // Properties common to all light shaders
+    m_writer->property( "lightcolor", Gto::Float, 1, 4 );
+    m_writer->property( "intensity", Gto::Float, 1, 1 );
+    m_writer->property( "falloff", Gto::Float, 1, 1 );
+
+    // Properties specific to certain light types
+    if( dp.apiType() == MFn::kPointLight )
+    {
+        m_writer->intern( "point_lgt" );
+    }
+    else if( dp.apiType() == MFn::kSpotLight )
+    {
+        m_writer->intern( "spot_lgt" );
+        
+        m_writer->property( "coneangle", Gto::Float, 1, 1 );
+        m_writer->property( "conedeltaangle", Gto::Float, 1, 1 );
+        m_writer->property( "beamdistribution", Gto::Float, 1, 1 );
+    }
+    else if( dp.apiType() == MFn::kDirectionalLight )
+    {
+        m_writer->intern( "distant_lgt" );
+    }
+    else
+    {
+        cerr << "Unsupported light type" << endl;
+    }
+
+    m_writer->endComponent();
+
+    // Output the transform header, unless this is a difference file and
+    // we didn't ask for difference matrices
+    if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
+    {
+        TransformHeader( dp );
+    }
+
+    m_writer->endObject();
+}
+
+//******************************************************************************
+void GtoExporter::LightData( MDagPath &dp )
+{
+    if( dp.apiType() == MFn::kPointLight )
+    {
+        MFnPointLight pLight( dp.node() );
+        int strId = m_writer->lookup( "point_lgt" );
+        m_writer->propertyData( &strId );
+        
+        MColor lightcolor = pLight.color();
+        m_writer->propertyData( &lightcolor[0] );
+        
+        float intensity = pLight.intensity();
+        m_writer->propertyData( &intensity );
+
+        float decayRate = pLight.decayRate();
+        m_writer->propertyData( &decayRate );
+    }
+    else if( dp.apiType() == MFn::kSpotLight )
+    {
+        MFnSpotLight sLight( dp.node() );
+        int strId = m_writer->lookup( "spot_lgt" );
+        m_writer->propertyData( &strId );
+
+        MColor lightcolor = sLight.color();
+        m_writer->propertyData( &lightcolor[0] );
+        
+        float intensity = sLight.intensity();
+        m_writer->propertyData( &intensity );
+
+        float decayRate = sLight.decayRate();
+        m_writer->propertyData( &decayRate );
+
+        float coneAngle = radToDeg( sLight.coneAngle() );
+        m_writer->propertyData( &coneAngle );
+        
+        float coneDeltaAngle = radToDeg( sLight.penumbraAngle() );
+        m_writer->propertyData( &coneDeltaAngle );
+        
+        float beamDistribution = sLight.dropOff();
+        m_writer->propertyData( &beamDistribution );
+
+    }
+    else if( dp.apiType() == MFn::kDirectionalLight )
+    {
+        MFnDirectionalLight dLight( dp.node() );
+        int strId = m_writer->lookup( "distant_lgt" );
+        m_writer->propertyData( &strId );
+
+        MColor lightcolor = dLight.color();
+        m_writer->propertyData( &lightcolor[0] );
+        
+        float intensity = dLight.intensity();
+        m_writer->propertyData( &intensity );
+
+        float decayRate = dLight.decayRate();
+        m_writer->propertyData( &decayRate );
+
+    }
+    else
+    {
+        cerr << "Undetermined light type" << endl;
+    }
+
 
     // Output the transform, unless this is a difference file and
     // we didn't ask for difference matrices

@@ -178,14 +178,16 @@ void Set::reparentAll()
                 // correct.
                 dagMod.reparentNode( childObj, newParentObj );
                 dagMod.deleteNode( currentParentObj );
-                
             }
             
         }
         else
         {
             // The node to which this object is supposed to be parented
-            // does not exist in the scene, so we'll create an identity 
+            // does not exist in the scene.  If the object came with a 
+            // globalMatrix property of its own, we'll create a transform
+            // node with that matrix to be the missing parent.  If the object
+            // does not have a globalMatrix property, we'll create an identity 
             // transform node to be the missing parent.
             string str = (*iter)->name() 
                          + string( " is missing parent node '" )

@@ -1,4 +1,3 @@
-
 //
 // Copyright (C) 2003 Tweak Films
 //
@@ -21,14 +20,25 @@
 #ifndef __VERSION_H__
 #define __VERSION_H__
 
+#include <maya/MTypes.h>
+
 // Check for correct compiler version
 #ifndef WIN32
-    #if ! ( ( __GNUC__ == 2 )  \
-          && ( __GNUC_MINOR__ == 96 ) \
-          && ( __GNUC_PATCHLEVEL__ == 0 ) )
-    #error ------------------------------------------
-    #error This plugin must be compiled with gcc 2.96
-    #error ------------------------------------------
+    #if MAYA_API_VERSION < 500
+        #if ! ( ( __GNUC__ == 2 )  \
+              && ( __GNUC_MINOR__ == 96 ) \
+              && ( __GNUC_PATCHLEVEL__ == 0 ) )
+        #error ------------------------------------------
+        #error This plugin must be compiled with gcc 2.96
+        #error ------------------------------------------
+        #endif
+    #else
+        #if ! ( ( __GNUC__ == 3 )  \
+              && ( __GNUC_MINOR__ >= 2 ) )
+        #error ------------------------------------------
+        #error This plugin must be compiled with gcc 3.2+
+        #error ------------------------------------------
+        #endif
     #endif
 #else
     // Work around stupid microsoft bugs

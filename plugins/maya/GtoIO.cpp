@@ -211,7 +211,7 @@ MPxFileTranslator::MFileKind GtoIO::identifyFile( const MFileObject &file,
 {
     if( magicSize < 4 )
     {
-        return MPxFileTranslator::kCouldBeMyFileType;
+        return MPxFileTranslator::kNotMyFileType;
     }
 
     const unsigned int magicInt = *((unsigned int *)magic );
@@ -224,7 +224,7 @@ MPxFileTranslator::MFileKind GtoIO::identifyFile( const MFileObject &file,
     const int gz_magic[2] = {0x1f, 0x8b}; /* gzip magic header */
     if( magic[0] == gz_magic[0] && magic[1] == gz_magic[1] )
     {
-        return MPxFileTranslator::kCouldBeMyFileType;
+        return MPxFileTranslator::kIsMyFileType;
     }
 
     return MPxFileTranslator::kNotMyFileType;

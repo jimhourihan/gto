@@ -27,6 +27,7 @@
 #include <maya/MPoint.h>
 #include <maya/MPointArray.h>
 #include <maya/MItMeshPolygon.h>
+#include <maya/MTypes.h>
 #include <assert.h>
 #include <string.h>
 #include <float.h>
@@ -340,13 +341,11 @@ struct NormalEntry
     float normal[3];
 };
 
-struct Comp
+bool NormalComp( const NormalEntry &a, const NormalEntry &b )
 {
-    bool operator() ( const NormalEntry &a, const NormalEntry &b )
-    {
-        return a.vertIndex < b.vertIndex;
-    }
-};
+    return a.vertIndex < b.vertIndex;
+}
+
 
 //******************************************************************************
 void Poly::declareMaya()
@@ -400,6 +399,9 @@ void Poly::declareMaya()
     // Set normals if included in file
     if( m_normalValues != NULL && m_normalIndices != NULL )
     {
+
+#if MAYA_API_VERSION < 500
+
         // Due to a bizarre internal Maya issue, we have to sort the
         // normals based on vertex index to avoid O(N^2) time for
         // setting the normals on meshes with many shells
@@ -422,7 +424,7 @@ void Poly::declareMaya()
             }
         }
         
-        sort( normalsSort.begin(), normalsSort.end(), Comp() );
+        sort( normalsSort.begin(), normalsSort.end(), NormalComp );
 
         // Now that the normals are sorted by vertexIndex, put them into
         // maya data structures.
@@ -447,7 +449,21 @@ void Poly::declareMaya()
         {
             status.perror( "newMesh.setVertexNormals() failed" );
         }
-    }
+
+#else
+
+        // Maya's normal setting procedures have been re-broken for Maya 5.0.
+        // The code above which is quite zippy in Maya 4.x is now back to 
+        // O(N^2).  Alias's API Knowledgbase solution ( available at
+        // http://www.alias.com/eng/support/maya/knowledgebase/api/2755.jhtml )
+        // is also slow as a dead snail.  Therefore, sadly, normals importing
+        // is disabled for Maya 5.x until someone from Alias responds to our
+        // requests for more information.  Please feel free to prod Alias 
+        // yourselves, and let us know if you get any information on this issue.
+
+#endif
+
+    }  //  End if( m_normalValues !...
 
     // Set ST coords if included in file
     if( m_stValues != NULL && m_stIndices != NULL )
