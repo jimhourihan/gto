@@ -1,0 +1,41 @@
+2004-06-17  Mike Root  <mike@tweakfilms.com>
+
+	* Added support for RiCurves.
+
+	* Added m_reader member variable to RiGtoObject, so we can use
+	stringFromId(), etc. if needed.
+
+2004-01-27  Mike Root  <mike@tweakfilms.com>
+
+	* Made default number of instances 1 instead of 0 so things without
+	  globalMatrix properties actually render
+
+2003-06-14  Mike Root  <mike@tweakfilms.com>
+
+	* Added the RiGtoOnOffList class, which GREATLY increases the parsing 
+	speed of long On/Off lists.
+
+2003-05-12  Mike Root  <mike@tweakfilms.com>
+
+	* Fixed bug where Pref was not being handed to Entropy if there was
+	no difference file (i.e. ref=open=closed).
+
+2003-04-28  Mike Root  <mike@tweakfilms.com>
+
+	* Changed error messages for mismatching position/normal counts in ref
+	and open/close files to include offending object name.
+
+2003-04-01  Mike Root  <mike@tweakfilms.com>
+
+	* Began ChangeLog
+
+	* Added the ability to read normals on poly objects if they exist.  Normals
+	can be reference-only or animated in the open/close gto files.
+
+	* Fixed a memory leak with STs
+    
+	* Changed a few formerly fatal exceptions resulting from missing files
+	or malformed geometry to be less severe.  An error message is printed
+	and the geometry is not rendered, but processing will continue at the
+	next object.
+
