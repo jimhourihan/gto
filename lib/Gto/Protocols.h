@@ -46,6 +46,7 @@
 #define GTO_COMPONENT_NORMALS            "normals"
 #define GTO_COMPONENT_SHELLS             "shells"
 #define GTO_COMPONENT_IMAGE              "image"
+#define GTO_COMPONENT_STRAND             "strand"
 
 #define GTO_PROPERTY_POSITION            "position"          // float[3][]
 #define GTO_PROPERTY_VELOCITY            "velocity"          // float[3][]
