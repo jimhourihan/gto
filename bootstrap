@@ -9,6 +9,7 @@ fi
 
 if ! test -e config/ltmain.sh; then
  cp /usr/share/libtool/ltmain.sh config
+ cp /usr/share/libtool/config.guess /usr/share/libtool/config.sub .
 fi
 
 aclocal \
