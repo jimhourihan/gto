@@ -5,6 +5,8 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib
 
+if GTO_BUILD_RMAN
+
 lib_LTLIBRARIES = libRiGto.la
 
 libRiGto_la_SOURCES = RiGtoDataBase.cpp \
@@ -32,3 +34,5 @@ noinst_HEADERS = RiGtoDataBase.h \
 
 libRiGto_la_LIBS = @LIBS@
 
+
+endif # GTO_BUILD_RMAN

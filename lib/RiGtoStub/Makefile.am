@@ -5,11 +5,14 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib
 
+if GTO_BUILD_RMAN
+
 lib_LTLIBRARIES = libRiGtoStub.la
 
-libRiGto_la_SOURCES = Stubs.cpp
+libRiGtoStub_la_SOURCES = Stubs.cpp
 
 noinst_HEADERS = Stubs.h
 
-libRiGto_la_LIBS = @LIBS@
+libRiGtoStub_la_LIBS = @LIBS@
 
+endif # GTO_BUILD_RMAN

@@ -1,14 +1,73 @@
-//******************************************************************************
-// Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
-//******************************************************************************
+//
+// Copyright (C) 2004 Tweak Films
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
+
 #include <RiGto/RiGtoOnOffList.h>
-#include <TwkUtil/TwkUtilRegEx.h>
-#include <stl_ext/string_algo.h>
 #include <iostream>
 
 namespace RiGto {
 using namespace std;
-using namespace TwkUtil;
+
+// *****************************************************************************
+static void tokenize( vector<string> &tokens,
+                      const string &str,
+                      string delimiters )
+{
+    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+    string::size_type pos     = str.find_first_of(delimiters, lastPos);
+
+    while (pos != string::npos || lastPos != string::npos)
+    {
+        tokens.push_back(str.substr(lastPos, pos - lastPos));
+        lastPos = str.find_first_not_of(delimiters, pos);
+        pos = str.find_first_of(delimiters, lastPos);
+    }
+}
+
+
+// *****************************************************************************
+static string deglobSyntax( const char *pattern )
+{
+    string gpat( pattern );
+    
+    int lastFound = 0;
+    while( gpat.find( ".", lastFound ) != gpat.npos )
+    {
+        gpat.replace( gpat.find( ".", lastFound ), 1, "\\." );
+        lastFound = gpat.find( ".", lastFound ) + 1;
+    }
+    while( gpat.find( "?" ) != gpat.npos )
+    {
+        gpat.replace( gpat.find( "?" ), 1, "." );
+    }
+
+    lastFound = 0;
+    while( gpat.find( "*", lastFound ) != gpat.npos )
+    {
+        gpat.replace( gpat.find( "*", lastFound ), 1, ".*" );
+        lastFound = gpat.find( "*", lastFound ) + 1;
+    }
+    
+    gpat = "^" + gpat + "$";
+    
+    return gpat;
+}
+
 
 // *****************************************************************************
 void OnOffList::init( const char *inList )
@@ -18,13 +77,13 @@ void OnOffList::init( const char *inList )
     
     // Split the regex into parts (or just one part if there are no '|' chars)
     vector<string> lstParts;
-    stl_ext::tokenize( lstParts, lst, "|" );
+    tokenize( lstParts, lst, "|" );
     
     // Pre-compile a regex for each part
     for( int i = 0; i < lstParts.size(); ++i )
     {
         // Convert the regex into our glob-like syntax
-        string globPat = GlobEx::deglobSyntax( lstParts[i].c_str() );
+        string globPat = deglobSyntax( lstParts[i].c_str() );
         
         regex_t preg;
         int status = regcomp( &preg, globPat.c_str(), 

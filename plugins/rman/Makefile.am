@@ -13,35 +13,11 @@ if GTO_BUILD_RMAN
 
 plugin_PROGRAMS = RiGto.so
 
-RiGto_so_SOURCES = plugin.cpp \
-                   RiGtoDataBase.cpp \
-                   RiGtoNURBS.cpp \
-                   RiGtoObject.cpp \
-                   RiGtoOnOffList.cpp \
-                   RiGtoPlugin.cpp \
-                   RiGtoPoly.cpp \
-                   RiGtoReader.cpp \
-                   RiGtoSet.cpp \
-                   RiGtoStrand.cpp \
-                   RiGtoSubd.cpp \
-                   Stubs.cpp 
+RiGto_so_SOURCES = plugin.cpp 
 
-noinst_HEADERS = RiGtoDataBase.h \
-                 RiGtoException.h \
-                 RiGtoNURBS.h \
-                 RiGtoObject.h \
-                 RiGtoOnOffList.h \
-                 RiGtoPlugin.h \
-                 RiGtoPoly.h \
-                 RiGtoReader.h \
-                 RiGtoSet.h \
-                 RiGtoStrand.h \
-                 RiGtoSubd.h \
-                 Stubs.h 
-
-RiGtoRibOut_LDADD = $(top_srcdir)/lib/Gto/libGto.la \
-                    $(top_srcdir)/lib/RiGto/libRiGto.la \
-                    $(top_srcdir)/lib/RiGtoStub/libRiGtoStub.la \
+RiGto_so_LDADD = $(top_srcdir)/lib/Gto/libGto.la \
+                 $(top_srcdir)/lib/RiGto/libRiGto.la \
+                 $(top_srcdir)/lib/RiGtoStub/libRiGtoStub.la 
 
 RiGto_so_LDFLAGS = -shared 
 

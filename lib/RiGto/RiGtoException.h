@@ -21,6 +21,7 @@
 #define _RiGtoException_h_
 
 #include <stdlib.h>
+#include <exception>
 #include <iostream>
 
 namespace RiGto {
