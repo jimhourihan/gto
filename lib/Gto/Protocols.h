@@ -25,10 +25,15 @@
 #define GTO_PROTOCOL_CATMULL_CLARK       "catmull-clark"     // sub-d
 #define GTO_PROTOCOL_LOOP                "loop"              // sub-d
 #define GTO_PROTOCOL_TRANSFORM           "transform"
-#define GTO_PROTOCOL_TEXCHANNEL          "texChannel"
+#define GTO_PROTOCOL_TEXCHANNEL          "texChannel"        // depricated
 #define GTO_PROTOCOL_PARTICLE            "particle"
 #define GTO_PROTOCOL_DIFFERENCE          "difference"
 #define GTO_PROTOCOL_SORTED              "sorted"
+
+// PROPOSED
+#define GTO_PROTOCOL_IMAGE               "image"
+#define GTO_PROTOCOL_MATERIAL            "material"
+#define GTO_PROTOCOL_GROUP               "group"
 
 #define GTO_COMPONENT_POINTS             "points"
 #define GTO_COMPONENT_SURFACE            "surface"
@@ -39,6 +44,9 @@
 #define GTO_COMPONENT_SMOOTHING          "smoothing"
 #define GTO_COMPONENT_NORMALS            "normals"
 #define GTO_COMPONENT_SHELLS             "shells"
+
+// PROPOSED
+#define GTO_COMPONENT_IMAGE              "image"
 
 #define GTO_PROPERTY_POSITION            "position"          // float[3][]
 #define GTO_PROPERTY_VELOCITY            "velocity"          // float[3][]
@@ -66,6 +74,9 @@
 #define GTO_PROPERTY_VERTICES            "vertices"          // int[1][]
 #define GTO_PROPERTY_ELEMENTS            "elements"          // int[1][]
 
+// PROPOSED
+#define GTO_PROPERTY_PIXELS              "pixels"
+
 #define GTO_POLYGON_POLYGON              0
 #define GTO_POLYGON_TRIANGLE             1
 #define GTO_POLYGON_QUAD                 2
@@ -78,8 +89,5 @@
 #define GTO_SMOOTHING_METHOD_FACETED        2
 #define GTO_SMOOTHING_METHOD_PARTITIONED    3
 #define GTO_SMOOTHING_METHOD_DISCONTINUOUS  4
-
-#define GTO_ACCEPT                      ((void*)0x1)
-#define GTO_REJECT                      ((void*)0x0)
 
 #endif // __Gto__Protocols__h__

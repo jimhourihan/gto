@@ -11,9 +11,9 @@ plugindir = $(MAYADIR)/bin/plug-ins/
 
 if GTO_BUILD_MAYA
 
-plugin_LIBRARIES = GtoIO.so
+plugin_LTLIBRARIES = libGtoIO.la
 
-GtoIO_so_SOURCES = GtoInDataBase.cpp \
+libGtoIO_la_SOURCES = GtoInDataBase.cpp \
                    GtoInNURBS.cpp \
                    GtoInObject.cpp \
                    GtoInParticle.cpp \
@@ -38,6 +38,6 @@ EXTRA_DIST = GtoInDataBase.h \
              version.h 
 
 
-GtoIO_so_LIBS = -lGto -lOpenMaya -lOpenMayaAnim -lOpenMayaRender @LIBS@ -lm -lstdc++ 
+libGtoIO_la_LIBS = -lGto -lOpenMaya -lOpenMayaAnim -lOpenMayaRender @LIBS@ -lm -lstdc++ 
 
 endif

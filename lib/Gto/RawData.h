@@ -38,8 +38,12 @@ namespace Gto {
 
 struct Property
 {
-    Property(const std::string& n, Gto::DataType t, size_t s, size_t w)
-	: name(n), type(t), size(s), width(w), voidData(0) {}
+    Property(const std::string& n, 
+             Gto::DataType t, 
+             size_t s, 
+             size_t w, 
+             bool allocate=false);
+
     ~Property();
     
     std::string	    name;

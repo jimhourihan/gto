@@ -14,7 +14,7 @@ setup( name="gto",
                                   "src/gtoReader.cpp",        
                                   "src/gtoWriter.cpp" ],
                                   include_dirs=["../../lib"],
-                                  library_dirs=["../../lib/Gto"],
+                                  library_dirs=["../../lib/Gto/.libs"],
                                   libraries=["Gto", "z"],
                                   extra_compile_args=["-Wno-unused-variable"],
                                 )
