@@ -129,6 +129,7 @@ public:
     const StringTable&  stringTable() { return m_strings; }
 
     bool                isSwapped() const { return m_swapped; }
+    unsigned int        readMode() const { return m_mode; }
 
     //
     //  This function is called right after the file header is read.

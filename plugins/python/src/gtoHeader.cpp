@@ -27,12 +27,38 @@ using namespace std;
 // *****************************************************************************
 
 // *****************************************************************************
+// Implements ObjectInfo.__init__(self)
 PyObject *ObjectInfo_init( PyObject *_self, PyObject *args )
 {
     Py_INCREF( Py_None );
     return Py_None;
 }
 
+// *****************************************************************************
+// Implements ObjectInfo.__repr__(self)
+PyObject *ObjectInfo_repr( PyObject *_self, PyObject *args )
+{
+    PyObject *self;
+
+    if( ! PyArg_ParseTuple( args, "O", &self ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    PyObject *name = PyObject_GetAttrString( self, "name" );
+    if( name == NULL )
+    {
+        PyObject *reprStr = 
+                        PyString_FromString( "<INVALID ObjectInfo object>" );
+        Py_INCREF( reprStr );
+        return reprStr;
+    }
+    PyObject *reprStr = PyString_FromFormat( "<ObjectInfo: '%s'>", 
+                                             PyString_AsString( name ) );
+    Py_INCREF( reprStr );
+    return reprStr;
+}
 
 // *****************************************************************************
 PyObject *newObjectInfo( Gto::Reader *reader, 
@@ -68,6 +94,13 @@ PyObject *newObjectInfo( Gto::Reader *reader,
                       PyString_FromString( "pad" ),
                       PyInt_FromLong( oi.pad ) );
 
+    // Since Gto::Reader::accessObject() __requires__ that the objectInfo
+    // reference given to it be from the reader's cache, not just a copy
+    // with the same information, we store it here.
+    PyObject_SetAttr( objInfo, 
+                      PyString_FromString( "__objInfoPtr" ),
+                      PyCObject_FromVoidPtr( (void *)&oi, NULL ) );
+
     Py_INCREF( objInfo );
     return objInfo;
 }
@@ -78,10 +111,37 @@ PyObject *newObjectInfo( Gto::Reader *reader,
 // *****************************************************************************
 
 // *****************************************************************************
+// Implements ComponentInfo.__repr__(self)
 PyObject *ComponentInfo_init( PyObject *_self, PyObject *args )
 {
     Py_INCREF( Py_None );
     return Py_None;
+}
+
+// *****************************************************************************
+// Implements ComponentInfo.__repr__(self)
+PyObject *ComponentInfo_repr( PyObject *_self, PyObject *args )
+{
+    PyObject *self;
+
+    if( ! PyArg_ParseTuple( args, "O", &self ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    PyObject *name = PyObject_GetAttrString( self, "name" );
+    if( name == NULL )
+    {
+        PyObject *reprStr = 
+                        PyString_FromString( "<INVALID ComponentInfo object>" );
+        Py_INCREF( reprStr );
+        return reprStr;
+    }
+    PyObject *reprStr = PyString_FromFormat( "<ComponentInfo: '%s'>", 
+                                             PyString_AsString( name ) );
+    Py_INCREF( reprStr );
+    return reprStr;
 }
 
 // *****************************************************************************
@@ -122,7 +182,6 @@ PyObject *newComponentInfo( Gto::Reader *reader,
                       PyString_FromString( "object" ),
                       newObjectInfo( reader, (*ci.object) ) );
 
-
     Py_INCREF( compInfo );
     return compInfo;
 }
@@ -133,10 +192,37 @@ PyObject *newComponentInfo( Gto::Reader *reader,
 // *****************************************************************************
 
 // *****************************************************************************
+// Implements PropertyInfo.__init__(self)
 PyObject *PropertyInfo_init( PyObject *_self, PyObject *args )
 {
     Py_INCREF( Py_None );
     return Py_None;
+}
+
+// *****************************************************************************
+// Implements PropertyInfo.__repr__(self)
+PyObject *PropertyInfo_repr( PyObject *_self, PyObject *args )
+{
+    PyObject *self;
+
+    if( ! PyArg_ParseTuple( args, "O", &self ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    PyObject *name = PyObject_GetAttrString( self, "name" );
+    if( name == NULL )
+    {
+        PyObject *reprStr = 
+                         PyString_FromString( "<INVALID PropertyInfo object>" );
+        Py_INCREF( reprStr );
+        return reprStr;
+    }
+    PyObject *reprStr = PyString_FromFormat( "<PropertyInfo: '%s'>", 
+                                             PyString_AsString( name ) );
+    Py_INCREF( reprStr );
+    return reprStr;
 }
 
 // *****************************************************************************
@@ -180,7 +266,6 @@ PyObject *newPropertyInfo( Gto::Reader *reader,
     PyObject_SetAttr( propInfo, 
                       PyString_FromString( "component" ),
                       newComponentInfo( reader, (*pi.component) ) );
-
 
     Py_INCREF( propInfo );
     return propInfo;

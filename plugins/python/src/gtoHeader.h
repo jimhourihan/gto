@@ -49,8 +49,11 @@ PyObject *newPropertyInfo( Gto::Reader *reader,
 // Python method prototypes
 
 PyObject *ObjectInfo_init( PyObject *_self, PyObject *args );
+PyObject *ObjectInfo_repr( PyObject *_self, PyObject *args );
 PyObject *ComponentInfo_init( PyObject *_self, PyObject *args );
+PyObject *ComponentInfo_repr( PyObject *_self, PyObject *args );
 PyObject *PropertyInfo_init( PyObject *_self, PyObject *args );
+PyObject *PropertyInfo_repr( PyObject *_self, PyObject *args );
 
 // *****************************************************************************
 // Table of methods available in the ObjectInfo class
@@ -58,6 +61,7 @@ static PyMethodDef ObjectInfoMethods[] =
 {
     {"__init__", ObjectInfo_init, METH_VARARGS, 
                 "class constructor"},
+    {"__repr__", ObjectInfo_repr, METH_VARARGS, NULL },
     {NULL}
 };
 
@@ -67,6 +71,7 @@ static PyMethodDef ComponentInfoMethods[] =
 {
     {"__init__", ComponentInfo_init, METH_VARARGS, 
                 "class constructor"},
+    {"__repr__", ComponentInfo_repr, METH_VARARGS, NULL },
     {NULL}
 };
 
@@ -76,6 +81,7 @@ static PyMethodDef PropertyInfoMethods[] =
 {
     {"__init__", PropertyInfo_init, METH_VARARGS, 
                 "class constructor"},
+    {"__repr__", PropertyInfo_repr, METH_VARARGS, NULL },
     {NULL}
 };
 

@@ -91,17 +91,6 @@ private:
 
 };
 
-// Function prototypes required for the table below
-void gtoReader_PyObject_dealloc( PyObject *self );
-PyObject *gtoReader_init( PyObject *_self, PyObject *args );
-PyObject *gtoReader_open( PyObject *_self, PyObject *args );
-PyObject *gtoReader_close( PyObject *_self, PyObject *args );
-PyObject *gtoReader_object( PyObject *_self, PyObject *args );
-PyObject *gtoReader_component( PyObject *_self, PyObject *args );
-PyObject *gtoReader_property( PyObject *_self, PyObject *args );
-PyObject *gtoReader_dataRead( PyObject *_self, PyObject *args );
-PyObject *gtoReader_stringFromId( PyObject *_self, PyObject *args );
-
 
 // *****************************************************************************
 // We need to create a Python object that gets added to 
@@ -118,6 +107,7 @@ typedef struct
     
 } gtoReader_PyObject;
 
+void gtoReader_PyObject_dealloc( PyObject *self );
 static PyTypeObject gtoReader_PyObjectType =
 {
     PyObject_HEAD_INIT( &PyType_Type )
@@ -129,6 +119,24 @@ static PyTypeObject gtoReader_PyObjectType =
 };
 
 
+// Function prototypes required for the table below
+PyObject *gtoReader_init( PyObject *_self, PyObject *args );
+PyObject *gtoReader_open( PyObject *_self, PyObject *args );
+PyObject *gtoReader_fail( PyObject *_self, PyObject *args );
+PyObject *gtoReader_why( PyObject *_self, PyObject *args );
+PyObject *gtoReader_close( PyObject *_self, PyObject *args );
+PyObject *gtoReader_object( PyObject *_self, PyObject *args );
+PyObject *gtoReader_component( PyObject *_self, PyObject *args );
+PyObject *gtoReader_property( PyObject *_self, PyObject *args );
+PyObject *gtoReader_dataRead( PyObject *_self, PyObject *args );
+PyObject *gtoReader_stringFromId( PyObject *_self, PyObject *args );
+PyObject *gtoReader_stringTable( PyObject *_self, PyObject *args );
+PyObject *gtoReader_isSwapped( PyObject *_self, PyObject *args );
+PyObject *gtoReader_objects( PyObject *_self, PyObject *args );
+PyObject *gtoReader_accessObject( PyObject *_self, PyObject *args );
+PyObject *gtoReader_components( PyObject *_self, PyObject *args );
+PyObject *gtoReader_properties( PyObject *_self, PyObject *args );
+
 
 // *****************************************************************************
 // Table of methods available in the gto.Reader base class
@@ -138,6 +146,10 @@ static PyMethodDef gtoReaderMethods[] =
                 "class constructor"},
     {"open", gtoReader_open, METH_VARARGS,
                 "open( string filename )"},
+    {"fail", gtoReader_fail, METH_VARARGS,
+                "fail( string why )"},
+    {"why", gtoReader_why, METH_VARARGS,
+                "why()"},
     {"close", gtoReader_close, METH_VARARGS,
                 "close()"},
     {"object", gtoReader_object, METH_VARARGS,
@@ -151,6 +163,19 @@ static PyMethodDef gtoReaderMethods[] =
                 "dataRead( PropertyInfo pinfo )"},
     {"stringFromId", gtoReader_stringFromId, METH_VARARGS,
                 "stringFromId( int i )"},
+    {"stringTable", gtoReader_stringTable, METH_VARARGS,
+                "stringTable()"},
+    {"isSwapped", gtoReader_isSwapped, METH_VARARGS,
+                "isSwapped()"},
+    {"objects", gtoReader_objects, METH_VARARGS,
+                "objects()"},
+    {"accessObject", gtoReader_accessObject, METH_VARARGS,
+                "accessObject( objectInfo )"},
+    {"components", gtoReader_components, METH_VARARGS,
+                "components()"},
+    {"properties", gtoReader_properties, METH_VARARGS,
+                "properties()"},
+
     {NULL},
 };
 

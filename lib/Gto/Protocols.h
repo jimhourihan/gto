@@ -95,6 +95,7 @@
 #define GTO_INTERPRET_COMPLEX      "complex"
 #define GTO_INTERPRET_INDICES      "indices"
 #define GTO_INTERPRET_BBOX         "bbox"
+#define GTO_INTERPRET_FRUSTUM      "frustum"
 #define GTO_INTERPRET_HOMOGENEOUS  "homogeneous"
 #define GTO_INTERPRET_RGB          "RGB"
 #define GTO_INTERPRET_RGBA         "RGBA"

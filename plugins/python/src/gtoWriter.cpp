@@ -39,20 +39,6 @@ void gtoWriter_PyObject_dealloc( PyObject *self )
 }
 
 // *****************************************************************************
-const char *PyTypeName( PyObject *object )
-{
-    // Figure out the class name (as a string)
-    PyObject *itemClass = PyObject_GetAttr( object,
-                                PyString_FromString( "__class__" ) );
-    assert( itemClass != NULL );
-    PyObject *itemClassName = PyObject_GetAttr( itemClass,
-                            PyString_FromString( "__name__" ) );
-    assert( itemClassName != NULL );
-
-    return PyString_AsString( itemClassName );
-}
-
-// *****************************************************************************
 // Flatten a tuple or list into a C array of any type using the converter
 // supplied.  'start' is used internally for recursive purposes.  Returns
 // the number of items in the C array.

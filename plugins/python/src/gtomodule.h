@@ -20,13 +20,16 @@
 #ifndef __GTOMODULE_H__
 #define __GTOMODULE_H__
 
-#include <python2.2/Python.h>
+#include <Python.h>
 
 namespace PyGto {
 
 // *****************************************************************************
 // Just returns a pointer to the module-wide g_gtoError object
 PyObject *gtoError();
+
+// *****************************************************************************
+const char *PyTypeName( PyObject *object );
 
 }; // End namespace pyGto
 

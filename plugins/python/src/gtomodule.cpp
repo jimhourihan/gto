@@ -19,7 +19,7 @@
 
 //
 // This is the gto module for Python 2.2.1.  It may or may not work with other
-// versions.  This module defines two class: gto.Reader and gto.Writer
+// versions.
 //
 
 #include "gtomodule.h"
@@ -37,6 +37,21 @@ static PyObject *g_gtoError = NULL;
 PyObject *gtoError()
 {
     return g_gtoError;
+}
+
+// *****************************************************************************
+// Returns the Python type name of an object as a string
+const char *PyTypeName( PyObject *object )
+{
+    // Figure out the class name (as a string)
+    PyObject *itemClass = PyObject_GetAttr( object,
+                                PyString_FromString( "__class__" ) );
+    assert( itemClass != NULL );
+    PyObject *itemClassName = PyObject_GetAttr( itemClass,
+                            PyString_FromString( "__name__" ) );
+    assert( itemClassName != NULL );
+
+    return PyString_AsString( itemClassName );
 }
 
 } // End namespace PyGto
@@ -89,7 +104,6 @@ static PyObject *defineClass( PyObject *moduleDict,
     PyDict_SetItemString( moduleDict, classNameStr, classDef );
     Py_DECREF( classDict );
     Py_DECREF( className );
-//     Py_DECREF( classDef );
     
     return classDef;
 }
@@ -98,39 +112,39 @@ static PyObject *defineClass( PyObject *moduleDict,
 static void defineConstants( PyObject *moduleDict )
 {
     PyDict_SetItemString( moduleDict, "__doc__", 
-        PyString_FromString( "gto I/O module  v3.00\n"
+        PyString_FromString( "gto I/O module  v3.01\n"
                              "(c) 2003 Tweak Films\n"
                              "Compiled on "
                              __DATE__ " at " __TIME__ ) );
 
-    PyDict_SetItemString( moduleDict, "Transposed", 
+    PyDict_SetItemString( moduleDict, "TRANSPOSED", 
         PyInt_FromLong( Gto::Transposed ) );
 
-    PyDict_SetItemString( moduleDict, "Matrix", 
+    PyDict_SetItemString( moduleDict, "MATRIX", 
         PyInt_FromLong( Gto::Matrix ) );
 
-    PyDict_SetItemString( moduleDict, "Int", 
+    PyDict_SetItemString( moduleDict, "INT", 
         PyInt_FromLong( Gto::Int ) );
 
-    PyDict_SetItemString( moduleDict, "Float", 
+    PyDict_SetItemString( moduleDict, "FLOAT", 
         PyInt_FromLong( Gto::Float ) );
 
-    PyDict_SetItemString( moduleDict, "Double", 
+    PyDict_SetItemString( moduleDict, "DOUBLE", 
         PyInt_FromLong( Gto::Double ) );
 
-    PyDict_SetItemString( moduleDict, "Half", 
+    PyDict_SetItemString( moduleDict, "HALF", 
         PyInt_FromLong( Gto::Half ) );
 
-    PyDict_SetItemString( moduleDict, "String", 
+    PyDict_SetItemString( moduleDict, "STRING", 
         PyInt_FromLong( Gto::String ) );
 
-    PyDict_SetItemString( moduleDict, "Boolean", 
+    PyDict_SetItemString( moduleDict, "BOOLEAN", 
         PyInt_FromLong( Gto::Boolean ) );
 
-    PyDict_SetItemString( moduleDict, "Short", 
+    PyDict_SetItemString( moduleDict, "SHORT", 
         PyInt_FromLong( Gto::Short ) );
 
-    PyDict_SetItemString( moduleDict, "Byte", 
+    PyDict_SetItemString( moduleDict, "BYTE", 
         PyInt_FromLong( Gto::Byte ) );
 
     PyDict_SetItemString( moduleDict, "GTO_VERSION",
@@ -146,8 +160,8 @@ extern "C" void initgto()
     PyObject *moduleDict = PyModule_GetDict( module );
     
     // Create the exception and add it to the module
-    PyGto::g_gtoError = PyErr_NewException( "gto.error", NULL, NULL );
-    PyDict_SetItemString( moduleDict, "error", PyGto::g_gtoError );
+    PyGto::g_gtoError = PyErr_NewException( "gto.Error", NULL, NULL );
+    PyDict_SetItemString( moduleDict, "Error", PyGto::g_gtoError );
 
     // Add 'constants' to the module
     defineConstants( moduleDict );
@@ -165,11 +179,11 @@ extern "C" void initgto()
     PyClassObject *readerClassObj = (PyClassObject *)( readerClass );
 
     // Add a couple of Reader-specific constants
-    PyDict_SetItemString( readerClassObj->cl_dict, "None", 
+    PyDict_SetItemString( readerClassObj->cl_dict, "NONE", 
                           PyInt_FromLong( Gto::Reader::None ) );
-    PyDict_SetItemString( readerClassObj->cl_dict, "HeaderOnly", 
+    PyDict_SetItemString( readerClassObj->cl_dict, "HEADERONLY", 
                           PyInt_FromLong( Gto::Reader::HeaderOnly ) );
-    PyDict_SetItemString( readerClassObj->cl_dict, "RandomAccess", 
+    PyDict_SetItemString( readerClassObj->cl_dict, "RANDOMACCESS", 
                           PyInt_FromLong( Gto::Reader::RandomAccess ) );
     
 

@@ -107,7 +107,7 @@ RawDataBase::~RawDataBase()
 
 //----------------------------------------------------------------------
 
-RawDataBaseReader::RawDataBaseReader() : Reader(false)
+RawDataBaseReader::RawDataBaseReader() : Reader( Gto::Reader::None )
 {
     m_dataBase = new RawDataBase;
 }
