@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2004 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -35,7 +35,8 @@ PyObject *ObjectInfo_init( PyObject *_self, PyObject *args )
 
 
 // *****************************************************************************
-PyObject *newObjectInfo( const Gto::Reader::ObjectInfo &oi )
+PyObject *newObjectInfo( Gto::Reader *reader, 
+                         const Gto::Reader::ObjectInfo &oi )
 {
     PyObject *module = PyImport_AddModule( "gto" );
     PyObject *moduleDict = PyModule_GetDict( module );
@@ -47,11 +48,13 @@ PyObject *newObjectInfo( const Gto::Reader::ObjectInfo &oi )
     
     PyObject_SetAttr( objInfo, 
                       PyString_FromString( "name" ),
-                      PyInt_FromLong( oi.name ) );
+                      PyString_FromString( 
+                            reader->stringFromId( oi.name ).c_str() ) );
 
     PyObject_SetAttr( objInfo, 
                       PyString_FromString( "protocolName" ),
-                      PyInt_FromLong( oi.protocolName ) );
+                      PyString_FromString( 
+                            reader->stringFromId( oi.protocolName ).c_str() ) );
 
     PyObject_SetAttr( objInfo, 
                       PyString_FromString( "protocolVersion" ),
@@ -60,6 +63,10 @@ PyObject *newObjectInfo( const Gto::Reader::ObjectInfo &oi )
     PyObject_SetAttr( objInfo, 
                       PyString_FromString( "numComponents" ),
                       PyInt_FromLong( oi.numComponents ) );
+
+    PyObject_SetAttr( objInfo, 
+                      PyString_FromString( "pad" ),
+                      PyInt_FromLong( oi.pad ) );
 
     Py_INCREF( objInfo );
     return objInfo;
@@ -78,7 +85,8 @@ PyObject *ComponentInfo_init( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-PyObject *newComponentInfo( const Gto::Reader::ComponentInfo &ci )
+PyObject *newComponentInfo( Gto::Reader *reader,
+                            const Gto::Reader::ComponentInfo &ci )
 {
     PyObject *module = PyImport_AddModule( "gto" );
     PyObject *moduleDict = PyModule_GetDict( module );
@@ -90,7 +98,8 @@ PyObject *newComponentInfo( const Gto::Reader::ComponentInfo &ci )
     
     PyObject_SetAttr( compInfo, 
                       PyString_FromString( "name" ),
-                      PyInt_FromLong( ci.name ) );
+                      PyString_FromString( 
+                            reader->stringFromId( ci.name ).c_str() ) );
 
     PyObject_SetAttr( compInfo, 
                       PyString_FromString( "numProperties" ),
@@ -101,8 +110,17 @@ PyObject *newComponentInfo( const Gto::Reader::ComponentInfo &ci )
                       PyInt_FromLong( ci.flags ) );
     
     PyObject_SetAttr( compInfo, 
+                      PyString_FromString( "interpretation" ),
+                      PyString_FromString( 
+                          reader->stringFromId( ci.interpretation ).c_str() ) );
+
+    PyObject_SetAttr( compInfo, 
+                      PyString_FromString( "pad" ),
+                      PyInt_FromLong( ci.pad ) );
+
+    PyObject_SetAttr( compInfo, 
                       PyString_FromString( "object" ),
-                      newObjectInfo( (*ci.object) ) );
+                      newObjectInfo( reader, (*ci.object) ) );
 
 
     Py_INCREF( compInfo );
@@ -122,7 +140,8 @@ PyObject *PropertyInfo_init( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-PyObject *newPropertyInfo( const Gto::Reader::PropertyInfo &pi )
+PyObject *newPropertyInfo( Gto::Reader *reader,
+                           const Gto::Reader::PropertyInfo &pi )
 {
     PyObject *module = PyImport_AddModule( "gto" );
     PyObject *moduleDict = PyModule_GetDict( module );
@@ -134,7 +153,8 @@ PyObject *newPropertyInfo( const Gto::Reader::PropertyInfo &pi )
     
     PyObject_SetAttr( propInfo, 
                       PyString_FromString( "name" ),
-                      PyInt_FromLong( pi.name ) );
+                      PyString_FromString( 
+                            reader->stringFromId( pi.name ).c_str() ) );
 
     PyObject_SetAttr( propInfo, 
                       PyString_FromString( "size" ),
@@ -149,8 +169,17 @@ PyObject *newPropertyInfo( const Gto::Reader::PropertyInfo &pi )
                       PyInt_FromLong( pi.width ) );
 
     PyObject_SetAttr( propInfo, 
+                      PyString_FromString( "interpretation" ),
+                      PyString_FromString( 
+                          reader->stringFromId( pi.interpretation ).c_str() ) );
+
+    PyObject_SetAttr( propInfo, 
+                      PyString_FromString( "pad" ),
+                      PyInt_FromLong( pi.pad ) );
+
+    PyObject_SetAttr( propInfo, 
                       PyString_FromString( "component" ),
-                      newComponentInfo( (*pi.component) ) );
+                      newComponentInfo( reader, (*pi.component) ) );
 
 
     Py_INCREF( propInfo );

@@ -3,7 +3,7 @@
 from distutils.core import setup, Extension
 
 setup( name="gto",
-       version="1.12",
+       version="3.00",
        description="Gto I/O module",
        author="Tweak Films",
        author_email="gto@tweakfilms.com",

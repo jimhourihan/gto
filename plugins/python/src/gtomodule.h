@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2004 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License

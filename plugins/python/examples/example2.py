@@ -25,27 +25,34 @@ gc.set_debug( gc.DEBUG_LEAK )
 objects = {}
 
 class myGtoReader( gto.Reader ):
-
+    
+    def __init__(self):
+        #
+        # Defining __init__ is NOT required, but if you do, you MUST
+        # call gto.Reader.__init(self) from it
+        #
+        gto.Reader.__init__( self )
+    
     def object( self, name, protocol, protocolVersion, oinfo ):
         objects[name] = { "_protocol" : protocol,
                           "_protocolVersion" : protocolVersion,
                           "_objectInfo" : oinfo }
         return 1
 
-    def component( self, name, cinfo ):
-        objName = self.stringFromId( cinfo.object.name )
+    def component( self, name, interp, cinfo ):
+        objName = cinfo.object.name
         objects[objName][name] = { "_componentInfo" : cinfo }
         return 1
 
-    def property( self, name, pinfo ):
-        objName = self.stringFromId( pinfo.component.object.name )
-        compName = self.stringFromId( pinfo.component.name )
+    def property( self, name, interp, pinfo ):
+        objName = pinfo.component.object.name
+        compName = pinfo.component.name
         objects[objName][compName][name] = { "_propertyInfo" : pinfo }
         return 1
 
     def dataRead( self, name, dataTuple, pinfo ):
-        objName = self.stringFromId( pinfo.component.object.name )
-        compName = self.stringFromId( pinfo.component.name )
+        objName = pinfo.component.object.name
+        compName = pinfo.component.name
         objects[objName][compName][name]["_data"] = dataTuple
 
 
@@ -85,7 +92,7 @@ for objName in objects.keys():
             propWidth = objects[objName][compName][propName]["_propertyInfo"].width
             writer.property( propName, propType, propSize, propWidth )
             if( propType == gto.String ):
-                writer.intern( objects[objName][compName][propName]["_data"] )
+                writer.intern( objects[objName][compName][propName]["_data"][0] )
         writer.endComponent()
     writer.endObject()
 

@@ -1,15 +1,19 @@
 #!/usr/bin/env python2
+#*******************************************************************************
+# Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
+#*******************************************************************************
+
 import sys
 
-from cgtypes import *
+#
 # You can get this module from:  http://cgkit.sourceforge.net/
 # If you can't get it, just change all the vec3(x,x,x) to (x,x,x) in this file
+#
+from cgtypes import *
 
 import gto
 
-print
 print gto.__doc__
-print
 
 # *****************************************************************************
 #
@@ -27,7 +31,7 @@ writer.beginObject( "test", "data", 1 )
 writer.beginComponent( "component_1" )
 writer.property( "property_1", gto.Float, 4, 4 )
 writer.property( "property_2", gto.Int, 5, 2 )
-writer.property( "property_3", gto.String, 2, 2 )
+writer.property( "property_3", gto.String, 1, 4 )
 writer.endComponent()
 writer.endObject()
 
@@ -71,15 +75,14 @@ writer.intern( strings )
 writer.beginData()
 
 # -- BEGIN BOGUS DATA -- 
+#writer.propertyData( ( 1, 2, 3, 4, 5, "bogus", 6, 7, 8 ) )
 #writer.propertyData( ( 1, 2, 3, 4, 5 ) )
-#writer.propertyData( ( 1, 2, 3, 4, 5, 6, 7, 8, "bogus", "words" ) )
 #writer.propertyData( writer )
 # -- END BOGUS DATA -- 
 
 writer.propertyData( cdata )
 writer.propertyData( bdata )
 writer.propertyData( strings )
-
 writer.propertyData( adata )
 writer.propertyData( adata )
 writer.propertyData( bdata )
@@ -109,7 +112,7 @@ types = [ "Int", "Float", "Double", "Half",
 class myGtoReader( gto.Reader ):
 
     def object( self, name, protocol, protocolVersion, oinfo ):
-        xname = self.stringFromId( oinfo.name )
+        xname = oinfo.name
         if( xname != name ):
             raise Exception, "\n\nSomething is broken in the string table!"
         print "object:", xname, " protocol:", protocol,
@@ -117,8 +120,8 @@ class myGtoReader( gto.Reader ):
         print " ", oinfo.numComponents, "components"
         return 1
 
-    def component( self, name, cinfo ):
-        print "component",name, cinfo.numProperties, "properties",
+    def component( self, name, interp, cinfo ):
+        print "component",name, interp, cinfo.numProperties, "properties",
         if( cinfo.flags & gto.Transposed ):
             print "transposed",
         if( cinfo.flags & gto.Matrix ):
@@ -126,8 +129,8 @@ class myGtoReader( gto.Reader ):
         print
         return 1
 
-    def property( self, name, pinfo ):
-        print "property", name, types[pinfo.type]+"["+str(pinfo.width)+"]",
+    def property( self, name, interp, pinfo ):
+        print "property", name, interp, types[pinfo.type]+"["+str(pinfo.width)+"]",
         print  pinfo.size,"elements"
         return 1
 
@@ -139,8 +142,6 @@ class myGtoReader( gto.Reader ):
 
 
 # create an instance of the myGtoReader class
-reader = myGtoReader()
-
+reader = myGtoReader( gto.Reader.None )
 # open the given file and set the wheels in motion...
 reader.open("test.gto")
-

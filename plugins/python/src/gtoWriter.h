@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2004 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -17,15 +17,13 @@
 // USA
 //
 
-//******************************************************************************
-// Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
-//******************************************************************************
-
 #ifndef __GTOWRITER_H__
 #define __GTOWRITER_H__
 
 #include "gtomodule.h"
 #include <Gto/Writer.h>
+#include <string>
+#include <vector>
 
 namespace PyGto {
 
@@ -60,11 +58,12 @@ typedef struct
     // property currently being written
     int m_propCount;
     
-    // Flags for graceful sanity checking
+    // For graceful sanity checking...
     bool m_beginDataCalled;
     bool m_objectDef;
     bool m_componentDef;
-    
+    std::vector<std::string> *m_propertyNames;
+
 } gtoWriter_PyObject;
 
 static PyTypeObject gtoWriter_PyObjectType =

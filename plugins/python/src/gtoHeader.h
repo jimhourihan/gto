@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2004 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -35,15 +35,22 @@
 namespace PyGto {
 
 // *****************************************************************************
-// Function prototypes
+// C++ Reader helper function prototypes
+PyObject *newObjectInfo( Gto::Reader *reader, 
+                         const Gto::Reader::ObjectInfo &oi );
+
+PyObject *newComponentInfo( Gto::Reader *reader, 
+                            const Gto::Reader::ComponentInfo &ci );
+
+PyObject *newPropertyInfo( Gto::Reader *reader, 
+                           const Gto::Reader::PropertyInfo &pi );
+
+// *****************************************************************************
+// Python method prototypes
 
 PyObject *ObjectInfo_init( PyObject *_self, PyObject *args );
 PyObject *ComponentInfo_init( PyObject *_self, PyObject *args );
 PyObject *PropertyInfo_init( PyObject *_self, PyObject *args );
-
-PyObject *newObjectInfo( const Gto::Reader::ObjectInfo &oi );
-PyObject *newComponentInfo( const Gto::Reader::ComponentInfo &ci );
-PyObject *newPropertyInfo( const Gto::Reader::PropertyInfo &pi );
 
 // *****************************************************************************
 // Table of methods available in the ObjectInfo class

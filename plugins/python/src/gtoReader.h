@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2004 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -31,19 +31,18 @@ static char readerDocString[] =
 "The basic theory of operation is similar to how the C++ Gto::Reader class\n"
 "works.  In your own code, you would create a class that is derived from\n"
 "the gto.Reader class defined in this module.  You should implement the\n"
-"'object', 'component', 'property', and 'data' methods.  See 'example.py'\n"
-"for method definitions, and Gto/Header.h for *info struct definitions.\n"
+"'object', 'component', 'property', and 'dataRead' methods.\n"
 "\n"
 "There are a couple of major differences from the C++ implementation to\n"
 "be aware of:\n"
 "\n"
 "1. The return value for the object, component, and property methods should\n"
 "   evaluate to True if you want to read that property, or false/None if\n"
-"   you don't.  There is currently no way to return a pointer/object and\n"
-"   have it passed back to you when the data function is called.  It doesn't\n"
-"   really make sense to do this in Python anyway.\n"
+"   you don't.  There is no way to return a pointer/object and have it \n"
+"   passed back to you when the data function is called.  It doesn't really\n"
+"   make sense to do this in Python anyway.\n"
 "\n"
-"2. Only the dataRead function is implemented, as the data function doesn't\n"
+"2. Only the dataRead method is implemented, as the data method doesn't\n"
 "   make sense in Python.  As each property is read, a python tuple is\n"
 "   automatically created and passed to dataRead.  Note that the prototype \n"
 "   is slightly different here than in the Gto::Reader class:  I added the \n"
@@ -66,9 +65,11 @@ public:
                             const Gto::Reader::ObjectInfo &header );
 
     virtual Request component( const std::string &name,
+                               const std::string &interp,
                                const Gto::Reader::ComponentInfo &header );
 
     virtual Request property( const std::string &name,
+                              const std::string &interp,
                               const Gto::Reader::PropertyInfo &header );
 
     virtual void *data( const PropertyInfo &pinfo, size_t bytes );
@@ -100,7 +101,6 @@ PyObject *gtoReader_component( PyObject *_self, PyObject *args );
 PyObject *gtoReader_property( PyObject *_self, PyObject *args );
 PyObject *gtoReader_dataRead( PyObject *_self, PyObject *args );
 PyObject *gtoReader_stringFromId( PyObject *_self, PyObject *args );
-PyObject *gtoReader_header( PyObject *_self, PyObject *args );
 
 
 // *****************************************************************************
@@ -151,8 +151,6 @@ static PyMethodDef gtoReaderMethods[] =
                 "dataRead( PropertyInfo pinfo )"},
     {"stringFromId", gtoReader_stringFromId, METH_VARARGS,
                 "stringFromId( int i )"},
-    {"header", gtoReader_header, METH_VARARGS,
-                "header( Header )"},
     {NULL},
 };
 

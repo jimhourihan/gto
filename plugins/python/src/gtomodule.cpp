@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2004 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -15,6 +15,11 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 // USA
+//
+
+//
+// This is the gto module for Python 2.2.1.  It may or may not work with other
+// versions.  This module defines two class: gto.Reader and gto.Writer
 //
 
 #include "gtomodule.h"
@@ -93,9 +98,10 @@ static PyObject *defineClass( PyObject *moduleDict,
 static void defineConstants( PyObject *moduleDict )
 {
     PyDict_SetItemString( moduleDict, "__doc__", 
-        PyString_FromString("gto I/O module  "
-                            "(c) 2003 Tweak Films  "
-                            "$Revision: 1.3 $" ) );
+        PyString_FromString( "gto I/O module  v3.00\n"
+                             "(c) 2003 Tweak Films\n"
+                             "Compiled on "
+                             __DATE__ " at " __TIME__ ) );
 
     PyDict_SetItemString( moduleDict, "Transposed", 
         PyInt_FromLong( Gto::Transposed ) );
