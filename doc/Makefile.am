@@ -5,3 +5,12 @@
 
 info_TEXINFOS = gto.texi
 
+SUFFIXES = .html
+
+html_docs = gto.html
+
+.texi.html:
+	$(HTMLGEN) $<
+
+.PHONY: html
+html: $(html_docs)

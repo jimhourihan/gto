@@ -1,3 +1,16 @@
+* Version 3.2
+
+      o Added RiGtoPlugin and RiGtoRibOut to the distribution.  RiGtoPlugin
+      should work with most Renderman®-compliant renderers that support the 
+      RiProcedural DynamicLoad RIB token.  The plugin will read geometry from
+      a gto file and hand it directly to the renderer, eliminating the 
+      expensive translation to/from ASCII RIB.  For those that don't support
+      DynamicLoad, you may be able to use RiProcedural RunProgram with 
+      RiGtoRibOut.  See the documentation for more details.
+
+      o I added an "html" target in the ./doc directory.  It isn't built by
+      default, but just type "make html" in there if you want html docs.
+
 * Version 3.1
 
       o Added the ability to access random objects in a gto file from the

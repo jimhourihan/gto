@@ -41,7 +41,7 @@ fi
 
 dnl ********************** Processing starts here...
 
-AC_INIT(Gto, 3.1.5)
+AC_INIT(Gto, 3.2.0)
 dnl AC_PREREQ(2.57)
 
 AC_CONFIG_AUX_DIR(config)
@@ -57,7 +57,7 @@ if test `uname` = Darwin ; then
     LDFLAGS="$LDFLAGS -L/sw/lib"
 fi
 
-SHARED_VERSION_INFO="3:1:5"
+SHARED_VERSION_INFO="3:2:0"
 AC_DISABLE_SHARED()
 AC_PROG_LIBTOOL()
 
@@ -260,7 +260,7 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM([],[
     if( ! ( ( __GNUC__ == 2 )
       && ( __GNUC_MINOR__ == 96 ) ) ) return 1;])],
 [AC_MSG_RESULT(yes)],
-[AC_MSG_ERROR( "Building the Renderman® plugin requires using gcc 2.96 (I think!)")])
+[AC_MSG_WARN( "Building the Renderman® plugin requires using gcc 2.96 (I think!)")])
 
 if test -e $gto_rman_location/include/ri.h; then :; else
 AC_MSG_ERROR("No valid installation of Renderman® was found.")
@@ -279,6 +279,12 @@ fi
 
 AC_MSG_RESULT([Using Renderman® Location: $gto_rman_location])
 fi
+
+dnl ********************** Texi checks
+
+AC_CHECK_PROG(HTMLGEN,texi2html,
+                      [texi2html -split=chapter -subdir=html],
+                      [$MAKEINFO --html --output=html])
 
 
 dnl ********************** Output:

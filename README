@@ -130,7 +130,7 @@ Or just drop us a line telling us you're using it.
             exit
 
     5. The Renderman® plugin should (theoretically) work with any
-       Renderman®-complient renderer.  So far it has been used extensively 
+       Renderman®-compliant renderer.  So far it has been used extensively 
        with Entropy, and has been compiled (but not really tested) for 
        prman 11.1 on RedHat 7
 

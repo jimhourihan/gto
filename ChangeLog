@@ -1,6 +1,12 @@
 2004-06-21  Mike Root  <mike@tweakfilms.com>
 
-	* Fixed a bug in the Python gto module.
+	* Added RiGtoPlugin and RiGtoRibOut to the distribution.  See NEWS
+	and the full documentation for details.
+
+	* Fixed a bug in the Python gto module that caused a coredump if 
+	too much data was handed to gto.Writer.propertyData().
+
+	* Added the ability to export NURBS Curves in GtoIO (import coming soon)
 
 2004-06-04  Mike Root  <mike@tweakfilms.com>
 

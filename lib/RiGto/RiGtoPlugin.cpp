@@ -67,8 +67,11 @@ Plugin::Plugin( DataBase &dataBase,
     if ( !printed && verbose )
     {
         printf( "RiGto Render Plugin\n"
-                "Copyright (c) 2002-2004, Tweak Inc. All rights reserved.\n"
-                "Version %d.%04d, built on %s at %s\n",
+                "Copyright (c) 2002-2004, Tweak Films Inc.\n"
+                "RiGto is free software, covered by the GNU Lesser General "
+                "Public License,\nand you are welcome to change it and/or "
+                "distribute copies of it under certain\nconditions.  "
+                "Version %d.%04d, built on %s at %s.\n",
                 majorVersion, minorVersion, __DATE__ , __TIME__ );
         printed = true;
     }
