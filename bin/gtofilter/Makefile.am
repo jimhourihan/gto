@@ -3,6 +3,9 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = lib bin
+AM_CPPFLAGS = -I$(top_srcdir)/lib
 
-EXTRA_DIST = examples/plane.gto examples/cube.gto
+bin_PROGRAMS = gtofilter
+
+gtoinfo_SOURCES = main.cpp
+gtoinfo_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@
