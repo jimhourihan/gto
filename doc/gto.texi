@@ -3139,7 +3139,7 @@ file and outputs the other file type.
 
 @c -------------------------------------------------------------------------
 
-@node gtoimage, gtoIO, gto2obj, Utilities
+@node gtoimage, RiGtoRibOut, gto2obj, Utilities
 @section The @command{gtoimage} Utility
 
 Usage: @samp{gtoimage @var{infile} @var{outfile}}
@@ -3186,13 +3186,13 @@ first place.  But if nothing else works, this should.
 @end itemize
 
 The command-line parameters are the same as the @var{CONFIG_STRING} for 
-RiGtoPlugin.  @xref{RiGtoPlugin}
+RiGtoPlugin.  @xref{RiGtoPlugin}.
 
 
 
 @c -------------------------------------------------------------------------
 
-@node gtoIO,  , gtoimage, Utilities
+@node gtoIO, RiGtoPlugin, RiGtoRibOut, Utilities
 @section The @command{gtoIO.so} Maya Plug-In
 
 The Maya plugin comes in two parts: the C++ plugin which implements a
@@ -3216,7 +3216,7 @@ importing of normals is disabled in Maya 5.0.
 
 @c -------------------------------------------------------------------------
 
-@node RiGtoPlugin, Changes, Utilities, Top
+@node RiGtoPlugin, RIB Instantiation, gtoIO, Utilities
 @section The @command{RiGtoPlugin} Renderman® plugin
 
 Here you will find information on using the GTO Renderman® plugin.  The
@@ -3237,7 +3237,7 @@ a work in progress.
 
 @c -------------------------------------------------------------------------
 
-@node RIB Instantiation, Changes, Utilities, Top
+@node RIB Instantiation, Config String Syntax, RiGtoPlugin, RiGtoPlugin
 @section RIB Instantiation
 
 The plugin is instantiated in a RIB Stream using the standard
@@ -3257,7 +3257,7 @@ Procedural "DynamicLoad" [ "RiGtoPlugin.so" "@var{CONFIG_STRING}" ] [ -1e6 1e6 -
 
 @c -------------------------------------------------------------------------
 
-@node Config String Syntax, Changes, Utilities, Top
+@node Config String Syntax, On-List/Off-List Syntax, RIB Instantiation, RiGtoPlugin
 @section Config String Syntax
 
 The configuration string passed into RiGtoPlugin consists
@@ -3317,7 +3317,7 @@ to create the requested geometry.
 
 @c -------------------------------------------------------------------------
 
-@node On-List/Off-List Syntax, Changes, Utilities, Top
+@node On-List/Off-List Syntax, Cache Management, Config String Syntax, RiGtoPlugin
 @section On-List/Off-List Syntax
 
 The syntax of the on-lists and off-lists is as follows:
@@ -3344,9 +3344,6 @@ The pattern must match the @emph{whole} object name.  Thus, the pattern
 
 @end itemize
 
-
-@end enumerate
-
 As an example, suppose you wanted to turn off all of the geometry
 named @code{LeftLeg*Shape*} and @code{RightLeg*Shape*} in a render - you would 
 create an off-list that looked like:
@@ -3359,7 +3356,7 @@ create an off-list that looked like:
 
 @c -------------------------------------------------------------------------
 
-@node Cache Management, Changes, Utilities, Top
+@node Cache Management, Environment Variables, On-List/Off-List Syntax, RiGtoPlugin
 @section Cache Management
 
 By default, RiGtoPlugin maintains an internal cache 
@@ -3400,7 +3397,7 @@ cause caching to be disabled entirely.
 
 @c -------------------------------------------------------------------------
 
-@node Environment Variables, Changes, Utilities, Top
+@node Environment Variables, Usage Strategy, Cache Management, RiGtoPlugin
 @section Environment Variables
 
 @defvr {Environment Variable} @code{TWK_RI_GTO_NO_SUBDS}
@@ -3418,7 +3415,7 @@ disable all caching of geometry data to save memory.
 
 @c -------------------------------------------------------------------------
 
-@node Usage Strategy, Changes, Utilities, Top
+@node Usage Strategy, Miscellaneous Renderman® Stuff, Environment Variables, RiGtoPlugin
 @section Usage Strategy
 
 The RiGtoPlugin was designed with a particular data structure in
@@ -3474,7 +3471,7 @@ Procedural "DynamicLoad" [ "RiGtoPlugin.so" "thing.ref.gto thing.0013.open.gto t
 
 @c -------------------------------------------------------------------------
 
-@node Miscellaneous Renderman® Stuff, Changes, Utilities, Top
+@node Miscellaneous Renderman® Stuff,  , Usage Strategy, RiGtoPlugin
 @section Miscellaneous Renderman® Stuff
 
 
