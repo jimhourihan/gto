@@ -162,7 +162,7 @@ void Set::reparentAll()
                 // This node already has a parent, but it isn't 
                 // correct.
                 dagMod.reparentNode( childObj, newParentObj );
-                dgMod.deleteNode( currentParentObj );
+                dagMod.deleteNode( currentParentObj );
             }
             
         }
