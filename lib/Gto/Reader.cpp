@@ -572,7 +572,11 @@ void Reader::seekForward(size_t bytes)
 {
     if (m_in)
     {
+#ifdef HAVE_FULL_IOSTREAMS
         m_in->seekg(bytes, ios_base::cur);
+#else
+        m_in->seekg(bytes, ios::cur);
+#endif
     }
 #ifdef GTO_SUPPORT_ZIP
     else
@@ -586,7 +590,11 @@ void Reader::seekTo(size_t bytes)
 {
     if (m_in)
     {
+#ifdef HAVE_FULL_IOSTREAMS
         m_in->seekg(bytes, ios_base::beg);
+#else
+        m_in->seekg(bytes, ios::beg);
+#endif
     }
 #ifdef GTO_SUPPORT_ZIP
     else

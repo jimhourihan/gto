@@ -3,6 +3,6 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = lib bin doc
+SUBDIRS = lib bin doc plugins
 
 EXTRA_DIST = examples/plane.gto examples/cube.gto

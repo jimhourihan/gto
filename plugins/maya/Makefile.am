@@ -5,10 +5,38 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(gto_maya_location)/include
 
-CXXFLAGS = -fno-exceptions -D_BOOL -D__USER__=\"$$USER\"
+AM_CXXFLAGS = -fno-exceptions -D_BOOL -D__USER__=\"$$USER\"
 
-lib_LTLIBRARIES = libgto.la
+plugindir = $MAYADIR/bin/plug-ins/
 
-libgto_la_SOURCES = Writer.cpp Reader.cpp RawData.cpp Utilities.cpp
-libgto_la_LIBS = @LIBS@
+if GTO_BUILD_MAYA
+plugin_PROGRAMS = maya
+endif
+
+maya_SOURCES = GtoInDataBase.cpp \
+               GtoInNURBS.cpp \
+               GtoInObject.cpp \
+               GtoInParticle.cpp \
+               GtoInPoly.cpp \
+               GtoInReader.cpp \
+               GtoInSet.cpp \
+               GtoInTransform.cpp \
+               GtoIO.cpp \
+               GtoOut.cpp \
+               version.cpp 
+
+EXTRA_DIST = GtoInDataBase.h \
+             GtoInNURBS.h \
+             GtoInObject.h \
+             GtoInParticle.h \
+             GtoInPoly.h \
+             GtoInReader.h \
+             GtoInSet.h \
+             GtoInTransform.h \
+             GtoIO.h \
+             GtoOut.h \
+             version.h 
+
+
+maya_LIBS = -lGto -lOpenMaya -lOpenMayaAnim -lOpenMayaRender @LIBS@ -lm -lstdc++ 
 
