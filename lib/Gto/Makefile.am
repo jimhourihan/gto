@@ -8,9 +8,6 @@ SUBDIRS = test
 INCLUDES = -I$(top_srcdir)/lib
 LIBS = -L$(top_srcdir)/lib
 
-include_HEADERS = EXTProtocols.h Header.h Protocols.h RawData.h \
-                  Reader.h Utilities.h Writer.h
-
 lib_LIBRARIES = libgto.a
 
 libgto_a_SOURCES = Writer.cpp Reader.cpp RawData.cpp Utilities.cpp

@@ -1,4 +1,8 @@
+dnl 
 dnl Process this file with autoconf to produce a configure script.
+dnl 
+
+dnl A few non-standard check definitions:
 
 AC_DEFUN([AC_CXX_NAMESPACES],
 [AC_CACHE_CHECK(whether the compiler implements namespaces,

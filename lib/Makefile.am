@@ -5,3 +5,10 @@
 
 SUBDIRS = Gto
 
+nobase_include_HEADERS = Gto/EXTProtocols.h \
+                         Gto/Header.h \
+                         Gto/Protocols.h \
+                         Gto/RawData.h \
+                         Gto/Reader.h \
+                         Gto/Utilities.h \
+                         Gto/Writer.h
