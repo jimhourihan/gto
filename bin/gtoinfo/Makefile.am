@@ -8,4 +8,4 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 bin_PROGRAMS = gtoinfo
 
 gtoinfo_SOURCES = main.cpp
-gtoinfo_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@ -lstdc++
+gtoinfo_LDADD = $(top_srcdir)/lib/Gto/libgto.la @LIBS@ 
