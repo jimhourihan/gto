@@ -53,6 +53,9 @@ AC_LANG(C++)
 AC_PROG_CC
 AC_PROG_CXX
 
+dnl This is the version info according to the libtool versioning system.
+dnl It does *not* correspond to the release number.
+SHARED_VERSION_INFO="2:0:0"
 AC_DISABLE_SHARED
 AC_PROG_LIBTOOL
 
