@@ -6,7 +6,7 @@
 @c %**end of header
 
 @ifinfo
-This file documents version 2 of the "GTO" File Format, Protocols, and
+This file documents version 2.1 of the "GTO" File Format, Protocols, and
 Utilities.
 
 Permission is granted to make and distribute verbatim copies of
@@ -38,7 +38,7 @@ notice identical to this one.
 @c  start the copyright page.
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 2002-2003 Tweak Films. All rights reserved.
+Copyright @copyright{} 2002-2004 Tweak Films. All rights reserved.
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
 are preserved on all copies.
@@ -60,7 +60,7 @@ notice identical to this one.
 This document describes the GTO file format, protocols, and
 utilities. 
 
-Copyright @copyright{} 2002-2003 Tweak Films. All rights reserved.
+Copyright @copyright{} 2002-2004 Tweak Films. All rights reserved.
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
 are preserved on all copies.
@@ -70,7 +70,7 @@ manual under the conditions for verbatim copying, provided that the entire
 resulting derived work is distributed under the terms of a permission
 notice identical to this one.
 
-This document applies to version 2 of the file format.
+This document applies to version 2.1 of the file format.
 @end ifnottex
 
 @menu
@@ -86,7 +86,8 @@ This document applies to version 2 of the file format.
 * Library::              Reading and Writing using the C++ library.
 * Module::               Reading and Writing using the Python module.
 * Utilities::            Utility Programs and Plug-ins.
-* Index::                Index of functions, types, and variables.
+* Changes::              Changes between versions.
+* Reference::            Index of functions, types, and variables.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -585,15 +586,13 @@ the binaries and library. Note that you may need to become root for
     sh> make install
 @end example
 
-To install the Python module first build the libraries and tools as
-described above. Then do the following:
+If you have Maya installed, the Maya I/O plugin can be compiled. You
+can give the @option{--enable-maya-plugin} argument to the configure
+script to have the plugin built. See the INSTALL file at the top of
+the source code tree for more information on using configure.
 
-@example
-    sh> cd plugins/python
-    sh> ./setup.py build
-    sh> ./setup.py install
-    sh> make install
-@end example
+If you have zlib installed, configure will automatically assume you
+want native compression support for the Reader/Writer library.
 
 @menu
 
@@ -602,37 +601,17 @@ Operating system specific instructions
 * Linux::                  GNU/Linux
 * OSX::                    Mac OS X
 * Windows::                Microsoft Windows 2000/XP
-
 @end menu
 
 @c ----------------------------------------------------------------------
 @node Linux, OSX, Installation, Installation
 @section GNU/Linux
 
-On non Red Hat or home grown GNU/Linux systems, the library and binary
-tools should build and install using the normal proceedure. Here at
-Tweak, we typically build the library and binary tools using gcc 3.1
-or greater. However, the library and binaries will work with any gcc
-starting with 2.95.
-
-@subsection Maya Plugin
-
-If you have Maya installed and want to use the GTO plugin,
-you will need to tell the configure script:
-
-@example
-    sh> ./configure --enable-maya-plugin
-    sh> make
-    sh> make install
-@end example
-
 The Maya plugin almost certainly requires a specific compiler for
-GNU/Linux installation with Maya 4.x or 3.x. This is because the name
-mangling must match that used by the version of the compiler Maya was
-compiled with. For 4.x and 3.x, this is the Red Hat version 2.96 of
-gcc. In versions of Red Hat Linux 7.x 2.96 is the default compiler; on
-later versions of Red Hat, 8.x and 9.x, you will need to install the
-following:
+GNU/Linux installation with Maya 4.x or 3.x. On versions of Red Hat
+Linux 7.x the default compiler should be used; this should be gcc
+2.96. On later versions of Red Hat, 8.x and 9.x, you will need to
+install the following:
 
 @example 
     compat-gcc-7.3-2.96.110.i386.rpm
@@ -651,39 +630,40 @@ to do this before running configure:
     sh> export CXX
 @end example
 
+If you are using Maya 5.x you will need to use gcc 3.1 or greater to
+compile the plugin. In that case no compatibility rpms are
+necessary. Alias recommends using gcc 3.2.
+
 If you are not using the Maya plugin, or you want to use the GTO
-library, but with a different compiler, you may need to run the build
-and installation process more than once.
+library, but using a different compiler, you may need to run the build
+and installation process more than once with different compiler
+settings. 
+
+On non Red Hat or home grown GNU/Linux systems, the library and binary
+tools should build and install using the normal proceedure. Here at
+Tweak, we typically build the library and binary tools using gcc 3.1
+or greater.
 
 @c ----------------------------------------------------------------------
 @node OSX, Windows, Linux, Installation
 @section Mac OS X
 
-In order to build the GTO library and tools, you will need the
-developer tools. Normally you get the tools on a seperate CD that
-comes with OS X. You can usually download them from Apple's website if
-not. 
-
-You should have a version of the developer tools that uses gcc 3.1 or
-better.
+The GTO library and binaries should build normally on OS X if you have
+installed the developer tools. You should have a version of the
+developer tools that uses gcc 3.1 or better.
 
 At the time of this writing, IBM has just released the XL compilers
 for OS X. We have not yet attempted to compile the GTO tools and
 library using this compiler.
 
-The configure script will automatically look for fink distributions in
-@code{/sw} for the TIFF library. (Needed by @command{gtoimage}).
-
-@subsection Maya Plugin
-
 The Maya plugin on Mac OS X requires the use of CodeWarrior to compile
 a CFM shared object for Maya versions 4.x and 5.x. In addition, for
 the 4.x versions, you will need to hack the CodeWarrior system header
-files to get the build to work (see Maya documentation on how to do
-this). We have not had much success in getting the plugin to compile
-for OS X since the header munging instructions did not work for
-us. However, there is no reason to suspect that givin the proper
-CodeWarrior version and modifications that it would not compile.
+files to get the build to work. We have not had much success in
+getting the plugin to compile for OS X since the header munging
+instructions did not work for us. However, there is no reason to
+suspect that givin the proper CodeWarrior version and modifications
+that it would not compile.
 
 We would be very obliged if someone figures out how to get that to
 work.
@@ -701,9 +681,6 @@ work arounds to compile the GTO library and Maya plugin. Because of
 this, the library and tools are currently unsupported on Windows.
 
 Your mileage may vary for other Windows compilers.
-
-If you happen to get it working or want to give us a hand with Windows
-drop us a line. 
 
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
@@ -739,9 +716,10 @@ other human readable version of the file other than the output of the
 format to give implementors a head start. The file is either big or
 little endian on disk, but should be readable on any platform.
 
-The GTO reader we provide can be linked against libz, so it can read
-gzipped GTO files natively. We find that gzipping GTO files from most
-3D programs can reduce the size by approximately 60%.
+The GTO reader we provide can be use libz, so it can read and write
+compressed files natively. We find that compressed GTO files created
+by most 3D programs are approximately 60% leaner than uncompressed
+files.
 
 The file itself contains Objects which are composed of
 Components. Components are further composed of Properties. A Property
@@ -972,8 +950,8 @@ stored as properties. The currently defined types are:
 
 @deftp {Property Type} half
 16 bit ``IEEE floating point'' number as defined by ILM's OpenEXR
-Imath library half data type. Currently a bit exotic. You can find the
-code via SourceForge @url{http://sourceforge.net/projects/openexr}.  
+Imath library half data type. You can find links to source code and
+documentation at @url{http://www.openexr.org/}.
 @end deftp
 
 @deftp {Property Type} int
@@ -1066,22 +1044,23 @@ are stored in the file.
 
 Major (Object) Protocols
 
-* Object::                      The Kitchen Sink of protocols.
-* Coordinate Systems::          Coordinate System / Transforms.
-* Particles::                   Particles are easy -- supposedly.
-* NURBS Surfaces::              NURBS and fewer letter (UBS) surfaces.
-* Polygonal Surfaces::          Polygons, in all their gory mess.
-* Subdivision Surfaces::        Catmull-Clark and Loop surfaces.
-* Image::                       Image Object.
-* Material::                    @strong{PROPOSED} Material definition.
-* Group::                       @strong{PROPOSED} Object grouping.
+* Object::                The Kitchen Sink of protocols.
+* Coordinate Systems::    Coordinate System / Transforms.
+* Particles::             Particles are easy -- supposedly.
+* NURBS Surfaces::        NURBS and fewer letter (UBS) surfaces.
+* Polygonal Surfaces::    Polygons, in all their gory mess.
+* Subdivision Surfaces::  Catmull-Clark and Loop surfaces.
+* Image::                 Image Object.
+* Material::              @strong{PROPOSED} Material definition.
+* Group::                 @strong{PROPOSED} Object grouping.
 
-* Inter-Object Connections::    Object Relationship Information.
+* Inter-Object::          Object Relationship Information.
 
 Minor Protocols
 
-* Difference::                  Difference Files.
-* Sorted Shells::               Special ordering for Polygonal Surfaces.
+* Difference::            Difference Files.
+* Sorted Shells::         Special ordering for Polygonal Surfaces.
+* Channels::              Texture and other data mapped to surfaces, etc.
 
 @end menu
 
@@ -1168,7 +1147,7 @@ of the @strong{transform} protocol, the @strong{object.parent}
 property is redundant and therefor deprecated. The
 @strong{connection} protocol
 handles the transformation hierarchy information and in a much more
-elegant manner @xref{Inter-Object Connections}.}
+elegant manner @xref{Inter-Object}.}
 @end deftypevr
 
 @c ----------------------------------------------------------------------
@@ -1446,6 +1425,14 @@ Indices into stored normals if there are any. The
 @emph{Partitioned} or @emph{Discontinuous} if this property exists.
 @end deftypevr
 
+@deftypevr {Optional Component} {} {mappings}
+Contains parametric coordinates. The property names in mappings
+usually correspond to names found in the @strong{indices} component
+but not always. For example @strong{mappings.st} would be a
+@code{float[2][]} property holding texture coordinates indexed by
+@strong{indices.st}.
+@end deftypevr
+
 @deftypevr {Optional Component} {} {smoothing}
 The smoothing component exists to hold the smoothing method and any
 ancillary data for the method. If there is no smoothing component (and
@@ -1523,8 +1510,8 @@ storage are TIFF and OpenEXR.
 
 When images are stored in a GTO file, use of Gzip compression is
 highly recommended since this protocol specifies no compression
-itself. The example GTO reader library can handle Gzip compressed GTO
-files. Gzip provides decent image data compression ratios.
+itself. As of version 2.1, the supplied Reader and Writer classes
+default to using zlib compression.
 
 @deftypevr {Required Component} {} {image}
 The image data and other information will be stored in the
@@ -1600,14 +1587,53 @@ to @code{image.size[0] * image.size[1] * ... image.size[N]} where
 @node Material, Group, Image, Protocols
 @section @strong{PROPOSED} Material Protocol
 
+The name of the protocol as it appears in the ObjectHeader is
+``material''. The material protocol groups a parameters and a method
+(shader) for rendering. The material protocol can optionally include
+the @strong{object} protocol.
+
+The material definition is renderer and pipeline dependant. Material
+assignment is implemented using the @strong{connection}
+protocol. @xref{Inter-Object}.
+
+The @strong{material} protocol is intended for use with software
+renderers. Interactive material definitions may be more easily defined
+on the assigned object.
+
+@deftypevr {Required Component} {} {material}
+Properties unrelated to parameters appear in the @strong{material}
+component. 
+@end deftypevr
+
+@deftypevr {Required Property} {string[1][1]} type
+The value of the @strong{material.type} property is renderer
+dependant. For a RIB renderer, the value of type might be ``Surface'',
+``Displacement'', ``Atmosphere'' or a similar shader type name. 
+@end deftypevr
+
+@deftypevr {Optional Property} {string[1][1]} shader
+The name of the shader. For RenderMan-like renderers this might be the
+name of an ``.sl'' file.
+@end deftypevr
+
+@deftypevr {Optional Property} {string[1][1]} genre
+A property to further identify the material. This is most useful for
+identifying the target renderer for a material.
+@end deftypevr
+
+@deftypevr {Optional Component} {} {parameters}
+The set of parameters corresponding to the @strong{material.type}. 
+@end deftypevr
+
+
 @c ----------------------------------------------------------------------
 
-@node Group, Inter-Object Connections, Material, Protocols
+@node Group, Inter-Object, Material, Protocols
 @section @strong{PROPOSED} Group Protocol
 
 
 @c ----------------------------------------------------------------------
-@node Inter-Object Connections, Difference, Group, Protocols
+@node Inter-Object, Difference, Group, Protocols
 @section Inter-Object Connection Protocol
 
 The name of the protocol as it appears in the ObjectHeader is
@@ -1672,14 +1698,13 @@ The GTO specification includes a couple of basic connection types.
 Connection Types Defined by the Spec
 
 * parent_of::             Transformation hierarcies.
-* texture::               @strong{PROPOSED} Texture map assignments.
 * material::              @strong{PROPOSED} Material assignments.
 * contains::              @strong{PROPOSED} Group/Container assignment.
 
 @end menu
 
 @c ----------------------------------------
-@node parent_of, texture, Inter-Object Connections, Inter-Object Connections
+@node parent_of, material, Inter-Object, Inter-Object
 @subsection Transformation hierarchies.
 
 The ``parent_of'' connection type is used to store transformation
@@ -1693,45 +1718,16 @@ probably an error for most applications. To be safe the topology of a
 ``parent_of'' network should be a tree.
 
 @c ----------------------------------------
-@node texture, material, parent_of, Inter-Object Connections
-@subsection @strong{PROPOSED} Texture Map Assignment
-
-The ``texture'' connection type indicates a texture map assignment to
-an object. The left-hand-side name is an object in the GTO file. The
-right-hand-side of the texture connection is the name of (or path to)
-a texture map. The map may be a file on disk or an image object in the
-GTO file.
-
-The ``texture'' connection type requires two additional properties and
-optionally may have a third:
-
-@deftypevr {Required Property} {byte[1][]} {type}
-The type of map. 1 indicates a color map.
-@end deftypevr
-
-@deftypevr {Required Property} {float[16][]} {transform}
-A 4x4 matrix transform which defines a coordinate system for
-the texture on the object.
-@end deftypevr
-
-@deftypevr {Optional Property} {string[1][]} {channel}
-The name of the ``channel'' that texture should be bound to. This is
-used to pass texture data to arbitrary shader parameters in a
-renderer. An empty string denotes not-a-channel.
-@end deftypevr
-
-@c ----------------------------------------
-@node material, contains, texture, Inter-Object Connections
+@node material, contains, parent_of, Inter-Object
 @subsection @strong{PROPOSED} Material Assignment
 
 The ``material'' connection type indicates a material assignment to an
-object. The left-hand-side name is an object in the GTO file that is
-assigned to the left-hand-side texture map.  The right-hand-side of
-the material connection is the name of (or path to) a material. The
-material may be a file on disk or an object in the GTO file.
+object. The left-hand-side name is a renderable object in a GTO file
+The right-hand-side is the name of a material object in a GTO
+file. 
 
 @c ----------------------------------------
-@node contains,  , material, Inter-Object Connections
+@node contains,  , material, Inter-Object
 @subsection @strong{PROPOSED} Container Assignment
 
 The ``contains'' connection type indicates membership in a group or
@@ -1740,7 +1736,7 @@ the RHS is the object which is a member.
 
 @c ----------------------------------------------------------------------
 
-@node Difference, Sorted Shells, Inter-Object Connections, Protocols
+@node Difference, Sorted Shells, Inter-Object, Protocols
 @section Difference File Protocol
 
 If the @strong{object.protocol} property contains the string
@@ -1759,7 +1755,7 @@ reconstruct the file represented by the difference file using the
 
 @c ----------------------------------------------------------------------
 
-@node Sorted Shells,  , Difference, Protocols
+@node Sorted Shells, Channels, Difference, Protocols
 @section Sorted Shell File Protocol
 
 If the @strong{object.protocol} property contains the string
@@ -1784,6 +1780,68 @@ shell.
 The number of contiguous elements that make up the Nth element's
 shell.
 @end deftypevr
+
+@c ----------------------------------------------------------------------
+
+@node Channels,  , Sorted Shells, Protocols
+@section Channels Protocol
+
+This minor protocol declares data mapped onto geometric
+surfaces. Usually the data is mapped using one of the
+parameterizations found in the @strong{mappings} component of
+polygonal or sub-d geometry or possibly using the natural
+parameterization of a surface as is often the case with NURBS.
+
+Each declared channel appears as a @code{string[1][]} property of a
+@strong{channels} component on the geometry. The name of the property
+is the name of the channel. The property should contain at least one
+element. 
+
+The first element of the property should indicate the name of the
+mapping to use. This is either the name of one of the properties in
+the @strong{mappings} component or ``natural'' indicating that the
+natural parameterization of the surface should be used.
+
+The second and subsequent elements should contain the name of data to
+map. This could be a texture map file on disk, an image object in the
+GTO file, or a special cookie string. The lack of second element can
+be used as a special cookie.
+
+@deftypevr {Required Component} {} {channels}
+The component holds the names of all the channels on the geometry.
+@end deftypevr
+
+@subsection Example
+
+Here is a cube with ``color'', ``specular'', and, ``bump'' channels
+assigned. 
+
+@example
+    Object "cube" protocol "polygon"
+        Component "points"
+            Property float[3][8] "position"
+        Component "elements"
+            Property byte[1][8] "type"
+            Property short[1][8] "size"
+        Component "indices"
+            Property int[1][32] "vertex"
+            Property int[1][32] "st"
+        Component "mappings"
+            Property float[2][24] "st"
+        Component "channels"
+            Property string[1][2] "color"
+            Property string[1][2] "specular"
+            Property string[1][2] "bump"
+@end example
+
+The contents of the ``channels'' properties might be:
+
+@example
+string[1] cube.channels.color    = [ "st" "cube_color.tif" ]
+string[1] cube.channels.specular = [ "st" "cube_specular.tif" ]
+string[1] cube.channels.bump     = [ "st" "cube_bump.tif" ]
+@end example
+
 
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
@@ -1879,7 +1937,7 @@ special file object exist to hold data. This object is not necessarily
 related to a logical object in the application, its just a container
 for the connection data. These objects are named using the special
 cookie syntax. Usually the name is
-``:connections''. @xref{Inter-Object Connections}.
+``:connections''. @xref{Inter-Object}.
 
 There is no rule regarding the placement of the colon in the name; it
 can appear anywhere in the name that is useful for the
@@ -1934,8 +1992,8 @@ is as analogous as possible to the binary format as well as support
 for the ASCII file type in the supplied reader and writer classes.
 
 @item
-There are currently no tools which verify that a file claiming to
-follow some protocol is correct.
+There are currently no (publicly available) tools which verify that a
+file claiming to follow some protocol is correct.
 
 @item
 There is no 3D curve(s) protocol defined.
@@ -2000,12 +2058,7 @@ least preserves a good portion of common data for transfer.
 All of the protocols related to these concepts are marked
 @strong{PROPOSED} in this
 document.
-@xref{Material}. @xref{texture}. @xref{material}.
-
-@item
-The writer class is not currently capable of directly writing a
-.gto.gz file eventhough the reader is capable of reading them
-natively. 
+@xref{Material}. @xref{material}.
 
 @end itemize
 
@@ -2017,7 +2070,7 @@ natively.
 
 If you have an extension to a protocol or would like to change an
 existing protocol, we would like to hear about it. You can send mail
-to @email{gto@@tweakfilms.com} with the changes you're using or would
+to @email{gto @emph{at} tweakfilms.com} with the changes you're using or would
 like made. We will collect ideas and proposals and try to make
 releases in a timely manner. We'd also like to hear from you if you're
 using it unmodified.
@@ -2026,7 +2079,7 @@ There is currently a small number of facilities that use the GTO
 format, but there is a large collection of tools that use it. Most
 proposals should maintain some backwards compatibility. However, we
 recognize that the there may be flaws that require revamping
-significant pieces and we're open to making changes to accomidate
+significant pieces and we're open to making changes to accommodate
 other facilities.
 
 If you are using the format for academic purposes and are looking for
@@ -2045,16 +2098,15 @@ version of the code we use is identical to the released version.
 @chapter C++ Library
 
 The GTO Reader/Writer library is written in a subset of C++. The
-intention was to make the library as portable as possible. In addition
-to the GTO library, there is a a Wavefront .obj parser. The OBJ reader
-library is useful outside of the context of GTO files, so we've
-included it as well.
+intention was to make the library as portable as
+possible. Unfortunately we have only tried it on platforms that
+support gcc 2.95 and greater. It is known to work on various Linux
+versions and Mac OS X. In either case it has been compiled with gcc.
 
 @menu
 * Reader::                      Read GTO files by deriving from the Reader.
 * Writer::                      Write GTO files by using a Writer instance.
 * RawData::                     RawData classes.
-* OBJ::                         Wavefront .obj parser.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -2074,10 +2126,11 @@ property string values. If the file was written by a machine with
 different sex (endianess) it will translate the data for you. 
 
 In addition, you can compile the GTO library with zlib support. This
-enables the Reader class to read gzipped GTO files natively. This can
-be a significant space savings on disk and on saturated networks can
-make file loading faster. You can also pass a C++ istream object to
-the Reader if you want to read ``in-core''.
+enables the Reader class to read gzipped GTO files natively and the
+Writer class to write them. This can be a significant space savings on
+disk and on saturated networks can make file loading faster. You can
+also pass a C++ istream object to the Reader if you want to read
+``in-core''.
 
 As the file is read, the Reader class will call its virtual functions
 to declare objects in the file to the derived class. The derived class
@@ -2123,6 +2176,10 @@ make error messages make sense.
 @deftypefn {Method} void Reader::close ()
 Close the file and clean up temporary data. If the stream constructor
 was used, the stream is @emph{not} closed.
+@end deftypefn
+
+@deftypefn {Method} std::string& Reader::why ()
+Returns a human readable description of why the last error occured.
 @end deftypefn
 
 @deftypefn {Method} {const std::string&} Reader::stringFromId (unsigned int)
@@ -2305,10 +2362,13 @@ Closes file opened with the open() function if still open. The
 destructor will not close any passed in output stream.
 @end deftypefn
 
-@deftypefn {Method} bool Writer::open (const char* @var{filename})
-Open the file. The Writer will attempt to open file 
-@var{filename}.  If the file is not writable for whatever reason, the
-function will return false.
+@deftypefn {Method} bool Writer::open (const char* @var{filename}, bool @var{compress} = true)
+Open the file. The Writer will attempt to open file @var{filename}.
+If the file is not writable for whatever reason, the function will
+return false. If @var{compress} is true (the default value), the
+Writer class will output a compressed file. The file can be
+uncompressed manually using @command{gzip}. Compression is available
+only if the library is compiled with zlib support.
 @end deftypefn
 
 @deftypefn {Method} void Writer::close ()
@@ -2411,7 +2471,7 @@ result of calls to the property() function.
 @end deftypefn
 
 @c -------------------------------------------------------------------------
-@node RawData, OBJ, Writer, Library
+@node RawData,  , Writer, Library
 @section Gto::RawDataReader/Gto::RawDataWriter classes
 
 These classes provide a quick method of reading the contents of a GTO
@@ -2423,34 +2483,6 @@ be found in the RawData.h file. For examples of use, see
 The RawData class shows how to both read and write using the supplied
 classes. In addition the reader subclass shows how to convert string
 data. 
-
-@c -------------------------------------------------------------------------
-@node OBJ,  , RawData, Library
-@section Wavefront .obj parser
-
-Like the GTO reader class, the WFObj reader class is used by
-sub-classing from it. The base class calls the derived class'
-functions to give it information about what's in the file.
-
-Currently the library parses only the original (old skool) OBJ
-format. So it can't handle the ``free form surface'' additions which
-include all manner of parameteric surfaces and curves. We'd like to
-incorporate those in the future, but since most applications don't
-write out those data there's not a huge need for it. 
-
-Our parser can handle some of the tricker aspects of the format (like
-negative indices) which are not usually handled properly. In addition,
-it detects out-of-bounds indices at the parsing stage so you don't
-have to worry about getting bogus data. It does not handle the
-``call'', ``scmp'', or ``csh'' tokens. 
-
-The parser will attempt to read badly formed .obj files by recovering
-at the next line of the file, but usually a badly formed file will
-result in drit.
-
-For example usage, see the @command{gto2obj} source code. While
-@command{gto2obj} does not use all the features of the parser, it does
-give a good indication how to do so.
 
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
@@ -2707,7 +2739,7 @@ Available attributes are:
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
 
-@node Utilities, Index, Module, Top
+@node Utilities, Changes, Module, Top
 @chapter Utilities
 
 @menu
@@ -2790,10 +2822,16 @@ Set verbose output. Whenever a pattern matches gtofilter will inform
 you.
 
 @item -ee/--exclude
-Shell-like pattern which will be used to exclude properties.
+Regular expression which will be used to exclude properties.
 
 @item -ie/--include
-Shell-like pattern which will be used to include properties.
+Regular expression which will be used to include properties.
+
+@item -regex
+Use POSIX regular expression syntax.
+
+@item -glob
+Use shell-like regular expression (fnmatch). This is the default.
 
 @item -o @var{out.gto}
 output .gto file
@@ -2918,9 +2956,10 @@ conforms to the @strong{image} protocol. @xref{Image}.
 You can use @command{gtomerge} to merge the image object into another
 GTO file. @xref{gtomerge}.
 
-It is highly recommend that the resulting output GTO file be gzipped
-to reduce its size. Gzipped GTO files can be read directly by the
-supplied readers.
+It is highly recommend that the resulting output GTO file be written
+with compression or gzipped to reduce its size. Gzipped GTO files can
+be read directly by the supplied readers.
+
 
 @c -------------------------------------------------------------------------
 
@@ -2938,10 +2977,69 @@ can be emitted into the GTO file.
 
 The plugin can import everything that it exports.
 
+@subsection BUGS
+
+The internal perfomance of Maya has changed between the 4.x and 5.0
+versions. In Maya 5.0, the Maya plugin is @emph{extremely} slow when
+importing polygonal normals. A fix has yet to be identified.
+
 @c -------------------------------------------------------------------------
 
-@node Index,  , Utilities, Top
-@appendix Index
+@node Changes, Reference, Utilities, Top
+@appendix Description of Changes
+
+
+@itemize @bullet
+@item Version 2.1
+
+@itemize @bullet
+
+@item
+@command{gtofilter} was changed to optionaly accept POSIX style
+regular expressions in addition to shell-like ``glob'' expressions.
+
+@item 
+The C++ writer class now defaults to writing compressed files when the
+open() function is called. A second bool argument can be passed to it
+to prevent the compression.
+
+@item 
+The proposed texture assignment protocol (from version 2.0.4) has been
+rejected.
+
+@item
+A new protocol ``channel'' is introduced for assigning mapped surface
+varying data on geometry. An arbitrary number of texture maps may be
+assigned to the geometry. @xref{Channels}.
+
+@item
+The material protocol has been fleshed out. @xref{Material}.
+
+@item
+The polygon protocol was missing the definition of the optional
+@strong{mappings} component. @xref{Polygonal Surfaces}.
+
+@end itemize
+
+
+@item Version 2.0.5
+Bug fix version. Repaired problems with the configuration
+scripts. Missing headers.
+
+@item Version 2.0.4
+Bug fix version. Some configuration problems solved.
+
+@item Version 2.0
+File headers changed. The format is not compatible with 1.0.
+
+@item Version 1.0
+@end itemize
+
+
+@c -------------------------------------------------------------------------
+
+@node Reference,  , Changes, Top
+@appendix Reference
 
 @heading Properties
 @printindex vr
