@@ -80,7 +80,7 @@ static void defineConstants( PyObject *moduleDict )
     PyDict_SetItemString( moduleDict, "__doc__", 
         PyString_FromString("gto I/O module  "
                             "(c) 2003 Tweak Films  "
-                            "$Revision: 1.1 $ + crap" ) );
+                            "$Revision: 1.2 $" ) );
 
     PyDict_SetItemString( moduleDict, "Transposed", 
         PyInt_FromLong( Gto::Transposed ) );
