@@ -49,7 +49,6 @@ AC_CONFIG_AUX_DIR(config)
 
 AM_INIT_AUTOMAKE()
 AC_LANG(C++)
-AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_CXX
 
@@ -75,7 +74,9 @@ AC_ARG_ENABLE([maya-plugin],
           [gto_build_maya=$enableval],
           [gto_build_maya=yes])
 
-AM_CONDITIONAL(GTO_BUILD_MAYA, test "$gto_build_maya"="yes")
+echo $gto_build_maya
+
+AM_CONDITIONAL(GTO_BUILD_MAYA, test x$gto_build_maya = xyes)
 
 dnl ********************** System Checks:
 
@@ -92,13 +93,18 @@ if test "$ac_cv_cxx_have_stl" != yes; then
     AC_MSG_ERROR(STL Support is required)
 fi
 
+if test `uname` = Linux; then
+        # Keeps maya includes from complaining about deprecated #pragmas
+        AC_DEFINE( LINUX )
+fi
+
 AC_MSG_CHECKING(for ios_base)
     AC_TRY_COMPILE(
     [
     #include <iostream>
     ],
     [
-    if(ios_base::cur);
+    if(std::ios_base::cur);
     ],
     [AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_FULL_IOSTREAMS)],

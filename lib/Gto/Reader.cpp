@@ -121,9 +121,9 @@ Reader::close()
 
 void Reader::header(const Header&) {}
 Reader::Request Reader::object(const string&, const string&, unsigned int,
-                    const ObjectInfo &) { return (void*)0x1; }
-Reader::Request Reader::component(const string&, const ComponentInfo &) { return (void*)0x1; }
-Reader::Request Reader::property(const string&, const PropertyInfo &) { return (void*)0x1; }
+                    const ObjectInfo &) { return Request(true); }
+Reader::Request Reader::component(const string&, const ComponentInfo &) { return Request(true); }
+Reader::Request Reader::property(const string&, const PropertyInfo &) { return Request(true); }
 void* Reader::data(const PropertyInfo&, size_t) { return 0; }
 void Reader::dataRead(const PropertyInfo&) {}
 
@@ -368,6 +368,8 @@ Reader::accessObject(ObjectInfo& o)
             }
         }
     }
+
+    return true;
 }
 
 bool
