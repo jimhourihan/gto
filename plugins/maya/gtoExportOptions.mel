@@ -1,0 +1,577 @@
+//******************************************************************************
+// Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
+//******************************************************************************
+//
+//    Description:
+//        This script posts the GTO file translator options.
+//        The optionsString is of the form:
+//            varName1=value1;varName2=value2;...
+//
+//    Parameters:
+//        $parent - the elf parent layout for this options layout. It is
+//                  always a scrollLayout.
+//        $action - the action that is to be performed with this invokation
+//                  of this proc. Valid options are:
+//                        "query" - construct the options string and pass it
+//                                    to the resultCallback.
+//                        "post" - post all the elf controls.
+//        $initialSettings - the current options string in effect at the
+//                           time this script is invoked.
+//        $resultCallback -  This is the proc to be called with the result 
+//                           string. resultCallback ( string $optionsString )
+//
+//    Returns:
+//        1 if successfull.
+//        0 otherwise.
+//
+
+global int $GtoIOpolyCollapse = 0;
+global int $GtoIOnurbsCollapse = 0;
+global int $GtoIOgeneralCollapse = 0;
+global int $GtoIOanimCollapse = 0;
+
+// *********************************
+global proc gtoIO_recurseCallback()
+{
+   if( `checkBox -q -v optRecurse` )
+    {
+        intFieldGrp -edit -en true optRecurseLimit;
+    }
+    else
+    {
+        intFieldGrp -edit -en false optRecurseLimit;
+    }
+    
+}
+
+// *********************************
+global proc gtoIO_normalsCallback()
+{
+    if( `checkBox -q -v optNormals` )
+    {
+        if( `checkBox -q -v optDifference` )
+        {
+            checkBox -edit -en true optDiffNormals;
+        }
+    }
+    else
+    {
+        checkBox -edit -en false optDiffNormals;
+    }
+    
+}
+
+// *********************************
+global proc gtoIO_differenceCallback()
+{
+    if( `checkBox -q -v optDifference` )
+    {
+        if( `checkBox -q -v optNormals` )
+        {
+            checkBox -edit -en true optDiffNormals;
+        }
+        checkBox -edit -en true optDiffPositions;
+        checkBox -edit -en true optDiffMatrices;
+    }
+    else
+    {
+        checkBox -edit -en false optDiffNormals;
+        checkBox -edit -en false optDiffPositions;
+        checkBox -edit -en false optDiffMatrices;
+    }
+}
+
+// *********************************
+global proc gtoIO_animCallback()
+{
+    if( `checkBox -q -v optAnim` )
+    {
+        intFieldGrp -edit -en true 
+            -v1 `playbackOptions -q -min`
+            -v2 `playbackOptions -q -max`
+            optFrameRange;
+        floatFieldGrp -edit -en true optShutter;
+        checkBox -e -v true optDifference;
+    }
+    else
+    {
+        intFieldGrp -edit -en false optFrameRange;
+        floatFieldGrp -edit -en false optShutter;
+        checkBox -e -v false optDifference;
+    }
+    gtoIO_differenceCallback();
+}
+
+// *********************************
+global proc int gtoExportOptions( string $parent,
+                                  string $action,
+                                  string $initialSettings,
+                                  string $resultCallback )
+{
+    global int $GtoIOpolyCollapse;
+    global int $GtoIOnurbsCollapse;
+    global int $GtoIOgeneralCollapse;
+    global int $GtoIOanimCollapse;
+
+    int       $bResult;
+    string    $currentOptions;
+    string    $optionList[];
+    string    $optionBreakDown[];
+    int       $index;
+
+    // Figure out if we're importing or exporting if we can...
+    if( `window -ex "OptionBoxWindow"` )
+    {
+            string $windowTitle = `window -q -t "OptionBoxWindow"`;
+            string $titleWords[];
+            tokenize $windowTitle $titleWords;
+        if( $titleWords[0] == "Import" )
+        {
+            setParent $parent;
+            columnLayout -co left 80;
+                text -l "There are no import options for GTO files";
+            return 0;
+        }
+        if( $titleWords[1] == "All" )
+        {
+            setParent $parent;
+            confirmDialog -t "Error" 
+                          -m "Sorry, GtoIO does not (yet) support exporting the whole scene.  Use Export Selection instead." 
+                          -db "OK";
+            deleteUI BoxLayout;
+            error "Can't Export All, use Export Selection instead.";
+            return -1;
+        }
+    }
+
+    if( $action == "post" )
+    {
+        // Build UI elements
+        setParent $parent;
+         // Spacer
+        columnLayout -h 10;
+
+        setParent $parent;
+        frameLayout -collapsable true -label "Polys and Subds" 
+                    -bv false -collapse $GtoIOpolyCollapse gtoIOPolyFrame;
+            columnLayout -co left 40;
+                checkBox
+                    -l "Output Polys as Subdivision Surfaces"
+                    -al left
+                    optSubd;
+                checkBox
+                    -l "Output Normals for Polys"
+                    -al left
+                    -cc "gtoIO_normalsCallback"
+                    optNormals;
+                checkBox
+                    -l "Output ST information"
+                    -al left
+                    optST;
+                    
+        setParent $parent;
+        frameLayout -collapsable true -label "NURBS"  -bv false
+                    -collapse $GtoIOnurbsCollapse gtoIONurbsFrame;
+            columnLayout  -co left 40;
+                checkBox
+                    -l "Normalize NURBS parameterization"
+                    -al left
+                    optNormalize;
+                    
+        setParent $parent;
+        frameLayout -collapsable true -label "Animation" -bv false
+                    -collapse $GtoIOanimCollapse gtoIOAnimFrame;
+            columnLayout;
+                columnLayout -co left 40;
+                    checkBox 
+                        -l "Animation"
+                        -al left
+                        -cc "gtoIO_animCallback"
+                        optAnim;
+                    intFieldGrp
+                        -nf 2
+                        -co3 30 10 20
+                        -ct3 left right right
+                        -cal 1 left
+                        -l "Frame Range"
+                        optFrameRange;
+                    floatFieldGrp
+                        -l "Shutter Angle"
+                        -co2 30 10 
+                        -ct2 left right
+                        -cal 1 left
+                        optShutter;
+                setParent ..;
+
+                columnLayout -h 10;
+                setParent ..;
+                columnLayout -co left 40;
+                    checkBox -label "Write as difference GTO(s):"
+                             -cc "gtoIO_differenceCallback"
+                             optDifference;
+                        columnLayout -co left 40;
+                            checkBox
+                                -l "Vertex positions"
+                                -al left
+                                optDiffPositions;
+                            checkBox
+                                -l "Matrices"
+                                -al left
+                                optDiffMatrices;
+                            checkBox
+                                -l "Normals"
+                                -al left
+                                optDiffNormals;
+                        setParent ..;
+                    setParent ..;
+                setParent ..;
+        
+        setParent $parent;
+
+        frameLayout -collapsable true -label "General" -bv false
+                    -collapse $GtoIOgeneralCollapse gtoIOGeneralFrame;
+        columnLayout -co left 40;
+            rowLayout -nc 2;
+                checkBox
+                    -l "Recursive"
+                    -al left
+                    -cc "gtoIO_recurseCallback"
+                    optRecurse;
+                intFieldGrp
+                    -l "Limit (0=infinite)"
+                    -cw 2 40
+                    optRecurseLimit;
+            setParent ..;
+            checkBox
+                -l "Export Hidden Objects"
+                -al left
+                optHidden;
+                
+            checkBox
+                -l "Force (Don't verify before writing)"
+                -al left
+                optVerify;
+                
+        setParent $parent;
+                                
+        // Now set UI controls to current settings
+        $currentOptions = $initialSettings;
+        optionVar -sv "gtoIOExportOptions" $currentOptions;
+        if( size($currentOptions) > 0 )
+        {
+            tokenize($currentOptions, ";", $optionList);
+            for( $index = 0; $index < size($optionList); $index++ )
+            {
+                tokenize($optionList[$index], "=", $optionBreakDown);
+
+                if ($optionBreakDown[0] == "recurse") 
+                {
+                    if ($optionBreakDown[1] == "0") 
+                    {
+                        checkBox -e -v false optRecurse;
+                        intFieldGrp -edit -en false optRecurseLimit;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v true optRecurse;
+                        intFieldGrp -edit -en true optRecurseLimit;
+                    }
+                } 
+                if ($optionBreakDown[0] == "recurseLimit") 
+                {
+                    int $rl = int($optionBreakDown[1]);
+                    intFieldGrp -e -v1 $rl optRecurseLimit;
+                } 
+                else if ($optionBreakDown[0] == "subd")
+                {
+                    if ($optionBreakDown[1] == "0")
+                    {
+                        checkBox -e -v false optSubd;
+                    } 
+                    else
+                    {
+                        checkBox -e -v true optSubd;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "st")
+                {
+                    if ($optionBreakDown[1] == "0")
+                    {
+                        checkBox -e -v false optST;
+                    } 
+                    else
+                    {
+                        checkBox -e -v true optST;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "diffpositions") 
+                {
+                    if ($optionBreakDown[1] == "0") 
+                    {
+                        checkBox -e -v false optDiffPositions;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v true optDiffPositions;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "diffmatrices") 
+                {
+                    if ($optionBreakDown[1] == "0") 
+                    {
+                        checkBox -e -v false optDiffMatrices;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v true optDiffMatrices;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "diffnormals") 
+                {
+                    if ($optionBreakDown[1] == "0") 
+                    {
+                        checkBox -e -v false optDiffNormals;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v true optDiffNormals;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "normals")
+                {
+                    if ($optionBreakDown[1] == "0")
+                    {
+                        checkBox -e -v false optNormals;
+                        checkBox -e -en false optDiffNormals;
+                    } 
+                    else
+                    {
+                        checkBox -e -en true optDiffNormals;
+                        checkBox -e -v true optNormals;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "isdifference") 
+                {
+                    if ($optionBreakDown[1] == "0") 
+                    {
+                        checkBox -e -v false optDifference;
+                        checkBox -e -en false optDiffPositions;
+                        checkBox -e -en false optDiffMatrices;
+                        checkBox -e -en false optDiffNormals;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v true optDifference;
+                        checkBox -e -en true optDiffPositions;
+                        checkBox -e -en true optDiffMatrices;
+                        checkBox -e -en true optDiffNormals;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "normalize")
+                {
+                    if ($optionBreakDown[1] == "0")
+                    {
+                        checkBox -e -v false optNormalize;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v true optNormalize;
+                    }
+                }
+                else if ($optionBreakDown[0] == "hidden")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optHidden;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optHidden;
+                    }
+                }
+                else if ($optionBreakDown[0] == "verify")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optVerify;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optVerify;
+                    }
+                }
+                else if ($optionBreakDown[0] == "anim")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optAnim;
+                        intFieldGrp -edit -en true optFrameRange;
+                        floatFieldGrp -edit -en true optShutter;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optAnim;
+                        intFieldGrp -edit -en false optFrameRange;
+                        floatFieldGrp -edit -en false optShutter;
+                    }
+                }
+                else if ($optionBreakDown[0] == "fs")
+                {
+                    int $fs = int($optionBreakDown[1]);
+                    intFieldGrp -e -v1 $fs optFrameRange;
+                }
+                else if ($optionBreakDown[0] == "fe")
+                {
+                    int $fe = int($optionBreakDown[1]);
+                    intFieldGrp -e -v2 $fe optFrameRange;
+                }
+                else if ($optionBreakDown[0] == "shutter")
+                {
+                    float $sa = float($optionBreakDown[1]);
+                    floatFieldGrp -e -v1 $sa optShutter;
+                }
+            }
+        }
+        $result = 1;
+    
+    } 
+    // Build the options string from the values in the UI
+    else if ($action == "query") 
+    {
+        setParent $parent;
+        $GtoIOpolyCollapse = `frameLayout -q -cl gtoIOPolyFrame`;
+        $GtoIOnurbsCollapse = `frameLayout -q -cl gtoIONurbsFrame`;
+        $GtoIOgeneralCollapse = `frameLayout -q -cl gtoIOGeneralFrame`;
+        $GtoIOanimCollapse = `frameLayout -q -cl gtoIOAnimFrame`;
+
+        if (`checkBox -q -v optRecurse` == true) 
+        {
+            $currentOptions = "recurse=1";
+        } 
+        else 
+        {
+            $currentOptions = "recurse=0";
+        }
+        $rl = `intFieldGrp -q -v1 optRecurseLimit`;
+        $currentOptions = $currentOptions + ";recurseLimit=" + $rl;
+
+        if (`checkBox -q -v optSubd` == true) 
+        {
+            $currentOptions = $currentOptions + ";subd=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";subd=0";
+        }
+
+        if (`checkBox -q -v optST` == true) 
+        {
+            $currentOptions = $currentOptions + ";st=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";st=0";
+        }
+
+        if (`checkBox -q -v optNormals` == true) 
+        {
+            $currentOptions = $currentOptions + ";normals=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";normals=0";
+        }
+
+        if (`checkBox -q -v optDiffPositions` == true) 
+        {
+            $currentOptions = $currentOptions + ";diffpositions=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";diffpositions=0";
+        }
+
+        if (`checkBox -q -v optDiffMatrices` == true) 
+        {
+            $currentOptions = $currentOptions + ";diffmatrices=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";diffmatrices=0";
+        }
+
+        if (`checkBox -q -v optDiffNormals` == true) 
+        {
+            $currentOptions = $currentOptions + ";diffnormals=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";diffnormals=0";
+        }
+
+        if (`checkBox -q -v optDifference` == true) 
+        {
+            $currentOptions = $currentOptions + ";isdifference=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";isdifference=0";
+        }
+
+        if (`checkBox -q -v optNormalize` == true) 
+        {
+            $currentOptions = $currentOptions + ";normalize=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";normalize=0";
+        }
+
+        if (`checkBox -q -v optHidden` == true) 
+        {
+            $currentOptions = $currentOptions + ";hidden=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";hidden=0";
+        }
+
+        if (`checkBox -q -v optVerify` == true) 
+        {
+            $currentOptions = $currentOptions + ";verify=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";verify=0";
+        }
+
+        if (`checkBox -q -v optAnim` == true) 
+        {
+            $currentOptions = $currentOptions + ";anim=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";anim=0";
+        }
+        $currentOptions = $currentOptions + ";fs=";
+        $currentOptions = $currentOptions + `intFieldGrp -q -v1 optFrameRange`;
+
+        $currentOptions = $currentOptions + ";fe=";
+        $currentOptions = $currentOptions + `intFieldGrp -q -v2 optFrameRange`;
+
+        $currentOptions = $currentOptions + ";shutter=";
+        $currentOptions = $currentOptions + `floatFieldGrp -q -v1 optShutter`;
+
+        // Pass the current options string to the callback
+        eval($resultCallback+" \""+$currentOptions+"\"");
+        $result = 1;
+    } 
+    else 
+    {
+        $bResult = 0;
+    }
+    
+    return $bResult;
+}
+
+
