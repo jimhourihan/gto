@@ -91,7 +91,7 @@ for objName in objects.keys():
             propSize = objects[objName][compName][propName]["_propertyInfo"].size
             propWidth = objects[objName][compName][propName]["_propertyInfo"].width
             writer.property( propName, propType, propSize, propWidth )
-            if( propType == gto.String ):
+            if( propType == gto.STRING ):
                 writer.intern( objects[objName][compName][propName]["_data"][0] )
         writer.endComponent()
     writer.endObject()
