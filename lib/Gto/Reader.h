@@ -24,11 +24,6 @@
 #include <Gto/Header.h>
 #include <vector>
 
-// Support for GNU autoconf
-#ifdef HAVE_LIBZ
-#define GTO_SUPPORT_ZIP
-#endif
-
 namespace Gto {
 
 //

@@ -19,12 +19,6 @@
 #ifndef __Gto__Header__h__
 #define __Gto__Header__h__
 
-#ifdef __APPLE__
-#ifndef PLATFORM_DARWIN
-#define PLATFORM_DARWIN
-#endif
-#endif
-
 namespace Gto {
 
 //
@@ -34,7 +28,6 @@ namespace Gto {
 #define GTO_MAGIC   671
 #define GTO_VERSION 2
 
-#define GTO_SUPPORT_ZIP
 
 typedef unsigned int        uint32;
 typedef int                 int32;

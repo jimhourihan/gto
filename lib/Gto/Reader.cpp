@@ -508,7 +508,7 @@ Reader::read(char *buffer, size_t size)
     {
         m_in->read(buffer,size);
 
-#ifndef PLATFORM_DARWIN
+#ifdef HAVE_FULL_IOSTREAMS
         if (m_in->fail())
         {
             std::cerr << "ERROR: Gto::Reader: Failed to read gto file: '";
