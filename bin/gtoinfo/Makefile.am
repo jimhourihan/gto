@@ -3,10 +3,9 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-INCLUDES = -I$(top_srcdir)/lib
-LIBS = -L$(top_srcdir)/lib/Gto
+AM_CPPFLAGS = -I$(top_srcdir)/lib
 
 bin_PROGRAMS = gtoinfo
 
 gtoinfo_SOURCES = main.cpp
-gtoinfo_LDADD = -lgto @LIBS@
+gtoinfo_LDADD = libgto.la @LIBS@

@@ -3,10 +3,10 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = test
+AM_CPPFLAGS = -I$(top_srcdir)/lib
 
-INCLUDES = -I$(top_srcdir)/lib
-LIBS = -L$(top_srcdir)/lib
+
+SUBDIRS = test
 
 lib_LTLIBRARIES = libgto.la
 
