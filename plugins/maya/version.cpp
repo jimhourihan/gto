@@ -5,7 +5,7 @@
 #include "version.h"
 #include <stdio.h>
 
-#ifdef WIN32
+#ifndef __USER__
 #define __USER__ ""
 #endif
 

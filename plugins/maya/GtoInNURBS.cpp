@@ -21,22 +21,24 @@ NURBS::NURBS( const std::string &name,
               const std::string &protocol, 
               const unsigned int protocolVersion )
   : Object( name, protocol, protocolVersion ),
-    m_degreeU( 3 ),
-    m_degreeV( 3 ),
-    m_formU( MFnNurbsSurface::kOpen ),
-    m_formV( MFnNurbsSurface::kOpen ),
     m_knotsU( NULL ),
     m_knotsUSize( 0 ),
     m_knotsV( NULL ),
     m_knotsVSize( 0 ),
-    m_minU( 0.0f ),
-    m_maxU( 1.0f ),
-    m_minV( 0.0f ),
-    m_maxV( 1.0f ),
     m_positionsRef( NULL ),
     m_positionsSize( 0 )
 {
-    // Nothing
+    m_degree[0] = 3;       // U
+    m_degree[1] = 3;       // V
+
+    m_form[0] = MFnNurbsSurface::kOpen; // U
+    m_form[1] = MFnNurbsSurface::kOpen; // V
+
+    m_Urange[0] = 0.0f;    // U
+    m_Urange[1] = 1.0f;    // V
+
+    m_Vrange[0] = 0.0f;    // U
+    m_Vrange[1] = 1.0f;    // V
 }
 
 //******************************************************************************
@@ -54,15 +56,15 @@ NURBS::~NURBS()
 //******************************************************************************
 
 //******************************************************************************
-void *NURBS::component( const std::string &name ) const
+Request NURBS::component( const std::string &name ) const
 {
     if ( name == GTO_COMPONENT_POINTS )
     {
-      return ( void * )POINTS_C;
+      return Request( true, (void *)POINTS_C );
     }
     else if ( name == GTO_COMPONENT_SURFACE )
     {
-      return ( void * )SURFACE_C;
+      return Request( true, (void *)SURFACE_C );
     }
 
     // Superclass
@@ -70,8 +72,8 @@ void *NURBS::component( const std::string &name ) const
 }
 
 //******************************************************************************
-void *NURBS::property( const std::string &name,
-                       void *componentData ) const
+Request NURBS::property( const std::string &name,
+                         void *componentData ) const
 {
     // We read:
     // points.position
@@ -85,34 +87,34 @@ void *NURBS::property( const std::string &name,
     {
         if ( name == GTO_PROPERTY_POSITION )
         {
-            return ( void * )POINTS_POSITION_P;
+            return Request( true, ( void * )POINTS_POSITION_P );
         }
         else if ( name == GTO_PROPERTY_WEIGHT )
         {
-            return ( void * )POINTS_WEIGHT_P;
+            return Request( true, ( void * )POINTS_WEIGHT_P );
         }
     }
     else if ( (( int )componentData ) == SURFACE_C )
     {
         if ( name == GTO_PROPERTY_DEGREE )
         {
-            return ( void * )SURFACE_DEGREE_P;
+            return Request( true, ( void * )SURFACE_DEGREE_P );
         }
         else if ( name == GTO_PROPERTY_UKNOTS )
         {
-            return ( void * )SURFACE_UKNOTS_P;
+            return Request( true, ( void * )SURFACE_UKNOTS_P );
         }
         else if ( name == GTO_PROPERTY_VKNOTS )
         {
-            return ( void * )SURFACE_VKNOTS_P;
+            return Request( true, ( void * )SURFACE_VKNOTS_P );
         }
         else if ( name == GTO_PROPERTY_URANGE )
         {
-            return ( void * )SURFACE_URANGE_P;
+            return Request( true, ( void * )SURFACE_URANGE_P );
         }
         else if ( name == GTO_PROPERTY_VRANGE )
         {
-            return ( void * )SURFACE_VRANGE_P;
+            return Request( true, ( void * )SURFACE_VRANGE_P );
         }
     }
 
@@ -120,94 +122,117 @@ void *NURBS::property( const std::string &name,
     return Object::property( name, componentData );
 }
 
-//******************************************************************************
-void NURBS::data( void *componentData,
-                  void *propertyData,
-                  const float *items,
-                  size_t numItems,
-                  size_t width)
+// *****************************************************************************
+void *NURBS::data( const PropertyInfo &pinfo, 
+                   size_t bytes,
+                   void *componentData,
+                   void *propertyData )
 {
-    if ( (( int )propertyData) == POINTS_POSITION_P )
+    if( ( (int)propertyData ) == POINTS_POSITION_P )
     {
-        setPositionsRef( items, numItems * width );
-        return;
+        m_tmpFloatData.resize( pinfo.size * pinfo.width );
+        return (void *)&m_tmpFloatData.front();
     }
-    else if ( (( int )propertyData) == POINTS_WEIGHT_P )
+    else if( (int)propertyData == POINTS_WEIGHT_P )
     {
-        setWeights( items, numItems * width );
-        return;
+        m_tmpFloatData.resize( pinfo.size * pinfo.width );
+        return (void *)&m_tmpFloatData.front();
     }
-    else if ( (( int )propertyData) == SURFACE_UKNOTS_P )
+    else if( (int)propertyData == SURFACE_UKNOTS_P )
     {
-        setKnotsU( items, numItems * width );
-        return;
+        delete[] m_knotsU;
+        m_knotsUSize = pinfo.size * pinfo.width;
+        m_knotsU = new float[m_knotsUSize];
+        return (void *)m_knotsU;
     }
-    else if ( (( int )propertyData) == SURFACE_VKNOTS_P )
+    else if( (int)propertyData == SURFACE_VKNOTS_P )
     {
-        setKnotsV( items, numItems * width );
-        return;
+        delete[] m_knotsV;
+        m_knotsVSize = pinfo.size * pinfo.width;
+        m_knotsV = new float[m_knotsVSize];
+        return (void *)m_knotsV;
     }
-    else if ( (( int )propertyData) == SURFACE_URANGE_P )
+    else if( (int)propertyData == SURFACE_URANGE_P )
     {
-        if ( numItems * width != 2 )
+        if ( pinfo.size * pinfo.width != 2 )
         {
             string str = "Invalid number of u range items in object: "
                          + m_name;
             MGlobal::displayWarning( str.c_str() );
-            return;
+            return NULL;
         }
-        setRangeU( items[0], items[1] );
-        return;
+        return (void *)&m_Urange[0];
     }
-    else if ( (( int )propertyData) == SURFACE_VRANGE_P )
+    else if( (int)propertyData == SURFACE_VRANGE_P )
     {
-        if ( numItems * width != 2 )
+        if ( pinfo.size * pinfo.width != 2 )
         {
             string str = "Invalid number of v range items in object: "
                          + m_name;
             MGlobal::displayWarning( str.c_str() );
-            return;
+            return NULL;
         }
-        setRangeV( items[0], items[1] );
-        return;
+        return (void *)&m_Vrange[0];
     }
-
-    // Superclass
-    Object::data( componentData, propertyData, items, numItems, width );
-}
-
-//******************************************************************************
-void NURBS::data( void *componentData,
-                  void *propertyData,
-                  const int *items,
-                  size_t numItems,
-                  size_t width)
-{
-    if ( (( int )propertyData) == SURFACE_DEGREE_P )
+    else if( (int)propertyData == SURFACE_DEGREE_P )
     {
-        if ( numItems != 2 )
+        if( pinfo.size != 2 )
         {
             string str = "Invalid number of degree items in object: "
                          + m_name;
             MGlobal::displayWarning( str.c_str() );
-            return;
+            return NULL;
         }
-        setDegree( items[0], items[1] );
-        return;
+        return (void *)&m_degree[0];
     }
-    else if ( (( int )propertyData) == SURFACE_UFORM_P )
+    else if( (int)propertyData == SURFACE_UFORM_P )
     {
-        setFormU( items[0] );
-        return;
+        if( pinfo.size != 1 )
+        {
+            string str = "Invalid number of U form items in object: "
+                         + m_name;
+            MGlobal::displayWarning( str.c_str() );
+            return NULL;
+        }
+        return (void *)&m_form[0];
     }
-    else if ( (( int )propertyData) == SURFACE_VFORM_P )
+    else if( (int)propertyData == SURFACE_VFORM_P )
     {
-        setFormV( items[0] );
-        return;
+        if( pinfo.size != 1 )
+        {
+            string str = "Invalid number of V form items in object: "
+                         + m_name;
+            MGlobal::displayWarning( str.c_str() );
+            return NULL;
+        }
+        return (void *)&m_form[1];
     }
 
     // Superclass
-    Object::data( componentData, propertyData, items, numItems, width );
+    return Object::data( pinfo, bytes, componentData, propertyData );    
+}
+
+// *****************************************************************************
+void NURBS::dataRead( const PropertyInfo &pinfo,
+                      void *componentData,
+                      void *propertyData,
+                      const StringTable &strings )
+{
+    if( (int)propertyData == POINTS_POSITION_P )
+    {
+        setPositionsRef( &m_tmpFloatData.front(), pinfo.size * pinfo.width );
+        m_tmpFloatData.clear();
+    }
+    else if( (int)propertyData == POINTS_WEIGHT_P )
+    {
+        setWeights( &m_tmpFloatData.front(), pinfo.size * pinfo.width );
+        m_tmpFloatData.clear();
+    }
+    else
+    {
+        // Superclass
+        Object::dataRead( pinfo, componentData, propertyData, strings );
+    }
 }
 
 //******************************************************************************
@@ -215,59 +240,6 @@ void NURBS::data( void *componentData,
 // INTERAL SETTINGS
 //******************************************************************************
 //******************************************************************************
-void NURBS::setDegree( int degreeU, int degreeV )
-{
-    m_degreeU = degreeU;
-    m_degreeV = degreeV;
-}
-
-// *****************************************************************************
-void NURBS::setFormU( int formU )
-{
-    m_formU = formU;
-}
-
-// *****************************************************************************
-void NURBS::setFormV( int formV )
-{
-    m_formV = formV;
-}
-
-//******************************************************************************
-void NURBS::setKnotsU( const float *knotsU, size_t knotsUSize )
-{
-    delete[] m_knotsU;
-    m_knotsUSize = knotsUSize;
-    m_knotsU = new float[m_knotsUSize];
-    memcpy( ( void * )m_knotsU,
-            ( const void * )knotsU,
-            m_knotsUSize * sizeof( float ) );
-}
-
-//******************************************************************************
-void NURBS::setKnotsV( const float *knotsV, size_t knotsVSize )
-{
-    delete[] m_knotsV;
-    m_knotsVSize = knotsVSize;
-    m_knotsV = new float[m_knotsVSize];
-    memcpy( ( void * )m_knotsV,
-            ( const void * )knotsV,
-            m_knotsVSize * sizeof( float ) );
-}
-
-//******************************************************************************
-void NURBS::setRangeU( float minU, float maxU )
-{
-    m_minU = minU;
-    m_maxU = maxU;
-}
-
-//******************************************************************************
-void NURBS::setRangeV( float minV, float maxV )
-{
-    m_minV = minV;
-    m_maxV = maxV;
-}
 
 //******************************************************************************
 void NURBS::setWeights( const float *weights, size_t weightsSize )
@@ -337,15 +309,15 @@ void NURBS::declareMaya()
     float *knotsV = &m_knotsV[1];
     
     // For now, we only handle open surfaces
-    MFnNurbsSurface::Form formU = (MFnNurbsSurface::Form)m_formU;
-    MFnNurbsSurface::Form formV = (MFnNurbsSurface::Form)m_formV;
+    MFnNurbsSurface::Form formU = (MFnNurbsSurface::Form)m_form[0];
+    MFnNurbsSurface::Form formV = (MFnNurbsSurface::Form)m_form[1];
 
     // Tell maya to use the weights (?)
     bool createRational = true;
 
     // Calculate some other handy values:
-    unsigned int degreeU = m_degreeU;
-    unsigned int degreeV = m_degreeV;
+    unsigned int degreeU = m_degree[0];
+    unsigned int degreeV = m_degree[1];
     int uSpans = knotsUSize - ( 2 * degreeU ) + 1;
     int vSpans = knotsVSize - ( 2 * degreeV ) + 1;
     unsigned int expectedCVs = ( uSpans + degreeU ) * ( vSpans + degreeV );

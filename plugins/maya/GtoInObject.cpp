@@ -12,6 +12,7 @@
 #include <maya/MTransformationMatrix.h>
 #include "GtoInObject.h"
 
+
 namespace GtoIOPlugin {
 using namespace std;
 
@@ -39,117 +40,89 @@ Object::~Object()
 }
 
 //******************************************************************************
-void *Object::component( const std::string &name ) const
+Request Object::component( const std::string &name ) const
 {
     if ( name == GTO_COMPONENT_OBJECT )
     {
-        return ( void * )OBJECT_C;
+        return Request( true, ( void * )OBJECT_C );
     }
 
-    return 0;
+    return Request( false );
 }
 
 //******************************************************************************
-void *Object::property( const std::string &name,
-                        void *componentData ) const
+Request Object::property( const std::string &name,
+                          void *componentData ) const
 {
     if ( (( int )componentData) == OBJECT_C )
     {
         if ( name == GTO_PROPERTY_GLOBAL_MATRIX )
         {
-            return ( void * )OBJECT_GLOBALMATRIX_P;
+            return Request( true, ( void * )OBJECT_GLOBALMATRIX_P );
         }
         else if( name == GTO_PROPERTY_PARENT )
         {
-            return (void *)OBJECT_PARENT_P;
+            return Request( true, (void *)OBJECT_PARENT_P );
         }
     }
 
-    return 0;
+    return Request( false );
 }
 
-//******************************************************************************
-void Object::data( void *componentData,
-                   void *propertyData,
-                   const float *items,
-                   size_t numItems,
-                   size_t width)
+// *****************************************************************************
+void *Object::data( const PropertyInfo &pinfo, 
+                    size_t bytes,
+                    void *componentData,
+                    void *propertyData )
 {
-    if ( (( int )componentData) == OBJECT_C &&
-         (( int )propertyData) == OBJECT_GLOBALMATRIX_P )
+    if( (int)componentData == OBJECT_C &&
+        (int)propertyData == OBJECT_GLOBALMATRIX_P )
     {
-        if ( numItems != 1 || width != 16 )
+        if ( pinfo.size != 1 || pinfo.width != 16 )
         {
             string str = "Wrong number of floats for transform in object: "
                          + m_name;
             MGlobal::displayWarning( str.c_str() );
-            return;
+            return NULL;
         }
-        
-        setTransform( items );
+
+        m_tmpFloatData.resize( 16 );
+        return &m_tmpFloatData.front();
     }
+    else if( (int)componentData == OBJECT_C &&
+             (int)propertyData == OBJECT_PARENT_P )
+    {
+        return &m_tmpIntData;
+    }
+
+    return NULL;
 }
 
-//******************************************************************************
-void Object::data( void *componentData,
-                   void *propertyData,
-                   const double *items,
-                   size_t numItems,
-                   size_t width)
-{
-    // Nothing
-}
-
-//******************************************************************************
-void Object::data( void *componentData,
-                   void *propertyData,
-                   const int *items,
-                   size_t numItems,
-                   size_t width)
-{
-    // Nothing
-}
-
-//******************************************************************************
-void Object::data( void *componentData,
-                   void *propertyData,
-                   const std::vector<std::string> &items,
-                   size_t numItems,
-                   size_t width)
+// *****************************************************************************
+void Object::dataRead( const PropertyInfo &pinfo,
+                       void *componentData,
+                       void *propertyData,
+                       const StringTable &strings )
 {
     if ( (( int )componentData) == OBJECT_C &&
-         (( int )propertyData) == OBJECT_PARENT_P )
+         (( int )propertyData) == OBJECT_GLOBALMATRIX_P )
     {
-        m_parent = items[0];
+        setTransform( &m_tmpFloatData.front() );
+        m_tmpFloatData.clear();
     }
-}
-
-//******************************************************************************
-void Object::data( void *componentData,
-                   void *propertyData,
-                   const unsigned short *items,
-                   size_t numItems,
-                   size_t width)
-{
-    // Nothing
-}
-
-//******************************************************************************
-void Object::data( void *componentData,
-                   void *propertyData,
-                   const unsigned char *items,
-                   size_t numItems,
-                   size_t width)
-{
-    // Nothing
+    else if( (int)componentData == OBJECT_C &&
+             (int)propertyData == OBJECT_PARENT_P )
+    {
+        m_parent = strings[m_tmpIntData];
+    }
 }
 
 //******************************************************************************
 void Object::setTransform( const float *transform )
 {
-    for (int row = 0, i=0; row < 4; row++)
+    for( int row = 0, i = 0; row < 4; row++ )
     {
-        for (int col = 0; col < 4; col++)
+        for( int col = 0; col < 4; col++ )
         {
            m_globalTransform[row][col] = transform[i++];
         }

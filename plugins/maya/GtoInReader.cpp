@@ -31,164 +31,86 @@ Reader::~Reader()
 }
 
 //******************************************************************************
-void *Reader::object( const std::string &name,
-                      const std::string &protocol,
-                      unsigned int protocolVersion,
-                      const ObjectInfo &header )
+Request Reader::object( const std::string &name,
+                        const std::string &protocol,
+                        unsigned int protocolVersion,
+                        const ObjectInfo &header )
 {
     if( m_set.object( name ) != NULL )
     {
         string str = "Skipping duplicate object name in file: "
                      + name;
         MGlobal::displayWarning( str.c_str() );
-        return GTO_REJECT;
+        return Request( false );
     }
     
     if( protocol == GTO_PROTOCOL_TRANSFORM )
     {
         Object *newObj = new Transform( name, protocol, protocolVersion );
         m_set.addObject( newObj );
-        return (void *)newObj;
+        return Request( true, (void *)newObj );
     }
     else if( protocol == GTO_PROTOCOL_NURBS )
     {
         NURBS *newObj = new NURBS( name, protocol, protocolVersion );
         m_set.addObject( newObj );
-        return (void *)newObj;
+        return Request( true, (void *)newObj );
     }
     else if( ( protocol == GTO_PROTOCOL_POLYGON ) 
               || ( protocol == GTO_PROTOCOL_CATMULL_CLARK ) )
     {
         Poly *newObj = new Poly( name, protocol, protocolVersion );
         m_set.addObject( newObj );
-        return (void *)newObj;
+        return Request( true, (void *)newObj );
     }
     else if( protocol == GTO_PROTOCOL_PARTICLE )
     {
         Particle *newObj = new Particle( name, protocol, protocolVersion );
         m_set.addObject( newObj );
-        return (void *)newObj;
+        return Request( true, (void *)newObj );
     }
     else
     {
         string str = "Skipping " + name + ", unknown protocol: " + protocol;
         MGlobal::displayWarning( str.c_str() );
-        return GTO_REJECT;
+        return Request( false );
     }
 }
 
 //******************************************************************************
-void *Reader::component( const std::string &name,
-                         const ComponentInfo &header )
+Request Reader::component( const std::string &name,
+                           const ComponentInfo &header )
 {
     const Object *object = ( const Object * )( header.object->objectData );
     return object->component( name );
 }
 
 //******************************************************************************
-void *Reader::property( const std::string &name,
-                        const PropertyInfo &header )
+Request Reader::property( const std::string &name,
+                          const PropertyInfo &header )
 {
     const Object *object =
         ( const Object * )( header.component->object->objectData );
     void *componentData = ( void * )( header.component->componentData );
-    void *ret = object->property( name, componentData );
-    return ret;
+    return object->property( name, componentData );
 }
 
-//******************************************************************************
-void Reader::data( const PropertyInfo &pinfo,
-                   const float *items,
-                   size_t numItems )
+// *****************************************************************************
+void *Reader::data( const PropertyInfo &pinfo, size_t bytes )
 {
-    Object *object =
-        ( Object * )( pinfo.component->object->objectData );
-    void *componentData = ( void * )( pinfo.component->componentData );
-    void *propertyData = ( void * )( pinfo.propertyData );
-    object->data( componentData,
-                  propertyData,
-                  items,
-                  pinfo.size,
-                  pinfo.width );
+    Object *object = ( Object * )( pinfo.component->object->objectData );
+    void *componentData = (void *)( pinfo.component->componentData );
+    void *propertyData = (void *)( pinfo.propertyData );
+    return object->data( pinfo, bytes, componentData, propertyData );
 }
 
-//******************************************************************************
-void Reader::data( const PropertyInfo &pinfo,
-                   const double *items,
-                   size_t numItems )
+// *****************************************************************************
+void Reader::dataRead( const PropertyInfo &pinfo )
 {
-    Object *object =
-        ( Object * )( pinfo.component->object->objectData );
-    void *componentData = ( void * )( pinfo.component->componentData );
-    void *propertyData = ( void * )( pinfo.propertyData );
-    object->data( componentData,
-                  propertyData,
-                  items,
-                  pinfo.size,
-                  pinfo.width );
-}
-
-//******************************************************************************
-void Reader::data( const PropertyInfo &pinfo,
-                   const int *items,
-                   size_t numItems )
-{
-    Object *object =
-        ( Object * )( pinfo.component->object->objectData );
-    void *componentData = ( void * )( pinfo.component->componentData );
-    void *propertyData = ( void * )( pinfo.propertyData );
-    
-    if( pinfo.type == Gto::String )
-    {
-        vector<string> strings;
-        for( size_t s = 0; s < pinfo.size; ++s )
-        {
-            strings.push_back( stringFromId( items[s] ) );
-        }
-        object->data( componentData,
-                      propertyData,
-                      strings,
-                      pinfo.size,
-                      pinfo.width );
-        return;
-    }
-    object->data( componentData,
-                  propertyData,
-                  items,
-                  pinfo.size,
-                  pinfo.width );
-}
-
-//******************************************************************************
-void Reader::data( const PropertyInfo &pinfo,
-                   const unsigned short *items,
-                   size_t numItems )
-{
-    Object *object =
-        ( Object * )( pinfo.component->object->objectData );
-    void *componentData = ( void * )( pinfo.component->componentData );
-    void *propertyData = ( void * )( pinfo.propertyData );
-    object->data( componentData,
-                  propertyData,
-                  items,
-                  pinfo.size,
-                  pinfo.width );
-}
-
-//******************************************************************************
-void Reader::data( const PropertyInfo &pinfo,
-                   const unsigned char *items,
-                   size_t numItems )
-{
-    Object *object =
-        ( Object * )( pinfo.component->object->objectData );
-    void *componentData = ( void * )( pinfo.component->componentData );
-    void *propertyData = ( void * )( pinfo.propertyData );
-    object->data( componentData,
-                  propertyData,
-                  items,
-                  pinfo.size,
-                  pinfo.width );
+    Object *object = ( Object * )( pinfo.component->object->objectData );
+    void *componentData = (void *)( pinfo.component->componentData );
+    void *propertyData = (void *)( pinfo.propertyData );
+    object->dataRead( pinfo, componentData, propertyData, stringTable() );
 }
 
 } // End namespace GtoIOPlugin

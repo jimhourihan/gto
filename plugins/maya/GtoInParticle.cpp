@@ -36,191 +36,65 @@ Particle::~Particle()
     }
 }
 
-void *
-Particle::component( const std::string &name ) const
+Request Particle::component( const std::string &name ) const
 {
-    if ( name == "points" )
+    if( name == "points" )
     {
-        return (void*)POINTS_C;
+        return Request( true, (void*)POINTS_C );
     }
 
     return Object::component( name );
 }
 
-void *
-Particle::property( const std::string &name,
-                    void *componentData ) const
+Request Particle::property( const std::string &name,
+                            void *componentData ) const
 {
     if ( (( int )componentData) == POINTS_C )
     {
-        Attribute *a = new Attribute(name);
-        return a;
+        Attribute *a = new Attribute( name );
+        return Request( true, (void *)a );
     }
 
     return Object::property( name, componentData );
 }
 
-void
-Particle::data( void *componentData,
-                void *propertyData,
-                const double *items,
-                size_t numItems,
-                size_t width)
+void *Particle::data( const PropertyInfo &pinfo, 
+                      size_t bytes,
+                      void *componentData,
+                      void *propertyData )
 {
-    if (int(componentData) != POINTS_C) return;
-    if (m_numParticles == 0) m_numParticles = numItems;
+    if (int(componentData) != POINTS_C) return NULL;
+    if (m_numParticles == 0) m_numParticles = pinfo.size;
     Attribute *a = reinterpret_cast<Attribute*>(propertyData);
 
-    if (m_numParticles != numItems) 
+    if (m_numParticles != pinfo.size) 
     {
         delete a;
-        return;
+        return NULL;
     }
 
-    a->width = width;
-    a->size  = numItems;
-    a->floatData = new float[numItems * width];
+    a->width = pinfo.width;
+    a->size  = pinfo.size;
+    a->floatData = new float[pinfo.size * pinfo.width];
 
-    for (int i=0, s=numItems*width; i < s; i++)
-    {
-        a->floatData[i] = float(items[i]);
-    }
-
-    if (a->name == GTO_PROPERTY_POSITION)
+    if( a->name == GTO_PROPERTY_POSITION )
     {
         m_position = a;
     }
 
     m_attributes.push_back(a);
-    Object::data( componentData, propertyData, items, numItems, width );
+    
+    return a->floatData;
 }
- 
 
-void 
-Particle::data( void *componentData,
-                void *propertyData,
-                const float *items,
-                size_t numItems,
-                size_t width)
+void Particle::dataRead( const PropertyInfo &pinfo,
+                       void *componentData,
+                       void *propertyData,
+                       const StringTable &strings )
 {
-    Attribute *a = reinterpret_cast<Attribute*>(propertyData);
-    if (int(componentData) != POINTS_C) return;
-
-    if (m_numParticles == 0) m_numParticles = numItems;
-    if (m_numParticles != numItems) 
-    {
-        delete a;
-        return;
-    }
-
-    a->width = width;
-    a->size  = numItems;
-    a->floatData = new float[numItems * width];
-    memcpy(a->floatData, items, sizeof(float)* numItems * width);
-
-    m_attributes.push_back(a);
-
-    if (a->name == GTO_PROPERTY_POSITION)
-    {
-        m_position = a;
-    }
-
-    Object::data( componentData, propertyData, items, numItems, width );
+    // Nothing
 }
 
-void 
-Particle::data( void *componentData,
-                void *propertyData,
-                const int *items,
-                size_t numItems,
-                size_t width)
-{
-    if (int(componentData) != POINTS_C) return;
-    if (m_numParticles == 0) m_numParticles = numItems;
-
-    Attribute *a = reinterpret_cast<Attribute*>(propertyData);
-
-    if (m_numParticles != numItems) 
-    {
-        delete a;
-        return;
-    }
-
-    a->width = width;
-    a->size  = numItems;
-    a->floatData = new float[numItems * width];
-
-    for (int i=0, s=numItems*width; i < s; i++)
-    {
-        a->floatData[i] = float(items[i]);
-    }
-
-    m_attributes.push_back(a);
-    Object::data( componentData, propertyData, items, numItems, width );
-}
-
-
-void
-Particle::data( void *componentData,
-                void *propertyData,
-                const unsigned short *items,
-                size_t numItems,
-                size_t width)
-{
-    if (int(componentData) != POINTS_C) return;
-    if (m_numParticles == 0) m_numParticles = numItems;
-
-    Attribute *a = reinterpret_cast<Attribute*>(propertyData);
-
-    if (m_numParticles != numItems) 
-    {
-        delete a;
-        return;
-    }
-
-    a->width = width;
-    a->size  = numItems;
-    a->floatData = new float[numItems * width];
-
-    for (int i=0, s=numItems*width; i < s; i++)
-    {
-        a->floatData[i] = float(items[i]);
-    }
-
-    m_attributes.push_back(a);
-    Object::data( componentData, propertyData, items, numItems, width );
-}
-
-void
-Particle::data( void *componentData,
-                void *propertyData,
-                const unsigned char *items,
-                size_t numItems,
-                size_t width)
-{
-    if (int(componentData) != POINTS_C) return;
-    if (m_numParticles == 0) m_numParticles = numItems;
-
-    Attribute *a = reinterpret_cast<Attribute*>(propertyData);
-
-    if (m_numParticles != numItems) 
-    {
-        delete a;
-        return;
-    }
-
-    a->width = width;
-    a->size  = numItems;
-    a->floatData = new float[numItems * width];
-
-    for (int i=0, s=numItems*width; i < s; i++)
-    {
-        a->floatData[i] = float(items[i]);
-    }
-
-    m_attributes.push_back(a);
-    Object::data( componentData, propertyData, items, numItems, width );
-}
 
 void
 Particle::declareMaya()

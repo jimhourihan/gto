@@ -10,8 +10,8 @@ AM_CXXFLAGS = -fno-exceptions -D_BOOL -D__USER__=\"$$USER\"
 plugindir = $MAYADIR/bin/plug-ins/
 
 if GTO_BUILD_MAYA
+
 plugin_PROGRAMS = maya
-endif
 
 maya_SOURCES = GtoInDataBase.cpp \
                GtoInNURBS.cpp \
@@ -40,3 +40,4 @@ EXTRA_DIST = GtoInDataBase.h \
 
 maya_LIBS = -lGto -lOpenMaya -lOpenMayaAnim -lOpenMayaRender @LIBS@ -lm -lstdc++ 
 
+endif

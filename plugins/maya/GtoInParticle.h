@@ -9,8 +9,12 @@
 #include <maya/MObject.h>
 #include <maya/MString.h>
 #include <vector>
+#include <Gto/Reader.h>
 
 namespace GtoIOPlugin {
+
+typedef Gto::Reader::Request Request;
+typedef Gto::Reader::StringTable StringTable;
 
 class Particle : public Object
 {
@@ -39,40 +43,20 @@ public:
         POINTS_C = Object::NEXT_C,
     };
 
-    virtual void *component( const std::string &name ) const;
+    virtual Request component( const std::string &name ) const;
 
-    virtual void *property( const std::string &name,
-                            void *componentData ) const;
+    virtual Request property( const std::string &name,
+                              void *componentData ) const;
 
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const double *items,
-                       size_t numItems,
-                       size_t width);
+    virtual void *data( const PropertyInfo &pinfo, 
+                        size_t bytes,
+                        void *componentData,
+                        void *propertyData );
 
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const float *items,
-                       size_t numItems,
-                       size_t width);
-    
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const int *items,
-                       size_t numItems,
-                       size_t width);
-
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const unsigned short *items,
-                       size_t numItems,
-                       size_t width);
-
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const unsigned char *items,
-                       size_t numItems,
-                       size_t width);
+    virtual void dataRead( const PropertyInfo &pinfo,
+                           void *componentData,
+                           void *propertyData,
+                           const StringTable &strings );
 
     virtual void declareMaya();
 

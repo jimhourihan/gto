@@ -10,6 +10,9 @@
 
 namespace GtoIOPlugin {
 
+typedef Gto::Reader::Request Request;
+typedef Gto::Reader::StringTable StringTable;
+
 class Poly : public Object
 {
 public:
@@ -41,28 +44,20 @@ public:
         NORMALS_NORMAL_P
     };
 
-    virtual void *component( const std::string &name ) const;
+    virtual Request component( const std::string &name ) const;
 
-    virtual void *property( const std::string &name,
-                            void *componentData ) const;
+    virtual Request property( const std::string &name,
+                              void *componentData ) const;
 
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const float *items,
-                       size_t numItems,
-                       size_t width);
-    
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const int *items,
-                       size_t numItems,
-                       size_t width);
+    virtual void *data( const PropertyInfo &pinfo, 
+                        size_t bytes,
+                        void *componentData,
+                        void *propertyData );
 
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const unsigned short *items,
-                       size_t numItems,
-                       size_t width);
+    virtual void dataRead( const PropertyInfo &pinfo,
+                           void *componentData,
+                           void *propertyData,
+                           const StringTable &strings );
 
     virtual void declareMaya();
 
@@ -99,6 +94,8 @@ protected:
 
     float *m_normalValues;
     size_t m_normalValuesSize;
+    
+    std::vector<unsigned short> m_tmpShortData;
 };
 
 } // End namespace GtoIOPlugin

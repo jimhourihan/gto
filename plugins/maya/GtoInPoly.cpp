@@ -63,27 +63,27 @@ Poly::~Poly()
 //******************************************************************************
 
 //******************************************************************************
-void *Poly::component( const std::string &name ) const
+Request Poly::component( const std::string &name ) const
 {
     if ( name == GTO_COMPONENT_POINTS )
     {
-        return ( void * )POINTS_C;
+        return Request( true, ( void * )POINTS_C );
     }
     else if ( name == GTO_COMPONENT_ELEMENTS )
     {
-        return ( void * )ELEMENTS_C;
+        return Request( true, ( void * )ELEMENTS_C );
     }
     else if ( name == GTO_COMPONENT_INDICES )
     {
-        return ( void * )INDICES_C;
+        return Request( true, ( void * )INDICES_C );
     }
     else if ( name == GTO_COMPONENT_MAPPINGS )
     {
-        return ( void * )MAPPINGS_C;
+        return Request( true, ( void * )MAPPINGS_C );
     }
     else if ( name == GTO_COMPONENT_NORMALS )
     {
-        return ( void * )NORMALS_C;
+        return Request( true, ( void * )NORMALS_C );
     }
 
     // Superclass
@@ -91,8 +91,8 @@ void *Poly::component( const std::string &name ) const
 }
 
 //******************************************************************************
-void *Poly::property( const std::string &name,
-                      void *componentData ) const
+Request Poly::property( const std::string &name,
+                        void *componentData ) const
 {
     // We read:
     // points.positions
@@ -104,43 +104,43 @@ void *Poly::property( const std::string &name,
     {
         if ( name == GTO_PROPERTY_POSITION )
         {
-            return ( void * )POINTS_POSITION_P;
+            return Request( true, ( void * )POINTS_POSITION_P );
         }
     }
     else if ( (( int )componentData ) == ELEMENTS_C )
     {
         if ( name == GTO_PROPERTY_SIZE )
         {
-            return ( void * )ELEMENTS_SIZE_P;
+            return Request( true, ( void * )ELEMENTS_SIZE_P );
         }
     }
     else if ( (( int )componentData ) == INDICES_C )
     {
         if ( name == GTO_PROPERTY_VERTEX )
         {
-            return ( void * )INDICES_VERTEX_P;
+            return Request( true, ( void * )INDICES_VERTEX_P );
         }
         else if ( name == GTO_PROPERTY_ST )
         {
-            return ( void * )INDICES_ST_P;
+            return Request( true, ( void * )INDICES_ST_P );
         }
         else if ( name == GTO_PROPERTY_NORMAL )
         {
-            return ( void * )INDICES_NORMAL_P;
+            return Request( true, ( void * )INDICES_NORMAL_P );
         }
     }
     else if ( (( int )componentData ) == MAPPINGS_C )
     {
         if ( name == GTO_PROPERTY_ST )
         {
-            return ( void * )MAPPINGS_ST_P;
+            return Request( true, ( void * )MAPPINGS_ST_P );
         }
     }
     else if ( (( int )componentData ) == NORMALS_C )
     {
         if ( name == GTO_PROPERTY_NORMAL )
         {
-            return ( void * )NORMALS_NORMAL_P;
+            return Request( true, ( void * )NORMALS_NORMAL_P );
         }
     }
 
@@ -148,77 +148,81 @@ void *Poly::property( const std::string &name,
     return Object::property( name, componentData );
 }
 
-//******************************************************************************
-void Poly::data( void *componentData,
-                 void *propertyData,
-                 const float *items,
-                 size_t numItems,
-                 size_t width)
+// *****************************************************************************
+void *Poly::data( const PropertyInfo &pinfo, 
+                  size_t bytes,
+                  void *componentData,
+                  void *propertyData )
 {
-    if ( ((int)propertyData) == POINTS_POSITION_P )
+    if( (int)propertyData == POINTS_POSITION_P )
     {
-        setPositionsRef( items, numItems * width );
-        return;
+        delete[] m_positionsRef;
+        m_positionsSize = pinfo.size * pinfo.width;
+        m_positionsRef = new float[m_positionsSize];
+        return (void *)m_positionsRef;
     }
     else if ( ((int)propertyData) == MAPPINGS_ST_P )
     {
-        setStValues( items, numItems * width );
-        return;
+        delete[] m_stValues;
+        m_stValuesSize = pinfo.size * pinfo.width;
+        m_stValues = new float[m_stValuesSize];
+        return (void *)m_stValues;
     }
     else if ( ((int)propertyData) == NORMALS_NORMAL_P )
     {
-        setNormalValues( items, numItems * width );
-        return;
+        delete[] m_stIndices;
+        m_stIndicesSize = pinfo.size * pinfo.width;
+        m_stIndices = new int[m_stIndicesSize];
+        return (void *)m_stIndices;
     }
-
-    // Superclass
-    Object::data( componentData, propertyData, items, numItems, width );
-}
-
-//******************************************************************************
-void Poly::data( void *componentData,
-                 void *propertyData,
-                 const int *items,
-                 size_t numItems,
-                 size_t width)
-{
-    if ( ((int)propertyData) == INDICES_VERTEX_P )
+    else if ( ((int)propertyData) == INDICES_VERTEX_P )
     {
-        setIndices( items, numItems * width );
-        return;
+        delete[] m_indices;
+        m_indicesSize = pinfo.size * pinfo.width;
+        m_indices = new int[m_indicesSize];
+        return (void *)m_indices;
     }
     else if ( ((int)propertyData) == INDICES_ST_P )
     {
-        setStIndices( items, numItems * width );
-        return;
+        delete[] m_stIndices;
+        m_stIndicesSize = pinfo.size * pinfo.width;
+        m_stIndices = new int[m_stIndicesSize];
+        return (void *)m_stIndices;
     }
     else if ( ((int)propertyData) == INDICES_NORMAL_P )
     {
-        setNormalIndices( items, numItems * width );
-        return;
+        delete[] m_normalIndices;
+        m_normalIndicesSize = pinfo.size * pinfo.width;;
+        m_normalIndices = new int[m_normalIndicesSize];
+        return (void *)m_normalIndices;
+    }
+    if ( ((int)propertyData) == ELEMENTS_SIZE_P )
+    {
+        m_tmpShortData.resize( pinfo.size * pinfo.width );
+        return (void *)&m_tmpShortData.front();
     }
 
     // Superclass
-    Object::data( componentData, propertyData, items, numItems, width);
+    return Object::data( pinfo, bytes, componentData, propertyData );
 }
 
-//******************************************************************************
-void Poly::data( void *componentData,
-         void *propertyData,
-         const unsigned short *items,
-         size_t numItems,
-         size_t width )
+// *****************************************************************************
+void Poly::dataRead( const PropertyInfo &pinfo,
+                     void *componentData,
+                     void *propertyData,
+                     const StringTable &strings )
 {
     if ( ((int)propertyData) == ELEMENTS_SIZE_P )
     {
-        setNumVerts( items, numItems * width );
-        return;
+        setNumVerts( &m_tmpShortData.front(), pinfo.size * pinfo.width );
+        m_tmpShortData.clear();
     }
-
-    // Superclass
-    Object::data( componentData, propertyData, items, numItems, width );
+    else
+    {
+        // Superclass    
+        Object::dataRead( pinfo, componentData, propertyData, strings );
+    }
 }
-
 
 //******************************************************************************
 //******************************************************************************

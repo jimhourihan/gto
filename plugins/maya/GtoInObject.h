@@ -10,8 +10,13 @@
 #include <vector>
 #include <sys/types.h>
 #include <Gto/Protocols.h>
+#include <Gto/Reader.h>
 
 namespace GtoIOPlugin {
+
+typedef Gto::Reader::Request Request;
+typedef Gto::Reader::PropertyInfo PropertyInfo;
+typedef Gto::Reader::StringTable StringTable;
 
 class Object
 {
@@ -43,11 +48,22 @@ public:
         NEXT_P
     };
     
-    virtual void *component( const std::string &name ) const;
+    virtual Request component( const std::string &name ) const;
     
-    virtual void *property( const std::string &name,
-                            void *componentData ) const;
+    virtual Request property( const std::string &name,
+                              void *componentData ) const;
 
+    virtual void *data( const PropertyInfo &pinfo, 
+                        size_t bytes,
+                        void *componentData,
+                        void *propertyData );
+
+    virtual void dataRead( const PropertyInfo &pinfo,
+                           void *componentData,
+                           void *propertyData,
+                           const StringTable &strings );
+
+#if 0
     virtual void data( void *componentData,
                        void *propertyData,
                        const float *items,
@@ -84,6 +100,8 @@ public:
                        size_t numItems,
                        size_t width);
 
+#endif 
+
     virtual void declareMaya() {};
     
     void addToDefaultSG();
@@ -112,6 +130,9 @@ protected:
     bool m_wasRenamed;
 
     static std::string m_filePrefix;
+    
+    std::vector<float> m_tmpFloatData;
+    int m_tmpIntData;
 };
 
 } // End namespace GtoIOPlugin

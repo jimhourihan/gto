@@ -7,8 +7,12 @@
 
 #include <maya/MObject.h>
 #include "GtoInObject.h"
+#include <Gto/Reader.h>
 
 namespace GtoIOPlugin {
+
+typedef Gto::Reader::Request Request;
+typedef Gto::Reader::StringTable StringTable;
 
 class NURBS : public Object
 {
@@ -39,53 +43,42 @@ public:
         SURFACE_VFORM_P
     };
 
-    virtual void *component( const std::string &name ) const;
+    virtual Request component( const std::string &name ) const;
 
-    virtual void *property( const std::string &name,
-                            void *componentData ) const;
+    virtual Request property( const std::string &name,
+                              void *componentData ) const;
 
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const float *items,
-                       size_t numItems,
-                       size_t width);
-    
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const int *items,
-                       size_t numItems,
-                       size_t width);
+    virtual void *data( const PropertyInfo &pinfo, 
+                        size_t bytes,
+                        void *componentData,
+                        void *propertyData );
+
+    virtual void dataRead( const PropertyInfo &pinfo,
+                           void *componentData,
+                           void *propertyData,
+                           const StringTable &strings );
 
     virtual void declareMaya();
 
 protected:
-    void setDegree( int degreeU, int degreeV );
-    void setKnotsU( const float *knotsU, size_t knotsUSize );
-    void setKnotsV( const float *knotsV, size_t knotsVSize );
-    void setRangeU( float minU, float maxU );
-    void setRangeV( float minV, float maxV );
-    void setFormU( int formU );
-    void setFormV( int formV );
     void setWeights( const float *weights, size_t weightsSize );
     void setPositionsRef( const float *positionsRef,
                           size_t positionsRefSize );
 
 protected:
-    int m_degreeU;
-    int m_degreeV;
-    int m_formU;
-    int m_formV;
+    int m_degree[2];       // U, V
+    int m_form[2];         // U, V
+    float m_Urange[2];     // min, max
+    float m_Vrange[2];     // min, max
     float *m_knotsU;
     size_t m_knotsUSize;
     float *m_knotsV;
     size_t m_knotsVSize;
-    float m_minU;
-    float m_maxU;
-    float m_minV;
-    float m_maxV;
 
     float *m_positionsRef;
     size_t m_positionsSize;
+
+    std::vector<float> m_tmpFloatData;
 };
 
 } // End namespace GtoIOPlugin
