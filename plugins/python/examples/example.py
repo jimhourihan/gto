@@ -7,14 +7,16 @@ from cgtypes import *
 
 import gto
 
+print
 print gto.__doc__
+print
 
 # *****************************************************************************
 #
-#                               gtoWriter example
+#                               gto.Writer example
 #
 
-# create an instance of the gtoWriter class
+# create an instance of the gto.Writer class
 writer = gto.Writer()
 
 # open a file
@@ -92,7 +94,7 @@ writer.close()
 
 # *****************************************************************************
 #
-#                               gtoReader example
+#                               gto.Reader example
 #
 
 # For display purposes

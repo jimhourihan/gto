@@ -1,6 +1,21 @@
-//******************************************************************************
-// Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
-//******************************************************************************
+//
+// Copyright (C) 2003 Tweak Films
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
 
 #include <sstream>
 #include "gtoWriter.h"
@@ -137,7 +152,7 @@ template<typename T> int flatten( PyObject *object,
 }
 
 // *****************************************************************************
-// gtoWriter class constructor. Does nothing, but is required anyway
+// gto.Writer class constructor. Does nothing, but is required anyway
 PyObject *gtoWriter_init( PyObject *_self, PyObject *args )
 {
     Py_INCREF( Py_None );
@@ -145,7 +160,7 @@ PyObject *gtoWriter_init( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// Implements gtoWriter.open( filename )
+// Implements gto.Writer.open( filename )
 PyObject *gtoWriter_open( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -163,6 +178,8 @@ PyObject *gtoWriter_open( PyObject *_self, PyObject *args )
     writer->m_writer = new Gto::Writer();
     writer->m_propCount = 0;
     writer->m_beginDataCalled = false;
+    writer->m_objectDef = false;
+    writer->m_componentDef = false;
 
     PyDict_SetItemString( self->in_dict,"__writer", (PyObject *)writer );
 
@@ -179,7 +196,7 @@ PyObject *gtoWriter_open( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// Implements gtoWriter.close()
+// Implements gto.Writer.close()
 PyObject *gtoWriter_close( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -212,7 +229,7 @@ PyObject *gtoWriter_close( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// Implements gtoWriter.beginObject( name, protocol )
+// Implements gto.Writer.beginObject( name, protocol, protocolVersion )
 PyObject *gtoWriter_beginObject( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -238,14 +255,29 @@ PyObject *gtoWriter_beginObject( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( writer->m_objectDef == true )
+    {
+        PyErr_SetString( gtoError(), "Can't nest object declarations" );
+        return NULL;
+    }
+    if( writer->m_beginDataCalled == true )
+    {
+        PyErr_SetString( gtoError(), "Once beginData is called, no new "
+                                     "objects can be declared" );
+        return NULL;
+    }
+
+    // Make it so
     writer->m_writer->beginObject( name, protocol, protocolVersion );
+    writer->m_objectDef = true;
 
     Py_INCREF( Py_None );
     return Py_None;
 }
 
 // *****************************************************************************
-// Implements gtoWriter.endObject()
+// Implements gto.Writer.endObject()
 PyObject *gtoWriter_endObject( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -268,7 +300,16 @@ PyObject *gtoWriter_endObject( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( writer->m_objectDef == false )
+    {
+        PyErr_SetString( gtoError(), "endObject called before beginObject" );
+        return NULL;
+    }
+
+    // Make it so
     writer->m_writer->endObject();
+    writer->m_objectDef = false;
 
     Py_INCREF( Py_None );
     return Py_None;
@@ -299,7 +340,22 @@ PyObject *gtoWriter_beginComponent( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( writer->m_objectDef == false )
+    {
+        PyErr_SetString( gtoError(), "Components can only exist inside object "
+                                     "blocks" );
+        return NULL;
+    }
+    if( writer->m_componentDef == true )
+    {
+        PyErr_SetString( gtoError(), "Can't nest component declarations" );
+        return NULL;
+    }
+
+    // Make it so
     writer->m_writer->beginComponent( name, transposed );
+    writer->m_componentDef = true;
 
     Py_INCREF( Py_None );
     return Py_None;
@@ -328,23 +384,34 @@ PyObject *gtoWriter_endComponent( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( writer->m_componentDef == false )
+    {
+        PyErr_SetString( gtoError(), "endComponent called before "
+                                     "beginComponent" );
+        return NULL;
+    }
+
+    // Make it so
     writer->m_writer->endComponent();
+    writer->m_componentDef = false;
 
     Py_INCREF( Py_None );
     return Py_None;
 }
 
 // *****************************************************************************
-// Implements property( string name, type, size, width)
+// Implements property( string name, type, numElements, partsPerElement )
 PyObject *gtoWriter_property( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
     char *name;
     int type;
-    int size;
-    int width = 1;
+    int numElements;
+    int partsPerElement = 1;
     if( ! PyArg_ParseTuple( args, "Osii|i:gtoWriter_property",
-                            &self, &name, &type, &size, &width ) )
+                            &self, &name, &type, &numElements, 
+                            &partsPerElement ) )
     {
         // Invalid parameters, let Python do a stack trace
         return NULL;
@@ -361,47 +428,25 @@ PyObject *gtoWriter_property( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( writer->m_objectDef == false || writer->m_componentDef == false )
+    {
+        PyErr_SetString( gtoError(), "Properties can only exist inside "
+                                     "object/component blocks" );
+        return NULL;
+    }
+
+    // Make it so
     writer->m_writer->property( name,
                                 (Gto::DataType)type,
-                                size, width );
+                                numElements, partsPerElement );
 
     Py_INCREF( Py_None );
     return Py_None;
 }
 
 // *****************************************************************************
-// implements gtoWriter.beginData()
-PyObject *gtoWriter_beginData( PyObject *_self, PyObject *args )
-{
-    PyInstanceObject *self;
-
-    if( ! PyArg_ParseTuple( args, "O:gtoWriter_beginData",
-                            &self ) )
-    {
-        // Invalid parameters, let Python do a stack trace
-        return NULL;
-    }
-
-    // Get a handle to our Gto::Writer instance
-    gtoWriter_PyObject *writer =
-            (gtoWriter_PyObject *)PyDict_GetItemString( self->in_dict,
-                                                        "__writer" );
-    if( writer == NULL )
-    {
-        PyErr_SetString( gtoError(), "no file is open." );
-        return NULL;
-    }
-    assert( writer->m_writer != NULL );
-
-    writer->m_writer->beginData();
-    writer->m_beginDataCalled = true;
-
-    Py_INCREF( Py_None );
-    return Py_None;
-}
-
-// *****************************************************************************
-// implements gtoWriter.intern( string | tuple | list )
+// implements gto.Writer.intern( string | tuple | list )
 PyObject *gtoWriter_intern( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -424,6 +469,7 @@ PyObject *gtoWriter_intern( PyObject *_self, PyObject *args )
         return NULL;
     }
     assert( writer->m_writer != NULL );
+
 
     // Handle a single string
     if( PyString_Check( data ) )
@@ -459,7 +505,86 @@ PyObject *gtoWriter_intern( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// implements gtoWriter.endData()
+// implements gto.Writer.lookup( string )
+PyObject *gtoWriter_lookup( PyObject *_self, PyObject *args )
+{
+    PyInstanceObject *self;
+    char *str;
+
+    if( ! PyArg_ParseTuple( args, "Os:gtoWriter_lookup",
+                            &self, &str ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    // Get a handle to our Gto::Writer instance
+    gtoWriter_PyObject *writer =
+            (gtoWriter_PyObject *)PyDict_GetItemString( self->in_dict,
+                                                        "__writer" );
+    if( writer == NULL )
+    {
+        PyErr_SetString( gtoError(), "no file is open." );
+        return NULL;
+    }
+    assert( writer->m_writer != NULL );
+
+    // Check for dumbassness
+    if( writer->m_beginDataCalled == false )
+    {
+        PyErr_SetString( gtoError(), "lookup() cannot be used until "
+                                     "beginData() is called" );
+        return NULL;
+    }
+
+    // Make it so
+    PyObject *strId_PyObj = PyInt_FromLong( writer->m_writer->lookup( str ) );
+
+    Py_INCREF( strId_PyObj );
+    return strId_PyObj;
+}
+
+// *****************************************************************************
+// implements gto.Writer.beginData()
+PyObject *gtoWriter_beginData( PyObject *_self, PyObject *args )
+{
+    PyInstanceObject *self;
+
+    if( ! PyArg_ParseTuple( args, "O:gtoWriter_beginData",
+                            &self ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    // Get a handle to our Gto::Writer instance
+    gtoWriter_PyObject *writer =
+            (gtoWriter_PyObject *)PyDict_GetItemString( self->in_dict,
+                                                        "__writer" );
+    if( writer == NULL )
+    {
+        PyErr_SetString( gtoError(), "no file is open." );
+        return NULL;
+    }
+    assert( writer->m_writer != NULL );
+
+    // Check for dumbassness
+    if( writer->m_writer->properties().size() == 0 )
+    {
+        PyErr_SetString( gtoError(), "There are no properties to write" );
+        return NULL;
+    }
+
+    // Make it so
+    writer->m_writer->beginData();
+    writer->m_beginDataCalled = true;
+
+    Py_INCREF( Py_None );
+    return Py_None;
+}
+
+// *****************************************************************************
+// implements gto.Writer.endData()
 PyObject *gtoWriter_endData( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -482,6 +607,14 @@ PyObject *gtoWriter_endData( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( writer->m_beginDataCalled == false )
+    {
+        PyErr_SetString( gtoError(), "endData called before beginData" );
+        return NULL;
+    }
+
+    // Make it so
     writer->m_writer->endData();
 
     Py_INCREF( Py_None );
@@ -490,7 +623,7 @@ PyObject *gtoWriter_endData( PyObject *_self, PyObject *args )
 
 
 // *****************************************************************************
-// implements gtoWriter.propertyData( data )
+// implements gto.Writer.propertyData( data )
 PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
@@ -514,6 +647,13 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
+    // Check for dumbassness
+    if( ! writer->m_beginDataCalled )
+    {
+        PyErr_SetString( gtoError(), "propertyData called before beginData" );
+        return NULL;
+    }
+
     // If we're handed a single value, tuple-ize it for the code below
     if( PyInt_Check( rawdata )
         || PyFloat_Check( rawdata )
@@ -532,12 +672,6 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
     if( writer->m_propCount >= writer->m_writer->properties().size() )
     {
         PyErr_SetString( gtoError(), "Undeclared data." );
-        return NULL;
-    }
-    if( ! writer->m_beginDataCalled )
-    {
-        PyErr_SetString( gtoError(), "propertyData() called before "
-                                     "beginData()" );
         return NULL;
     }
     writer->m_propCount++;

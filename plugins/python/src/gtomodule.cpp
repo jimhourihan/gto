@@ -1,9 +1,20 @@
-//******************************************************************************
-// Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
-//******************************************************************************
 //
-// This is the gto module for Python 2.2.1.  It may or may not work with other
-// versions.  This module defines two class: gtoReader and gtoWriter
+// Copyright (C) 2003 Tweak Films
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
 //
 
 #include "gtomodule.h"
@@ -33,9 +44,11 @@ static PyMethodDef ModuleMethods[] =
 };
 
 // *****************************************************************************
-// Adds a class to the module dictionary
-static void defineClass( PyObject *moduleDict, char *classNameStr, 
-                         PyMethodDef *classMethods, char *docString = NULL )
+// Adds a class to the module dictionary, and return the classDef
+static PyObject *defineClass( PyObject *moduleDict, 
+                              char *classNameStr, 
+                              PyMethodDef *classMethods, 
+                              char *docString = NULL )
 {
     PyObject *classDict = NULL;
     PyObject *className = NULL;
@@ -50,7 +63,7 @@ static void defineClass( PyObject *moduleDict, char *classNameStr,
                  PyString_FromString( docString ) );
     }
 
-    // Add methods to the gtoReader class
+    // Add methods to the class
     for( PyMethodDef *def = classMethods;
          def->ml_name != NULL; 
          def++ )
@@ -71,7 +84,9 @@ static void defineClass( PyObject *moduleDict, char *classNameStr,
     PyDict_SetItemString( moduleDict, classNameStr, classDef );
     Py_DECREF( classDict );
     Py_DECREF( className );
-    Py_DECREF( classDef );
+//     Py_DECREF( classDef );
+    
+    return classDef;
 }
 
 // *****************************************************************************
@@ -80,7 +95,7 @@ static void defineConstants( PyObject *moduleDict )
     PyDict_SetItemString( moduleDict, "__doc__", 
         PyString_FromString("gto I/O module  "
                             "(c) 2003 Tweak Films  "
-                            "$Revision: 1.2 $" ) );
+                            "$Revision: 1.3 $" ) );
 
     PyDict_SetItemString( moduleDict, "Transposed", 
         PyInt_FromLong( Gto::Transposed ) );
@@ -111,7 +126,7 @@ static void defineConstants( PyObject *moduleDict )
 
     PyDict_SetItemString( moduleDict, "Byte", 
         PyInt_FromLong( Gto::Byte ) );
-    
+
     PyDict_SetItemString( moduleDict, "GTO_VERSION",
         PyInt_FromLong( GTO_VERSION ) );
 }
@@ -137,8 +152,20 @@ extern "C" void initgto()
     defineClass( moduleDict, "PropertyInfo", PyGto::PropertyInfoMethods );
 
     // Create the Reader class
-    defineClass( moduleDict, "Reader", PyGto::gtoReaderMethods,
-                 PyGto::readerDocString );
+    PyObject *readerClass = defineClass( moduleDict, 
+                                         "Reader", 
+                                         PyGto::gtoReaderMethods,
+                                         PyGto::readerDocString );
+    PyClassObject *readerClassObj = (PyClassObject *)( readerClass );
+
+    // Add a couple of Reader-specific constants
+    PyDict_SetItemString( readerClassObj->cl_dict, "None", 
+                          PyInt_FromLong( Gto::Reader::None ) );
+    PyDict_SetItemString( readerClassObj->cl_dict, "HeaderOnly", 
+                          PyInt_FromLong( Gto::Reader::HeaderOnly ) );
+    PyDict_SetItemString( readerClassObj->cl_dict, "RandomAccess", 
+                          PyInt_FromLong( Gto::Reader::RandomAccess ) );
+    
 
     // Create the Writer class
     defineClass( moduleDict, "Writer", PyGto::gtoWriterMethods );

@@ -1,3 +1,22 @@
+//
+// Copyright (C) 2003 Tweak Films
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
+
 //******************************************************************************
 // Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
 //******************************************************************************
@@ -26,6 +45,7 @@ PyObject *gtoWriter_beginData( PyObject *_self, PyObject *args );
 PyObject *gtoWriter_endData( PyObject *_self, PyObject *args );
 PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args );
 PyObject *gtoWriter_intern( PyObject *_self, PyObject *args );
+PyObject *gtoWriter_lookup( PyObject *_self, PyObject *args );
 
 // *****************************************************************************
 // We need to create a Python object that gets added to 
@@ -38,8 +58,12 @@ typedef struct
     Gto::Writer *m_writer;
     
     // property currently being written
-    unsigned int m_propCount;
+    int m_propCount;
+    
+    // Flags for graceful sanity checking
     bool m_beginDataCalled;
+    bool m_objectDef;
+    bool m_componentDef;
     
 } gtoWriter_PyObject;
 
@@ -75,7 +99,9 @@ static PyMethodDef gtoWriterMethods[] =
                 "property( string name, int type, int numElements,"
                 " int partsPerElement  )"},
     {"intern", gtoWriter_intern, METH_VARARGS,
-                "intern()"},
+                "intern(string)"},
+    {"lookup", gtoWriter_lookup, METH_VARARGS,
+                "lookup(string)"},
     {"beginData", gtoWriter_beginData, METH_VARARGS,
                 "beginData()"},
     {"propertyData", gtoWriter_propertyData, METH_VARARGS,

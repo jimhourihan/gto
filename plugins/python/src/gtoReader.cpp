@@ -1,14 +1,48 @@
-//******************************************************************************
-// Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
-//******************************************************************************
+//
+// Copyright (C) 2003 Tweak Films
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
 
 #include "gtoReader.h"
 #include "gtoHeader.h"
-#include <Python.h>
+#include <TwkGeom/GTOReader.h>
+#include <python2.2/Python.h>
 #include <vector>
 
 namespace PyGto {
 using namespace std;
+
+// *****************************************************************************
+// Returns the C++ Gto::Reader instance if a file is open, otherwise NULL
+Reader *readerIfOpen( PyInstanceObject *self )
+{
+    gtoReader_PyObject *reader =
+            (gtoReader_PyObject *)PyDict_GetItemString( self->in_dict,
+                                                        "__reader" );
+    assert( reader->m_reader != NULL );
+
+    if( ! reader->m_isOpen )
+    {
+        PyErr_SetString( gtoError(), "no file is open." );
+        return NULL;
+    }
+
+    return reader->m_reader;
+}
 
 // *****************************************************************************
 // Properly deallocate the instance-specific stuff-holder object
@@ -58,11 +92,19 @@ static const char *typeAsString( int type )
 }
 
 // *****************************************************************************
-// The next several functions implement the methods on our derived Reader 
-// class.  They get called by Gto::Reader::open(), and their main purpose is 
-// to convert their arguments into Python objects and then call their 
-// equivalent methods on the Python gtoReader class.
+// The next several functions implement the methods on our derived C++ 
+// Gto::Reader class.  They get called by Gto::Reader::open(), and their main 
+// purpose is to convert their arguments into Python objects and then call 
+// their equivalent methods on the Python gto.Reader class.
 // *****************************************************************************
+
+// *****************************************************************************
+Reader::Reader( PyObject *callingInstance, unsigned int mode ) :
+    m_callingInstance( callingInstance ),
+    Gto::Reader::Reader( mode )
+{
+    // Nothing
+}
 
 // *****************************************************************************
 Request Reader::object( const std::string &name,
@@ -302,32 +344,63 @@ void Reader::dataRead( const PropertyInfo &pinfo )
 
 // *****************************************************************************
 // The rest of this file is dedicated to creating and implementing the Python
-// gtoReader class and its methods.  Note that in each of gto's methods, the 
+// gto.Reader class and its methods.  Note that in each of gto's methods, the 
 // first argument is PyObject *_self.  For some reason unbeknownst to me, this
 // pointer is always NULL.  The _actual_ self pointer is the first argument
 // in the PyObject *args tuple.  Go figure.
 // *****************************************************************************
 
 // *****************************************************************************
-// Class constructor. Does nothing, but is required anyway
+// Implements the gto.Reader( [mode] ) constructor
 PyObject *gtoReader_init( PyObject *_self, PyObject *args )
 {
-    Py_INCREF( Py_None );
-    return Py_None;
-}
-
-// *****************************************************************************
-// Implements gtoReader.open( filename )
-PyObject *gtoReader_open( PyObject *_self, PyObject *args )
-{
     PyInstanceObject *self;
-    char *filename;
-    if( ! PyArg_ParseTuple( args, "Os:gtoReader_open", &self, &filename ) )
+    int mode = Gto::Reader::None;
+
+    if( ! PyArg_ParseTuple( args, "O|i:gtoReader_init", &self, &mode ) )
     {
         // Invalid parameters, let Python do a stack trace
-        PyErr_Print();
         return NULL;
     }
+
+// *****************************
+    
+    // Check method definitions to be sure they're overloaded properly:
+    
+//     PyObject *methodObj = PyObject_GetAttrString( (PyObject *)self, "object" );
+//     assert( methodObj != NULL );
+//     PyObject *funcObj = PyMethod_Function( methodObj );
+//     assert( funcObj != NULL );
+//     PyObject *classObj = PyMethod_Class( methodObj );
+//     assert( classObj != NULL );
+// 
+//     PyObject *dir = PyObject_Dir( methodObj );
+//     PyObject_Print( classObj, stdout, 0 );
+//     printf( "\n" );
+
+//     PyObject *func_code = PyObject_GetAttrString( funcObj, "func_code" );
+//     assert( func_code != NULL );
+// 
+//     PyObject *clas = PyObject_GetAttrString( methodObj, "im_self" );
+//     assert( clas != NULL );
+// //     PyObject *name = PyObject_GetAttrString( clas, "__name__" );
+// //     PyObject_Print( name, stdout, 0 );
+// //     printf( "\n" );
+// 
+//     PyObject *dir = PyObject_Dir( clas );
+//     PyObject_Print( dir, stdout, 0 );
+//     printf( "\n" );
+// 
+// 
+//     PyObject *co_argcount = PyObject_GetAttrString( func_code, "co_argcount" );
+//     assert( co_argcount != NULL );
+// 
+// //     PyObject *dir = PyObject_Dir( func_code );
+//     PyObject_Print( co_argcount, stdout, 0 );
+//     printf( "\n" );
+
+    
+// *****************************
 
     // Create a new python reader object and add it to this instance's
     // dictionary
@@ -336,12 +409,46 @@ PyObject *gtoReader_open( PyObject *_self, PyObject *args )
     PyDict_SetItemString( self->in_dict, "__reader", (PyObject *)reader );
 
 
-    reader->m_reader = new Reader( (PyObject *)self );
+    reader->m_reader = new Reader( (PyObject *)self, mode );
+    if( ! reader->m_reader  )
+    {
+        PyErr_Format( gtoError(), "Unable to create instance of Gto::Reader.  "
+                                  "Bad parameters?" );
+        return NULL;
+    }
+    
+    reader->m_isOpen = false;
 
+    Py_INCREF( Py_None );
+    return Py_None;
+}
+
+// *****************************************************************************
+// Implements gto.Reader.open( filename )
+PyObject *gtoReader_open( PyObject *_self, PyObject *args )
+{
+    PyInstanceObject *self;
+    char *filename;
+    if( ! PyArg_ParseTuple( args, "Os:gtoReader_open", &self, &filename ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    gtoReader_PyObject *reader =
+            (gtoReader_PyObject *)PyDict_GetItemString( self->in_dict,
+                                                        "__reader" );
+    assert( reader->m_reader != NULL );
+
+    // We set isOpen _before_ calling open, because it is the open method that
+    // calls all our other crap.  If we don't do it now, we don't get another
+    // chance until it's all over.
+    reader->m_isOpen = true;
     if( ! reader->m_reader->open( filename ) )
     {
         PyErr_Format( gtoError(), "Unable to open specified file: %s",
                       filename );
+        reader->m_isOpen = false;
         return NULL;
     }
 
@@ -350,8 +457,31 @@ PyObject *gtoReader_open( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
+// Implements gto.Reader.close()
+PyObject *gtoReader_close( PyObject *_self, PyObject *args )
+{
+    PyInstanceObject *self;
+    if( ! PyArg_ParseTuple( args, "O:gtoReader_close", &self ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    gtoReader_PyObject *reader =
+            (gtoReader_PyObject *)PyDict_GetItemString( self->in_dict,
+                                                        "__reader" );
+    assert( reader->m_reader != NULL );
+
+    reader->m_reader->close();
+    reader->m_isOpen = false;
+
+    Py_INCREF( Py_None );
+    return Py_None;
+}
+
+// *****************************************************************************
 // Implements a default 
-//      gtoReader.object( name, protocol, protocolVersion, numComponents )
+//      gto.Reader.object( name, protocol, protocolVersion, numComponents )
 PyObject *gtoReader_object( PyObject *_self, PyObject *args )
 {
     PyObject *self = NULL;
@@ -365,7 +495,6 @@ PyObject *gtoReader_object( PyObject *_self, PyObject *args )
                             &numComponents ) )
     {
         // Invalid parameters, let Python do a stack trace
-        PyErr_Print();
         return NULL;
     }
 
@@ -379,7 +508,7 @@ PyObject *gtoReader_object( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// Implements a default gtoReader.component( name, numProperties, flags )
+// Implements a default gto.Reader.component( name, numProperties, flags )
 PyObject *gtoReader_component( PyObject *_self, PyObject *args )
 {
     PyObject *self;
@@ -393,7 +522,6 @@ PyObject *gtoReader_component( PyObject *_self, PyObject *args )
                             &flags, &objInfo ) )
     {
         // Invalid parameters, let Python do a stack trace
-        PyErr_Print();
         return NULL;
     }
 
@@ -411,7 +539,7 @@ PyObject *gtoReader_component( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// Implements a default gtoReader.property( name, size, type, width )
+// Implements a default gto.Reader.property( name, size, type, width )
 PyObject *gtoReader_property( PyObject *_self, PyObject *args )
 {
     PyObject *self;
@@ -426,7 +554,6 @@ PyObject *gtoReader_property( PyObject *_self, PyObject *args )
                             &propInfo ) )
     {
         // Invalid parameters, let Python do a stack trace
-        PyErr_Print();
         return NULL;
     }
 
@@ -444,8 +571,8 @@ PyObject *gtoReader_property( PyObject *_self, PyObject *args )
 }
 
 // *****************************************************************************
-// Implements a default gtoReader.data( name, size, type, width, data )
-PyObject *gtoReader_data( PyObject *_self, PyObject *args )
+// Implements a default gto.Reader.dataRead( propertyInfo )
+PyObject *gtoReader_dataRead( PyObject *_self, PyObject *args )
 {
     PyObject *self;
     char *name;
@@ -454,12 +581,11 @@ PyObject *gtoReader_data( PyObject *_self, PyObject *args )
     int width;
     PyObject *data;
 
-    if( ! PyArg_ParseTuple( args, "OsiiiO:gtoReader_data", 
+    if( ! PyArg_ParseTuple( args, "OsiiiO:gtoReader_dataRead", 
                             &self, &name, &size,
                             &type, &width, &data ) )
     {
         // Invalid parameters, let Python do a stack trace
-        PyErr_Print();
         return NULL;
     }
 
@@ -488,28 +614,46 @@ PyObject *gtoReader_stringFromId( PyObject *_self, PyObject *args )
                             &self, &id ) )
     {
         // Invalid parameters, let Python do a stack trace
-        PyErr_Print();
         return NULL;
     }
 
-    // Get a handle to our Gto::Writer instance
-    gtoReader_PyObject *reader =
-            (gtoReader_PyObject *)PyDict_GetItemString( self->in_dict,
-                                                        "__reader" );
+    Reader *reader = readerIfOpen( self );
     if( reader == NULL )
     {
-        PyErr_SetString( gtoError(), "no file is open." );
         return NULL;
     }
-    assert( reader->m_reader != NULL );
 
-    PyObject *str = PyString_FromString( 
-                    reader->m_reader->stringFromId( id ).c_str() );
+    PyObject *str = PyString_FromString( reader->stringFromId( id ).c_str() );
 
     Py_INCREF( str );
     return str;
 }
 
+
+// *****************************************************************************
+PyObject *gtoReader_header( PyObject *_self, PyObject *args )
+{
+    PyInstanceObject *self;
+    PyObject *gtoHeader;
+
+    if( ! PyArg_ParseTuple( args, "OO:gtoReader_header", 
+                            &self, &gtoHeader ) )
+    {
+        // Invalid parameters, let Python do a stack trace
+        return NULL;
+    }
+
+    Reader *reader = readerIfOpen( self );
+    if( reader == NULL )
+    {
+        return NULL;
+    }
+
+    // DOES NOTHING BY DEFAULT!
+
+    Py_INCREF( Py_None );
+    return Py_None;
+}
 
 
 } // End namespace PyGto
