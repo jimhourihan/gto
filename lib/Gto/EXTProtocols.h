@@ -18,9 +18,10 @@
 //
 #ifndef __Gto__EXTProtocols__h__
 #define __Gto__EXTProtocols__h__
+#include <Gto/Protocols.h>
 
 #define GTO_EXT_PROTOCOL_AIR_FIELD            "air"
-#define GTO_EXT_PROTOCOL_CAMERA               "camera"
+#define GTO_EXT_PROTOCOL_CAMERA               GTO_PROTOCOL_CAMERA
 #define GTO_EXT_PROTOCOL_CHEAP_DENSITY_FIELD  "cheap density"
 #define GTO_EXT_PROTOCOL_CLUSTER              "cluster"
 #define GTO_EXT_PROTOCOL_CLUSTER_VOLUME       "cluster volume"

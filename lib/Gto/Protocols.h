@@ -33,6 +33,8 @@
 #define GTO_PROTOCOL_MATERIAL            "material"
 #define GTO_PROTOCOL_GROUP               "group"
 #define GTO_PROTOCOL_STRAND              "strand"
+#define GTO_PROTOCOL_CAMERA              "camera"
+#define GTO_PROTOCOL_LIGHT               "light"
 
 #define GTO_COMPONENT_POINTS             "points"
 #define GTO_COMPONENT_SURFACE            "surface"
