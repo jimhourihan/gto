@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+from distutils.core import setup, Extension
+
+setup( name="gto",
+       version="1.12",
+       description="Gto I/O module",
+       author="Tweak Films",
+       author_email="gto@tweakfilms.com",
+       url="http://www.tweakfilms.com/",
+       ext_modules = [ Extension( "gto", 
+                                [ "src/gtoHeader.cpp",        
+                                  "src/gtomodule.cpp",        
+                                  "src/gtoReader.cpp",        
+                                  "src/gtoWriter.cpp" ],
+                                  library_dirs=["../../lib/Gto"],
+                                  libraries=["Gto", "z"],
+                                )
+                     ],
+       data_files = [( 'examples', [ "examples/example.py", 
+                                     "examples/example2.py" ])
+                    ],
+     )

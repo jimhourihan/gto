@@ -4,8 +4,10 @@
 
 #ifndef __GTOHEADER_H__
 #define __GTOHEADER_H__
-#include "gtomodule.h"
+
+#include <Python.h>
 #include <Gto/Reader.h>
+#include "gtomodule.h"
 
 namespace PyGto {
 

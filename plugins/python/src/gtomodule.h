@@ -5,7 +5,7 @@
 #ifndef __GTOMODULE_H__
 #define __GTOMODULE_H__
 
-#include <python2.2/Python.h>
+#include <Python.h>
 
 namespace PyGto {
 

@@ -4,8 +4,7 @@
 
 #include "gtoReader.h"
 #include "gtoHeader.h"
-#include <TwkGeom/GTOReader.h>
-#include <python2.2/Python.h>
+#include <Python.h>
 #include <vector>
 
 namespace PyGto {
