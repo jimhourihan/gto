@@ -37,13 +37,15 @@ public:
     enum
     {
         POINTS_C = Object::NEXT_C,
+        STRAND_C,
         ELEMENTS_C
     };
 
     enum
     {
         POINTS_POSITION_P = Object::NEXT_P,
-        ELEMENTS_TYPE_P,
+        STRAND_TYPE_P,
+        STRAND_WIDTH_P,
         ELEMENTS_SIZE_P,
         ELEMENTS_WIDTH_P
     };

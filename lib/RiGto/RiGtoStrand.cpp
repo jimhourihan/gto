@@ -83,6 +83,10 @@ void *Strand::component( const std::string &name,
         {
             return ( void * )POINTS_C;
         }
+        else if ( name == GTO_COMPONENT_STRAND )
+        {
+            return ( void * )STRAND_C;
+        }
         else if ( name == GTO_COMPONENT_ELEMENTS )
         {
             return ( void * )ELEMENTS_C;
@@ -122,6 +126,17 @@ void *Strand::property( const std::string &name,
                 return ( void * )POINTS_POSITION_P;
             }
         }
+        else if ( (( int )componentData ) == STRAND_C )
+        {
+            if ( name == "type" )
+            {
+                return ( void * )STRAND_TYPE_P;
+            }
+            if ( name == "width" )
+            {
+                return ( void * )STRAND_WIDTH_P;
+            }
+        }
         else if ( (( int )componentData ) == ELEMENTS_C )
         {
             if ( name == "size" )
@@ -131,10 +146,6 @@ void *Strand::property( const std::string &name,
             if ( name == "width" )
             {
                 return ( void * )ELEMENTS_WIDTH_P;
-            }
-            else if ( name == "type" )
-            {
-                return ( void * )ELEMENTS_TYPE_P;
             }
         }
     }
@@ -183,6 +194,25 @@ void *Strand::data( void *componentData,
             
             return positionsRefData( numItems * 3 );
         }
+        else if ( (( int )propertyData) == STRAND_WIDTH_P )
+        {
+            if ( itemWidth != 1 ||
+                 ( numItems * 1 * sizeof( float ) ) != numBytes )
+            {
+                WEIRD_SIZE( m_name, "strand.width" );
+            }
+            return constantWidthData();
+        }
+        else if ( (( int )propertyData) == STRAND_TYPE_P )
+        {
+            if ( itemWidth != 1 ||
+                 ( numItems * 1 * sizeof( int ) ) != numBytes )
+            {
+                WEIRD_SIZE( m_name, "strand.type" );
+            }
+            
+            return typeData();
+        }
         else if ( (( int )propertyData) == ELEMENTS_SIZE_P )
         {
             if ( itemWidth != 1 ||
@@ -195,26 +225,12 @@ void *Strand::data( void *componentData,
         }
         else if ( (( int )propertyData) == ELEMENTS_WIDTH_P )
         {
-            if( numItems == 1 )
-            {
-                return constantWidthData();
-            }
             if ( itemWidth != 2 ||
                  ( numItems * 2 * sizeof( float ) ) != numBytes )
             {
                 WEIRD_SIZE( m_name, "elements.width" );
             }
             return widthData( numItems * 2 );
-        }
-        else if ( (( int )propertyData) == ELEMENTS_TYPE_P )
-        {
-            if ( itemWidth != 1 ||
-                 ( numItems * 1 * sizeof( int ) ) != numBytes )
-            {
-                WEIRD_SIZE( m_name, "elements.type" );
-            }
-            
-            return typeData();
         }
     }
     else if ( rp == READER_OPEN )

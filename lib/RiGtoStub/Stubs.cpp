@@ -665,7 +665,7 @@ void Stub_DeclareCurves( const char *degree,
         if( widths != NULL )
         {
             STUB_OSTR << "\"varying float width\" [";
-            for( int p = 0; p < ncurves; ++p )
+            for( int p = 0; p < ncurves * 2; ++p )
             {
                 STUB_OSTR << widths[p] << " ";
             }
