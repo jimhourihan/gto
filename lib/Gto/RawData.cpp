@@ -22,10 +22,10 @@
 namespace Gto {
 using namespace std;
 
-Property::Property(const std::string& n, 
-                   Gto::DataType t, 
-                   size_t s, 
-                   size_t w, 
+Property::Property(const std::string& n,
+                   Gto::DataType t,
+                   size_t s,
+                   size_t w,
                    bool allocate)
     : name(n), type(t), size(s), width(w), voidData(0)
 {
@@ -60,7 +60,7 @@ Component::~Component()
 {
     for (int i=0; i < properties.size(); i++)
     {
-	delete properties[i];
+        delete properties[i];
     }
 }
 
@@ -70,7 +70,7 @@ Object::~Object()
 {
     for (int i=0; i < components.size(); i++)
     {
-	delete components[i];
+        delete components[i];
     }
 }
 
@@ -80,7 +80,7 @@ RawDataBase::~RawDataBase()
 {
     for (int i=0; i < objects.size(); i++)
     {
-	delete objects[i];
+        delete objects[i];
     }
 }
 
@@ -91,7 +91,7 @@ RawDataBaseReader::RawDataBaseReader() : Reader(false)
     m_dataBase = new RawDataBase;
 }
 
-RawDataBaseReader::~RawDataBaseReader() 
+RawDataBaseReader::~RawDataBaseReader()
 {
 }
 
@@ -124,10 +124,10 @@ RawDataBaseReader::open(std::istream& in, const char *name)
 }
 
 Reader::Request
-RawDataBaseReader::object(const string& name, 
-			  const string& protocol, 
-			  unsigned int protocolVersion,
-			  const ObjectInfo& info) 
+RawDataBaseReader::object(const string& name,
+                          const string& protocol,
+                          unsigned int protocolVersion,
+                          const ObjectInfo& info)
 {
     Object *o = new Object(name, protocol, protocolVersion);
     m_dataBase->objects.push_back(o);
@@ -135,8 +135,8 @@ RawDataBaseReader::object(const string& name,
 }
 
 Reader::Request
-RawDataBaseReader::component(const string& name, const ComponentInfo& info) 
-{ 
+RawDataBaseReader::component(const string& name, const ComponentInfo& info)
+{
     Object *o    = reinterpret_cast<Object*>(info.object->objectData);
     Component *c = new Component(name, info.flags);
     o->components.push_back(c);
@@ -144,8 +144,8 @@ RawDataBaseReader::component(const string& name, const ComponentInfo& info)
 }
 
 Reader::Request
-RawDataBaseReader::property(const string& name, const PropertyInfo& info) 
-{ 
+RawDataBaseReader::property(const string& name, const PropertyInfo& info)
+{
     Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = new Property(name, (DataType)info.type, info.size, info.width);
@@ -153,14 +153,21 @@ RawDataBaseReader::property(const string& name, const PropertyInfo& info)
     return Request(true, p);
 }
 
-void* 
+void*
 RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 {
     Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
-    p->voidData = new char[bytes];
+    if( bytes == 0 )
+    {
+        p->voidData = NULL;
+    }
+    else
+    {
+        p->voidData = new char[bytes];
+    }
     return p->voidData;
 }
 
@@ -175,12 +182,12 @@ RawDataBaseReader::dataRead(const PropertyInfo& info)
     {
         int* ints = p->int32Data;
         size_t numItems = p->size * p->width;
-	p->stringData = new string[numItems];
+        p->stringData = new string[numItems];
 
-	for (int i=0; i < numItems; i++)
-	{
-	    p->stringData[i] = stringTable()[ints[i]];
-	}
+        for (int i=0; i < numItems; i++)
+        {
+            p->stringData[i] = stringTable()[ints[i]];
+        }
 
         delete [] (char*)ints;
     }
@@ -194,52 +201,52 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
 {
     if (header)
     {
-	m_writer.property(property->name.c_str(),
-			  property->type,
-			  property->size,
-			  property->width);
+        m_writer.property(property->name.c_str(),
+                          property->type,
+                          property->size,
+                          property->width);
 
-	if (property->type == Gto::String)
-	{
-	    int numItems = property->size * property->width;
-	    const string* data = property->stringData;
+        if (property->type == Gto::String)
+        {
+            int numItems = property->size * property->width;
+            const string* data = property->stringData;
 
-	    for (int i=0; i < numItems; i++)
-	    {
-		m_writer.intern(data[i]);
-	    }
-	}
+            for (int i=0; i < numItems; i++)
+            {
+                m_writer.intern(data[i]);
+            }
+        }
     }
     else
     {
-	switch (property->type)
-	{
-	  case Gto::Float:
-	      m_writer.propertyData(property->floatData);
-	      break;
-	  case Gto::Double:
-	      m_writer.propertyData(property->doubleData);
-	      break;
-	  case Gto::Short:
-	      m_writer.propertyData(property->uint16Data);
-	      break;
-	  case Gto::Int:
-	      m_writer.propertyData(property->int32Data);
-	      break;
-	  case Gto::Byte:
-	      m_writer.propertyData(property->uint8Data);
-	      break;
-	  case Gto::Half:
-	  case Gto::Boolean:
-	  default:
-	      abort();    // not implemented;
-	  case Gto::String:
-	      {
-		  size_t numItems = property->size * property->width;
-		  vector<int> data(numItems);
+        switch (property->type)
+        {
+          case Gto::Float:
+              m_writer.propertyData(property->floatData);
+              break;
+          case Gto::Double:
+              m_writer.propertyData(property->doubleData);
+              break;
+          case Gto::Short:
+              m_writer.propertyData(property->uint16Data);
+              break;
+          case Gto::Int:
+              m_writer.propertyData(property->int32Data);
+              break;
+          case Gto::Byte:
+              m_writer.propertyData(property->uint8Data);
+              break;
+          case Gto::Half:
+          case Gto::Boolean:
+          default:
+              abort();    // not implemented;
+          case Gto::String:
+              {
+                  size_t numItems = property->size * property->width;
+                  vector<int> data(numItems);
 
-		  for (int i=0; i < numItems; i++)
-		  {
+                  for (int i=0; i < numItems; i++)
+                  {
                       int stringId = m_writer.lookup(property->stringData[i]);
 
                       if (stringId == -1)
@@ -249,13 +256,13 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
                           stringId = 0;
                       }
 
-		      data[i] = stringId;
-		  }
+                      data[i] = stringId;
+                  }
 
-		  m_writer.propertyData(&data.front());
-	      }
-	      break;
-	}
+                  m_writer.propertyData(&data.front());
+              }
+              break;
+        }
     }
 }
 
@@ -281,11 +288,12 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
 }
 
 bool
-RawDataBaseWriter::write(const char *filename, const RawDataBase& db)
+RawDataBaseWriter::write(const char *filename, const RawDataBase& db, 
+                         bool compress)
 {
-    if (!m_writer.open(filename))
+    if (!m_writer.open(filename, compress))
     {
-	return false;
+        return false;
     }
 
     for (int i=0; i < db.strings.size(); i++)
@@ -295,40 +303,40 @@ RawDataBaseWriter::write(const char *filename, const RawDataBase& db)
 
     for (int i=0; i < db.objects.size(); i++)
     {
-	if (db.objects[i])
-	{
-	    const Object &o = *db.objects[i];
-	    unsigned int version = o.protocolVersion;
+        if (db.objects[i])
+        {
+            const Object &o = *db.objects[i];
+            unsigned int version = o.protocolVersion;
 
-	    m_writer.beginObject(o.name.c_str(), 
-				 o.protocol.c_str(),
-				 o.protocolVersion);
+            m_writer.beginObject(o.name.c_str(),
+                                 o.protocol.c_str(),
+                                 o.protocolVersion);
 
-	    const Components &components = o.components;
+            const Components &components = o.components;
 
-	    for (int q=0; q < components.size(); q++)
-	    {
-		writeComponent(true, components[q]);
-	    }
+            for (int q=0; q < components.size(); q++)
+            {
+                writeComponent(true, components[q]);
+            }
 
-	    m_writer.endObject();
-	}
+            m_writer.endObject();
+        }
     }
 
     m_writer.beginData();
 
     for (int i=0; i < db.objects.size(); i++)
     {
-	if (db.objects[i])
-	{
-	    const Object &o = *db.objects[i];
-	    const Components &components = o.components;
+        if (db.objects[i])
+        {
+            const Object &o = *db.objects[i];
+            const Components &components = o.components;
 
-	    for (int q=0; q < components.size(); q++)
-	    {
-		writeComponent(false, components[q]);
-	    }
-	}
+            for (int q=0; q < components.size(); q++)
+            {
+                writeComponent(false, components[q]);
+            }
+        }
     }
 
     m_writer.endData();

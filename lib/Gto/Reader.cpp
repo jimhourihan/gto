@@ -25,6 +25,14 @@
 #include <zlib.h>
 #endif
 
+#if ( __GNUC__ == 2 )
+    #define IOS_CUR ios::cur
+    #define IOS_BEG ios::beg
+#else
+    #define IOS_CUR ios_base::cur
+    #define IOS_BEG ios_base::beg
+#endif
+
 namespace Gto {
 using namespace std;
 
@@ -68,42 +76,49 @@ Reader::open(const char *filename)
     {
 #ifdef GTO_SUPPORT_ZIP
         m_gzfile = gzopen(filename, "rb");
-#endif
         
         if (!m_gzfile)
         {
             m_error = 1;
-            m_why = "gzopen failed";
+            m_why = "file open failed";
             return false;
         }
+#else
+        m_error = 1;
+        m_why = "this library was not compiled with zlib support";
+        return false;
+#endif
     }
     else
     {
-        m_in = new ifstream(filename, ios::in|ios::binary);
-
-        if ( !(*m_in) )
-        {
 #ifdef GTO_SUPPORT_ZIP
+        m_gzfile = gzopen(filename, "rb");
+
+        if (!m_gzfile)
+        {
             //
-            //        Try .gz version before giving up completely
+            //  Try .gz version before giving up completely
             //
+
             std::string temp(filename);
             temp += ".gz";
-            delete m_in;
-            m_in = 0;
             return open(temp.c_str());
+        }
 #else
+        m_in = new ifstream(filename, ios::in|ios::binary);
+        
+        if ( !(*m_in) )
+        {
             m_in = 0;
             m_error = 1;
             m_why = "stream failed to open";
             return false;
-#endif
         }
+#endif
     }
 
     m_needsClosing = true;
     m_error = 0;
-
     return read();
 }
 
@@ -113,8 +128,14 @@ Reader::close()
     if (m_needsClosing) 
     {
         delete m_in;
+        m_in = 0;
 #ifdef GTO_SUPPORT_ZIP
-        if (m_gzfile) gzclose(m_gzfile);
+
+        if (m_gzfile) 
+        {
+            gzclose(m_gzfile);
+            m_gzfile = 0;
+        }
 #endif
     }
 }
@@ -510,7 +531,7 @@ Reader::read(char *buffer, size_t size)
     {
         m_in->read(buffer,size);
 
-#ifdef HAVE_FULL_IOSTREAMS
+#ifndef PLATFORM_DARWIN
         if (m_in->fail())
         {
             std::cerr << "ERROR: Gto::Reader: Failed to read gto file: '";
@@ -574,11 +595,7 @@ void Reader::seekForward(size_t bytes)
 {
     if (m_in)
     {
-#ifdef HAVE_FULL_IOSTREAMS
-        m_in->seekg(bytes, ios_base::cur);
-#else
-        m_in->seekg(bytes, ios::cur);
-#endif
+        m_in->seekg(bytes, IOS_CUR);
     }
 #ifdef GTO_SUPPORT_ZIP
     else
@@ -592,11 +609,7 @@ void Reader::seekTo(size_t bytes)
 {
     if (m_in)
     {
-#ifdef HAVE_FULL_IOSTREAMS
-        m_in->seekg(bytes, ios_base::beg);
-#else
-        m_in->seekg(bytes, ios::beg);
-#endif
+        m_in->seekg(bytes, IOS_BEG);
     }
 #ifdef GTO_SUPPORT_ZIP
     else

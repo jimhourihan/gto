@@ -53,7 +53,7 @@ public:
     //  Optional open function which takes a filename
     //
 
-    bool            open(const char* filename);
+    bool            open(const char* filename, bool compress=true);
 
     //
     //  Close stream if applicable.
@@ -159,7 +159,9 @@ private:
     void            constructStringTable();
     void            writeHead();
 
-    void            write(const char *, size_t);
+    void            write(const void*, size_t);
+    void            write(const std::string&);
+    void            flush();
 
     bool            propertySanityCheck(const char*, int, int);
 
@@ -190,7 +192,7 @@ void Writer::propertyData(const T *data,
 
     if (propertySanityCheck(propertyName, size, width))
     {
-        write((const char*)data, sizeof(T) * n);
+        write(data, sizeof(T) * n);
     }
 }
 

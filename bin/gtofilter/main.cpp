@@ -9,11 +9,17 @@
 #include <algorithm>
 #include <vector>
 #include <fnmatch.h>
+#include <sys/types.h>
+#include <regex.h>
 
 using namespace Gto;
 using namespace std;
 
 bool verbose = false;
+bool glob    = true;
+
+regex_t excludeRegex;
+regex_t includeRegex;
 
 struct FullProperty
 {
@@ -67,7 +73,14 @@ void filter(RawDataBase* db,
 
         if (include)
         {
-            deleteIt = !fnmatch(include, fp.name.c_str(), 0) ? false : true;
+            if (glob)
+            {
+                deleteIt = fnmatch(include, fp.name.c_str(), 0) ? false : true;
+            }
+            else
+            {
+                deleteIt = regexec(&includeRegex, fp.name.c_str(), 0, 0, 0);
+            }
 
             if (verbose && !deleteIt)
             {
@@ -78,7 +91,14 @@ void filter(RawDataBase* db,
 
         if (exclude)
         {
-            deleteIt = !fnmatch(exclude, fp.name.c_str(), 0) ? true : false;
+            if (glob)
+            {
+                deleteIt = !fnmatch(exclude, fp.name.c_str(), 0) ? true : false;
+            }
+            else
+            {
+                deleteIt = !regexec(&excludeRegex, fp.name.c_str(), 0, 0, 0);
+            }
 
             if (verbose && deleteIt)
             {
@@ -118,6 +138,8 @@ void usage()
 {
     cout << "USAGE: "
          << "gtofilter [options] -o outfile.gto infile.gto\n"
+         << "-regex                 use basic posix regular expressions\n"
+         << "-glob                  use glob regular expressions (default)\n"
          << "-ie/--include regex    inclusion regex\n"
          << "-ee/--exclude regex    exclusion regex\n"
          << "-v                     verbose\n"
@@ -157,6 +179,14 @@ int main(int argc, char *argv[])
         {
             verbose = true;
         }
+        else if (!strcmp(argv[i], "-glob"))
+        {
+            glob = true;
+        }
+        else if (!strcmp(argv[i], "-regex"))
+        {
+            glob = false;
+        }
         else if (*argv[i] == '-')
         {
             usage();
@@ -173,6 +203,31 @@ int main(int argc, char *argv[])
 	cout << "no infile or outfile specified.\n" << flush;
         cout << endl;
         usage();
+    }
+
+    if (!glob)
+    {
+        if (excludeExpr)
+        {
+            if (int err = regcomp(&excludeRegex, excludeExpr, REG_NOSUB))
+            {
+                char temp[256];
+                regerror(err, &excludeRegex, temp, 256);
+                cerr << "ERROR: " << temp << endl;
+                exit(-1);
+            }
+        }
+
+        if (includeExpr)
+        {
+            if (int err = regcomp(&includeRegex, includeExpr, REG_NOSUB))
+            {
+                char temp[256];
+                regerror(err, &includeRegex, temp, 256);
+                cerr << "ERROR: " << temp << endl;
+                exit(-1);
+            }
+        }
     }
 
     RawDataBaseReader reader;

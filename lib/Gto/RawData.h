@@ -38,29 +38,29 @@ namespace Gto {
 
 struct Property
 {
-    Property(const std::string& n, 
-             Gto::DataType t, 
-             size_t s, 
-             size_t w, 
+    Property(const std::string& n,
+             Gto::DataType t,
+             size_t s,
+             size_t w,
              bool allocate=false);
 
     ~Property();
-    
-    std::string	    name;
+
+    std::string     name;
     Gto::DataType   type;
-    size_t	    size;
-    size_t	    width;
-    
+    size_t          size;
+    size_t          width;
+
     union
     {
-	float*		floatData;
-	double*		doubleData;
-	int32*		int32Data;
-	uint16*		uint16Data;
-	uint8*		uint8Data;
-	std::string*	stringData;
+        float*          floatData;
+        double*         doubleData;
+        int32*          int32Data;
+        uint16*         uint16Data;
+        uint8*          uint8Data;
+        std::string*    stringData;
 
-	void*		voidData;
+        void*           voidData;
     };
 };
 
@@ -73,9 +73,9 @@ struct Component
     Component(const std::string& n, uint16 f) : name(n), flags(f) {}
     ~Component();
 
-    std::string	    name;
-    uint16	    flags;
-    Properties	    properties;
+    std::string     name;
+    uint16          flags;
+    Properties      properties;
 };
 
 typedef std::vector<Component*> Components;
@@ -84,14 +84,14 @@ typedef std::vector<Component*> Components;
 
 struct Object
 {
-    Object(const std::string& n, const std::string& p, unsigned int v) 
-	: name(n), protocol(p), protocolVersion(v) {}
+    Object(const std::string& n, const std::string& p, unsigned int v)
+        : name(n), protocol(p), protocolVersion(v) {}
     ~Object();
 
-    std::string	    name;
-    std::string	    protocol;
+    std::string     name;
+    std::string     protocol;
     unsigned int    protocolVersion;
-    Components	    components;
+    Components      components;
 };
 
 typedef std::vector<Object*> Objects;
@@ -104,7 +104,7 @@ struct RawDataBase
 {
     ~RawDataBase();
 
-    Objects	    objects;
+    Objects         objects;
     Strings         strings;
 };
 
@@ -129,28 +129,28 @@ public:
     RawDataBaseReader();
     virtual ~RawDataBaseReader();
 
-    virtual bool	open(const char *filename);
-    virtual bool	open(std::istream&, const char *name);
+    virtual bool        open(const char *filename);
+    virtual bool        open(std::istream&, const char *name);
 
-    RawDataBase*	dataBase() { return m_dataBase; }
+    RawDataBase*        dataBase() { return m_dataBase; }
 
-private:
-    virtual Request	object(const std::string& name,
-			       const std::string& protocol,
-			       unsigned int protocolVersion,
-			       const ObjectInfo &header);
+protected:
+    virtual Request     object(const std::string& name,
+                               const std::string& protocol,
+                               unsigned int protocolVersion,
+                               const ObjectInfo &header);
 
-    virtual Request	component(const std::string& name,
-				  const ComponentInfo &header);
+    virtual Request     component(const std::string& name,
+                                  const ComponentInfo &header);
 
-    virtual Request	property(const std::string& name,
-				 const PropertyInfo &header);
+    virtual Request     property(const std::string& name,
+                                 const PropertyInfo &header);
 
-    virtual void*	data(const PropertyInfo&, size_t bytes);
-    virtual void	dataRead(const PropertyInfo&);
+    virtual void*       data(const PropertyInfo&, size_t bytes);
+    virtual void        dataRead(const PropertyInfo&);
 
-private:
-    RawDataBase*	m_dataBase;
+protected:
+    RawDataBase*        m_dataBase;
 };
 
 
@@ -167,14 +167,17 @@ class RawDataBaseWriter
 public:
     RawDataBaseWriter() : m_writer() {}
 
-    bool	    write(const char *filename, const RawDataBase&);
+    bool            write(const char *filename, const RawDataBase&, 
+                          bool compress=true);
+    
+    void            close() { m_writer.close(); }
+    
+private:
+    void            writeComponent(bool header, const Component*);
+    void            writeProperty(bool header, const Property*);
 
 private:
-    void	    writeComponent(bool header, const Component*);
-    void	    writeProperty(bool header, const Property*);
-
-private:
-    Writer	    m_writer;
+    Writer          m_writer;
 };
 
 } // namespace Gto

@@ -58,19 +58,38 @@ Writer::init(ostream *o)
 }
 
 bool
-Writer::open(const char* filename)
+Writer::open(const char* filename, bool compress)
 {
     if (m_out || m_gzfile) return false;
 
     m_outName = filename;
-    m_out = new ofstream(filename, ios::out|ios::binary);
 
-    if ( !(*m_out) )
+#ifdef GTO_SUPPORT_ZIP
+    if (compress)
     {
-        m_out = 0;
-        m_error = true;
-        return false;
+        m_gzfile = gzopen(filename, "wb");
+
+        if (!m_gzfile)
+        {
+            m_gzfile = 0;
+            m_error  = true;
+            return false;
+        }
     }
+    else
+    {
+#endif
+        m_out = new ofstream(filename, ios::out|ios::binary);
+
+        if (!(*m_out))
+        {
+            m_out    = 0;
+            m_error  = true;
+            return false;
+        }
+#ifdef GTO_SUPPORT_ZIP
+    }
+#endif
 
     m_needsClosing = true;
     m_error = false;
@@ -84,8 +103,15 @@ Writer::close()
     {
         delete m_out;
     }
+#ifdef GTO_SUPPORT_ZIP
+    else if (m_gzfile && m_needsClosing)
+    {
+        gzclose(m_gzfile);
+    }
 
-    m_out = 0;
+    m_gzfile = 0;
+#endif
+    m_out    = 0;
 }
 
 
@@ -225,7 +251,7 @@ Writer::constructStringTable()
 {
     intern( "(Gto::Writer compiled " __DATE__ 
             " " __TIME__ 
-            ", $Id: Writer.cpp,v 1.1 2003/09/16 19:52:28 mike Exp $)" );
+            ", $Id: Writer.cpp,v 1.2 2004/04/26 17:13:07 jimh Exp $)" );
 
     for (int i=0; i < m_names.size(); i++)
     {
@@ -289,9 +315,46 @@ Writer::constructStringTable()
 }
 
 void
+Writer::write(const void* p, size_t s)
+{
+    if( s == 0 ) return;
+    if (m_out)
+    {
+        m_out->write((const char*)p, s);
+    }
+#ifdef GTO_SUPPORT_ZIP
+    else if (m_gzfile)
+    {
+        gzwrite(m_gzfile, (void*)p, s);
+    }
+#endif
+}
+
+void
+Writer::write(const std::string& s)
+{
+    if (m_out)
+    {
+        (*m_out) << s;
+        m_out->put(0);
+    }
+#ifdef GTO_SUPPORT_ZIP
+    else if (m_gzfile)
+    {
+        gzwrite(m_gzfile, (void*)s.c_str(), s.size() + 1);
+    }
+#endif
+}
+
+void
+Writer::flush()
+{
+    if (m_out) (*m_out) << std::flush;
+}
+
+void
 Writer::writeHead()
 {
-    assert(m_out);
     assert(m_objects.size() > 0);
     assert(m_components.size() > 0);
     assert(m_properties.size() > 0);
@@ -303,47 +366,34 @@ Writer::writeHead()
     header.version       = GTO_VERSION;
     header.flags         = 0;
 
-    m_out->write( (const char*)&header, sizeof(Header) );
+    write(&header, sizeof(Header));
 
     for (StringMap::iterator i = m_strings.begin();
          i != m_strings.end(); 
          ++i)
     {
-        (*m_out) << (*i).first;
-        m_out->put(0);
+        write(i->first);
     }
 
     for (int i=0; i < m_objects.size(); i++)
     {
         ObjectHeader &o = m_objects[i];
-        m_out->write( (const char*)&o, sizeof(ObjectHeader) );
+        write(&o, sizeof(ObjectHeader));
     }
 
     for (int i=0; i < m_components.size(); i++)
     {
         ComponentHeader &c = m_components[i];
-        m_out->write( (const char*)&c, sizeof(ComponentHeader) );
+        write(&c, sizeof(ComponentHeader));
     }
 
     for (int i=0; i < m_properties.size(); i++)
     {
         PropertyHeader &p = m_properties[i];
-        m_out->write( (const char*)&p, sizeof(PropertyHeader) );
+        write(&p, sizeof(PropertyHeader));
     }
 
-    (*m_out) << flush;
-}
-
-void
-Writer::write(const char *data, size_t size)
-{
-    if (m_out)
-    {
-        m_out->write(data, size);
-    }
-    else if (m_gzfile)
-    {
-    }
+    flush();
 }
 
 bool
@@ -395,7 +445,7 @@ Writer::propertyDataRaw(const void* data,
 
     if (propertySanityCheck(propertyName, size, width))
     {
-        write((const char*)data, dataSize(m_properties[p].type) * n);
+        write(data, dataSize(m_properties[p].type) * n);
     }
 }
 

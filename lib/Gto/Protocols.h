@@ -25,13 +25,13 @@
 #define GTO_PROTOCOL_CATMULL_CLARK       "catmull-clark"     // sub-d
 #define GTO_PROTOCOL_LOOP                "loop"              // sub-d
 #define GTO_PROTOCOL_TRANSFORM           "transform"
-#define GTO_PROTOCOL_TEXCHANNEL          "texChannel"        // depricated
+#define GTO_PROTOCOL_TEXCHANNEL          "texChannel"        // deprecated
 #define GTO_PROTOCOL_PARTICLE            "particle"
 #define GTO_PROTOCOL_DIFFERENCE          "difference"
 #define GTO_PROTOCOL_SORTED              "sorted"
+#define GTO_PROTOCOL_IMAGE               "image"
 
 // PROPOSED
-#define GTO_PROTOCOL_IMAGE               "image"
 #define GTO_PROTOCOL_MATERIAL            "material"
 #define GTO_PROTOCOL_GROUP               "group"
 
@@ -44,8 +44,6 @@
 #define GTO_COMPONENT_SMOOTHING          "smoothing"
 #define GTO_COMPONENT_NORMALS            "normals"
 #define GTO_COMPONENT_SHELLS             "shells"
-
-// PROPOSED
 #define GTO_COMPONENT_IMAGE              "image"
 
 #define GTO_PROPERTY_POSITION            "position"          // float[3][]
@@ -73,8 +71,6 @@
 #define GTO_PROPERTY_METHOD              "method"            // int[1][1]
 #define GTO_PROPERTY_VERTICES            "vertices"          // int[1][]
 #define GTO_PROPERTY_ELEMENTS            "elements"          // int[1][]
-
-// PROPOSED
 #define GTO_PROPERTY_PIXELS              "pixels"
 
 #define GTO_POLYGON_POLYGON              0

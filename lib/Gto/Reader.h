@@ -1,5 +1,5 @@
 //******************************************************************************
-// Copyright (c) 2003 Tweak Films. 
+// Copyright (c) 2003 Tweak Films.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -38,39 +38,39 @@ class Reader
 public:
 
     //
-    //	Types
+    //  Types
     //
 
     struct ObjectInfo : ObjectHeader
     {
-	void*		    objectData;	// whatever was returned from object()
+        void*               objectData; // whatever was returned from object()
 
     private:
         int                 coffset;
-	bool		    requested;
-	friend class Reader;
+        bool                requested;
+        friend class Reader;
     };
 
     struct ComponentInfo : ComponentHeader
     {
-	void*		    componentData; // return value of component()
-	const ObjectInfo*   object;
+        void*               componentData; // return value of component()
+        const ObjectInfo*   object;
 
     private:
         int                 poffset;
-	bool		    requested;
-	friend class Reader;
+        bool                requested;
+        friend class Reader;
     };
 
     struct PropertyInfo : PropertyHeader
     {
-	void*		     propertyData;
+        void*                propertyData;
         int                  offset;    // file offset
-	const ComponentInfo* component;
+        const ComponentInfo* component;
 
     private:
-	bool		     requested;
-	friend class Reader;
+        bool                 requested;
+        friend class Reader;
     };
 
     typedef std::vector<std::string>   StringTable;
@@ -81,6 +81,8 @@ public:
     //
     //  The open modes:
     //
+    //  None: the file is read as a stream with default API behavior.
+    //
     //  HeaderOnly: only the header information will be read. This is
     //  equivalent to requesting none of the data, but it will short
     //  circuit the reader into finishing successfully without seeking
@@ -90,47 +92,48 @@ public:
     //  header functions or data will be called until you specifically ask
     //  for an object by name -- then they will called as if the file
     //  contained only that data. You can do this as many times as you
-    //  want.
-    //	
+    //  want using the accessObject() function.
+    //
 
     enum ReadMode
     {
+        None             = 0,
         HeaderOnly       = 1 << 0,
         RandomAccess     = 1 << 1,
     };
 
-    Reader(unsigned int mode=0);
+    Reader(unsigned int mode = None);
     virtual ~Reader();
 
     //
-    //	Open takes the path to the .gto file. If the GTO_SUPPORT_ZIP
-    //	is enabled then open will automatically attempt to find a
-    //	gziped version of the file if the file does not exist.
+    //  Open takes the path to the .gto file. If the GTO_SUPPORT_ZIP
+    //  is enabled then open will automatically attempt to find a
+    //  gziped version of the file if the file does not exist.
     //
     //  If the mode is RandomAccess, then open will return having only read
-    //  the header information. 
+    //  the header information.
     //
 
-    virtual bool	open(const char *filename);
-    virtual bool	open(std::istream&, const char *name);
-    void		close();
+    virtual bool        open(const char *filename);
+    virtual bool        open(std::istream&, const char *name);
+    void                close();
 
     //
-    //  If it failed. why() will return a description why
+    //  If it failed. why() will return a description.
     //
 
     const std::string&  why() const { return m_why; }
 
     const std::string&  stringFromId(unsigned int i);
-    const StringTable&	stringTable() { return m_strings; }
+    const StringTable&  stringTable() { return m_strings; }
 
-    bool		isSwapped() const { return m_swapped; }
+    bool                isSwapped() const { return m_swapped; }
 
     //
-    //	This function is called right after the file header is read. 
+    //  This function is called right after the file header is read.
     //
 
-    virtual void	header(const Header&);
+    virtual void        header(const Header&);
 
     //
     //  RandomAccess functions. When the file is openned as RandomAccess,
@@ -151,11 +154,11 @@ public:
     Properties&         properties() { return m_properties; }
 
     //
-    //	These are used to declare a component or property. The
-    //	functions are called expecting the return value to be non-zero
-    //	(or your own pointer) if the reader should try and read the
-    //	data associated with the component or property -- the default
-    //	is non-zero.
+    //  These are used to declare a component or property. The
+    //  functions are called expecting the return value to be non-zero
+    //  (or your own pointer) if the reader should try and read the
+    //  data associated with the component or property -- the default
+    //  is non-zero.
     //
 
     struct Request
@@ -163,24 +166,24 @@ public:
         Request() : m_want(true), m_data(0) {}
         Request(bool want, void* data = 0)
           : m_want( want ), m_data( data ) {}
-        
+
     private:
         bool    m_want;
         void*   m_data;
         friend class Reader;
     };
 
-    virtual Request	object(const std::string& name,
-			       const std::string& protocol,
-			       unsigned int protocolVersion,
-			       const ObjectInfo &header);
+    virtual Request     object(const std::string& name,
+                               const std::string& protocol,
+                               unsigned int protocolVersion,
+                               const ObjectInfo &header);
 
-    virtual Request	component(const std::string& name,
-				  const ComponentInfo &header);
+    virtual Request     component(const std::string& name,
+                                  const ComponentInfo &header);
 
-    virtual Request	property(const std::string& name,
-				 const PropertyInfo &header);
-    
+    virtual Request     property(const std::string& name,
+                                 const PropertyInfo &header);
+
     //
     //  Data should return a pointer to a region of memory large
     //  enough to hold the data that will be read for
@@ -188,46 +191,46 @@ public:
     //  (in bytes) will be required
     //
 
-    virtual void*	data(const PropertyInfo&, size_t bytes);
+    virtual void*       data(const PropertyInfo&, size_t bytes);
 
     //
-    //  dataRead() is called after the data is succesfully read (so
-    //  after the data() function is called)
+    //  dataRead() (read "data red") is called after the data is
+    //  succesfully read (so after the data() function is called)
     //
 
     virtual void        dataRead(const PropertyInfo&);
 
 private:
-    bool		read();
-    void		readHeader();
-    void		readStringTable();
-    void		readObjects();
-    void		readComponents();
-    void		readProperties();
+    bool                read();
+    void                readHeader();
+    void                readStringTable();
+    void                readObjects();
+    void                readComponents();
+    void                readProperties();
     bool                readProperty(PropertyInfo&);
 
-    void		read(char *, size_t);
-    void		get(char &);
-    bool		notEOF();
+    void                read(char *, size_t);
+    void                get(char &);
+    bool                notEOF();
     void                seekForward(size_t);
     int                 tell();
     void                seekTo(size_t);
 
 private:
-    Header		m_header;
-    Objects		m_objects;
-    Components		m_components;
-    Properties		m_properties;
-    StringTable		m_strings;
-    std::istream*	m_in;
-    void*		m_gzfile;
-    int			m_gzrval;
-    std::string		m_inName;
-    bool		m_needsClosing;
-    int 		m_error;
+    Header              m_header;
+    Objects             m_objects;
+    Components          m_components;
+    Properties          m_properties;
+    StringTable         m_strings;
+    std::istream*       m_in;
+    void*               m_gzfile;
+    int                 m_gzrval;
+    std::string         m_inName;
+    bool                m_needsClosing;
+    int                 m_error;
     std::string         m_why;
-    bool		m_swapped;
-    unsigned int	m_mode;
+    bool                m_swapped;
+    unsigned int        m_mode;
 };
 
 } // Gto
