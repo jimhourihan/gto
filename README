@@ -111,7 +111,7 @@ Or just drop us a line telling us you're using it.
 3. Notes on building:
 
     1. Currently, the Maya plugin is known to work on Maya 4.0, 4.5, and 5.0 on
-       Linux.  We will soon be distributing a Windows version as well.  We
+       Linux.  We will someday be distributing a Windows version as well.  We
        suspect that it could be made to work on OSX if we had the right 
        compiler...
 
@@ -129,4 +129,8 @@ Or just drop us a line telling us you're using it.
             ./setup.py install
             exit
 
+    5. The Renderman® plugin should (theoretically) work with any
+       Renderman®-complient renderer.  So far it has been used extensively 
+       with Entropy, and has been compiled (but not really tested) for 
+       prman 11.1 on RedHat 7
 

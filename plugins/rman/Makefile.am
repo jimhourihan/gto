@@ -5,20 +5,18 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(gto_rman_location)/include
 
-AM_CXXFLAGS = 
-
 plugindir = $(gto_rman_location)/bin/plug-ins
 
 if GTO_BUILD_RMAN
 
-plugin_PROGRAMS = RiGto.so
+plugin_PROGRAMS = RiGtoPlugin.so
 
-RiGto_so_SOURCES = plugin.cpp 
+RiGtoPlugin_so_SOURCES = plugin.cpp 
 
-RiGto_so_LDADD = $(top_srcdir)/lib/Gto/libGto.la \
-                 $(top_srcdir)/lib/RiGto/libRiGto.la \
-                 $(top_srcdir)/lib/RiGtoStub/libRiGtoStub.la 
+RiGtoPlugin_so_LDADD = $(top_srcdir)/lib/RiGto/libRiGto.la \
+                       $(top_srcdir)/lib/RiGtoStub/libRiGtoStub.la \
+                       $(top_srcdir)/lib/Gto/libGto.la
 
-RiGto_so_LDFLAGS = -shared 
+RiGtoPlugin_so_LDFLAGS = -shared 
 
 endif # GTO_BUILD_RMAN

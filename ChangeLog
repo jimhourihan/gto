@@ -1,3 +1,7 @@
+2004-06-21  Mike Root  <mike@tweakfilms.com>
+
+	* Fixed a bug in the Python gto module.
+
 2004-06-04  Mike Root  <mike@tweakfilms.com>
 
 	* Added random object access capabilities to Python gto module

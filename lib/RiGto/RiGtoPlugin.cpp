@@ -61,13 +61,13 @@ Plugin::Plugin( DataBase &dataBase,
     m_offList2( "__ThisCouldNeverEverMatchAnythingNoMatterWhat__" )
 {
     static const int majorVersion = 1;
-    static const int minorVersion = 17;
+    static const int minorVersion = 18;
     static bool printed = false;
 
     if ( !printed && verbose )
     {
-        printf( "RiGto Entropy Plugin\n"
-                "Copyright (c) 2002-2003, Tweak Inc. All rights reserved.\n"
+        printf( "RiGto Render Plugin\n"
+                "Copyright (c) 2002-2004, Tweak Inc. All rights reserved.\n"
                 "Version %d.%04d, built on %s at %s\n",
                 majorVersion, minorVersion, __DATE__ , __TIME__ );
         printed = true;
