@@ -19,7 +19,6 @@
 
 #include "gtoReader.h"
 #include "gtoHeader.h"
-#include <TwkGeom/GTOReader.h>
 #include <Python.h>
 #include <vector>
 
