@@ -11,6 +11,8 @@ Contents:
     3. Build Notes
 
 
+* See the NEWS file for an overview of changes in this release. *
+
 --------
 
 Here's the Overview section from the documentation.  For the rest, see 
@@ -108,15 +110,16 @@ Or just drop us a line telling us you're using it.
 
 3. Notes on building:
 
-    1. Currently, the Maya plugin is known to work on Maya 4.0 and 4.5 on 
+    1. Currently, the Maya plugin is known to work on Maya 4.0, 4.5, and 5.0 on
        Linux.  We will soon be distributing a Windows version as well.  We
        suspect that it could be made to work on OSX if we had the right 
        compiler...
-       
-    2. Building the Maya plugin on Linux requires gcc 2.96.
+
+    2. Building the Maya 4.x plugin on Linux requires gcc 2.96, Maya 5.x
+       requires gcc 3.2 or higher.
     
-    3. The Python module is known to work with Python 2.2.x.  It ought to
-       work with other versions, but it's not tested.
+    3. The Python module is known to work with Python 2.2.x on Linux and OSX.
+       It ought to work with other versions, but it's not tested.
     
     4. If you want to build the Python module, you have to do so manually for
        now:

@@ -1,3 +1,29 @@
+2004-05-24  Mike Root  <mike@tweakfilms.com>
+
+	* Added a fail() method to Reader, to allow external code to stop the
+	reader if there is an error unrelated to the gto file itself.
+
+2004-05-21  Jim Hourihan  <jimh@tweakfilms.com>
+
+	* gto.texi: version 3
+
+	* Writer.h (class Writer): new versions of beginComponent() and
+	property for version 3. 
+
+	* Reader.h (class Reader): updated API for version 3
+
+	* Reader.cpp (readHeader): backwards compatibility with version 3
+	(readObjects): same
+
+	* RawData.cpp (Property): updated to work with Version 3 API
+	(property): version 3 api
+	(component): version 3 api
+
+	* Protocols.h: added INTERP defines
+
+	* Header.h: new structs for property, component headers. Version 2
+	structs are renamed.
+
 2003-09-11  Jim Hourihan  <jimh@tweakfilms.com>
 
 	* RawData.h (class RawDataBaseReader): converted for use with new

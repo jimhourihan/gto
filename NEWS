@@ -1,0 +1,49 @@
+
+* Version 3.0
+
+      o Included gtoContainer.py (self-documenting module) plus usage examples 
+        in python/gtoContainer.
+
+      o configure script now works with Maya 4.x and Maya 5.x
+      
+      o An interpretation string has been added to the property header.
+
+      o An additional uint32 has been added as padding to the object,
+        component, and property headers for future expansion slop.
+
+      o A section on interpretation strings has been added to the documentation
+        and to the reader/writer classes.
+
+      o Added a type reference to the documentation.
+
+* Version 2.1
+
+      o gtofilter was changed to optionaly accept POSIX style regular
+        expressions in addition to shell-like "glob" expressions.
+
+      o The C++ writer class now defaults to writing compressed files when the
+        open() function is called. A second bool argument can be passed to it to
+        prevent the compression.
+
+      o The proposed texture assignment protocol (from version 2.0.4) has been
+        rejected.
+
+      o A new protocol "channel" is introduced for assigning mapped surface
+        varying data on geometry. An arbitrary number of texture maps may be 
+        assigned to the geometry. See section 6.13 Channels Protocol.
+
+      o The material protocol has been fleshed out. See section 6.8 Material
+        Protocol.
+
+      o The polygon protocol was missing the definition of the optional
+        mappings component. See section 6.5 Polygon Protocol.
+
+* Version 2.0.5 Bug fix version. Repaired problems with the configuration
+  scripts. Missing headers.
+
+* Version 2.0.4 Bug fix version. Some configuration problems solved.
+
+* Version 2.0 File headers changed. The format is not compatible with 1.0.
+
+* Version 1.0 
+
