@@ -41,8 +41,8 @@ fi
 
 dnl ********************** Processing starts here...
 
-AC_INIT(Gto, 2.0.5)
-AC_PREREQ(2.57)
+AC_INIT(Gto, 2.1.0)
+dnl AC_PREREQ(2.57)
 
 AC_CONFIG_AUX_DIR(config)
 

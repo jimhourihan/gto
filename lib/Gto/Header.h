@@ -34,8 +34,6 @@ namespace Gto {
 #define GTO_MAGIC   671
 #define GTO_VERSION 2
 
-#define GTO_SUPPORT_ZIP
-
 typedef unsigned int        uint32;
 typedef int                 int32;
 typedef unsigned short      uint16;

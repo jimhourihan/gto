@@ -114,6 +114,7 @@ Reader::open(const char *filename)
             m_why = "stream failed to open";
             return false;
         }
+        m_in->seekg(bytes, IOS_BEG);
 #endif
     }
 
@@ -531,7 +532,7 @@ Reader::read(char *buffer, size_t size)
     {
         m_in->read(buffer,size);
 
-#ifndef PLATFORM_DARWIN
+#ifdef HAVE_FULL_IOSTREAMS
         if (m_in->fail())
         {
             std::cerr << "ERROR: Gto::Reader: Failed to read gto file: '";
@@ -595,7 +596,11 @@ void Reader::seekForward(size_t bytes)
 {
     if (m_in)
     {
-        m_in->seekg(bytes, IOS_CUR);
+#ifdef HAVE_FULL_IOSTREAMS
+        m_in->seekg(bytes, ios_base::cur);
+#else
+        m_in->seekg(bytes, ios::cur);
+#endif
     }
 #ifdef GTO_SUPPORT_ZIP
     else
@@ -609,7 +614,11 @@ void Reader::seekTo(size_t bytes)
 {
     if (m_in)
     {
-        m_in->seekg(bytes, IOS_BEG);
+#ifdef HAVE_FULL_IOSTREAMS
+        m_in->seekg(bytes, ios_base::beg);
+#else
+        m_in->seekg(bytes, ios::beg);
+#endif
     }
 #ifdef GTO_SUPPORT_ZIP
     else
