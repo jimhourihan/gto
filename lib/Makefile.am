@@ -3,7 +3,7 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = Gto
+SUBDIRS = Gto WFObj
 
 nobase_include_HEADERS = Gto/EXTProtocols.h \
                          Gto/Header.h \

@@ -8,8 +8,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 
 SUBDIRS = test
 
-lib_LTLIBRARIES = libGto.la
+lib_LTLIBRARIES = libWFObj.la
 
-libGto_la_SOURCES = Writer.cpp Reader.cpp RawData.cpp Utilities.cpp
-libGto_la_LIBS = @LIBS@
+libWFObj_la_SOURCES = Writer.cpp Reader.cpp Grammar.cpp Lexer.cpp
+libWFObj_la_EXTRA = Grammar.y Lexer.l
+libWFObj_la_LIBS = @LIBS@
 
