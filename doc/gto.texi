@@ -86,7 +86,7 @@ This document applies to version 2 of the file format.
 * Library::              Reading and Writing using the C++ library.
 * Module::               Reading and Writing using the Python module.
 * Utilities::            Utility Programs and Plug-ins.
-* Reference::            Index of functions, types, and variables.
+* Index::                Index of functions, types, and variables.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -585,10 +585,15 @@ the binaries and library. Note that you may need to become root for
     sh> make install
 @end example
 
-If you have Maya installed, the Maya I/O plugin can be compiled. You
-can give the @option{--enable-maya-plugin} argument to the configure
-script to have the plugin built. See the INSTALL file at the top of
-the source code tree for more information on using configure.
+To install the Python module first build the libraries and tools as
+described above. Then do the following:
+
+@example
+    sh> cd plugins/python
+    sh> ./setup.py build
+    sh> ./setup.py install
+    sh> make install
+@end example
 
 @menu
 
@@ -597,17 +602,37 @@ Operating system specific instructions
 * Linux::                  GNU/Linux
 * OSX::                    Mac OS X
 * Windows::                Microsoft Windows 2000/XP
+
 @end menu
 
 @c ----------------------------------------------------------------------
 @node Linux, OSX, Installation, Installation
 @section GNU/Linux
 
+On non Red Hat or home grown GNU/Linux systems, the library and binary
+tools should build and install using the normal proceedure. Here at
+Tweak, we typically build the library and binary tools using gcc 3.1
+or greater. However, the library and binaries will work with any gcc
+starting with 2.95.
+
+@subsection Maya Plugin
+
+If you have Maya installed and want to use the GTO plugin,
+you will need to tell the configure script:
+
+@example
+    sh> ./configure --enable-maya-plugin
+    sh> make
+    sh> make install
+@end example
+
 The Maya plugin almost certainly requires a specific compiler for
-GNU/Linux installation with Maya 4.x or 3.x. On versions of Red Hat
-Linux 7.x the default compiler should be used; this should be gcc
-2.96. On later versions of Red Hat, 8.x and 9.x, you will need to
-install the following:
+GNU/Linux installation with Maya 4.x or 3.x. This is because the name
+mangling must match that used by the version of the compiler Maya was
+compiled with. For 4.x and 3.x, this is the Red Hat version 2.96 of
+gcc. In versions of Red Hat Linux 7.x 2.96 is the default compiler; on
+later versions of Red Hat, 8.x and 9.x, you will need to install the
+following:
 
 @example 
     compat-gcc-7.3-2.96.110.i386.rpm
@@ -627,35 +652,38 @@ to do this before running configure:
 @end example
 
 If you are not using the Maya plugin, or you want to use the GTO
-library, but using a different compiler, you may need to run the build
-and installation process more than once with different compiler
-settings. 
-
-On non Red Hat or home grown GNU/Linux systems, the library and binary
-tools should build and install using the normal proceedure. Here at
-Tweak, we typically build the library and binary tools using gcc 3.1
-or greater.
+library, but with a different compiler, you may need to run the build
+and installation process more than once.
 
 @c ----------------------------------------------------------------------
 @node OSX, Windows, Linux, Installation
 @section Mac OS X
 
-The GTO library and binaries should build normally on OS X if you have
-installed the developer tools. You should have a version of the
-developer tools that uses gcc 3.1 or better.
+In order to build the GTO library and tools, you will need the
+developer tools. Normally you get the tools on a seperate CD that
+comes with OS X. You can usually download them from Apple's website if
+not. 
+
+You should have a version of the developer tools that uses gcc 3.1 or
+better.
 
 At the time of this writing, IBM has just released the XL compilers
 for OS X. We have not yet attempted to compile the GTO tools and
 library using this compiler.
 
+The configure script will automatically look for fink distributions in
+@code{/sw} for the TIFF library. (Needed by @command{gtoimage}).
+
+@subsection Maya Plugin
+
 The Maya plugin on Mac OS X requires the use of CodeWarrior to compile
 a CFM shared object for Maya versions 4.x and 5.x. In addition, for
 the 4.x versions, you will need to hack the CodeWarrior system header
-files to get the build to work. We have not had much success in
-getting the plugin to compile for OS X since the header munging
-instructions did not work for us. However, there is no reason to
-suspect that givin the proper CodeWarrior version and modifications
-that it would not compile.
+files to get the build to work (see Maya documentation on how to do
+this). We have not had much success in getting the plugin to compile
+for OS X since the header munging instructions did not work for
+us. However, there is no reason to suspect that givin the proper
+CodeWarrior version and modifications that it would not compile.
 
 We would be very obliged if someone figures out how to get that to
 work.
@@ -673,6 +701,9 @@ work arounds to compile the GTO library and Maya plugin. Because of
 this, the library and tools are currently unsupported on Windows.
 
 Your mileage may vary for other Windows compilers.
+
+If you happen to get it working or want to give us a hand with Windows
+drop us a line. 
 
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
@@ -2014,15 +2045,16 @@ version of the code we use is identical to the released version.
 @chapter C++ Library
 
 The GTO Reader/Writer library is written in a subset of C++. The
-intention was to make the library as portable as
-possible. Unfortunately we have only tried it on platforms that
-support gcc 2.95 and greater. It is known to work on various Linux
-versions and Mac OS X. In either case it has been compiled with gcc.
+intention was to make the library as portable as possible. In addition
+to the GTO library, there is a a Wavefront .obj parser. The OBJ reader
+library is useful outside of the context of GTO files, so we've
+included it as well.
 
 @menu
 * Reader::                      Read GTO files by deriving from the Reader.
 * Writer::                      Write GTO files by using a Writer instance.
 * RawData::                     RawData classes.
+* OBJ::                         Wavefront .obj parser.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -2379,7 +2411,7 @@ result of calls to the property() function.
 @end deftypefn
 
 @c -------------------------------------------------------------------------
-@node RawData,  , Writer, Library
+@node RawData, OBJ, Writer, Library
 @section Gto::RawDataReader/Gto::RawDataWriter classes
 
 These classes provide a quick method of reading the contents of a GTO
@@ -2391,6 +2423,34 @@ be found in the RawData.h file. For examples of use, see
 The RawData class shows how to both read and write using the supplied
 classes. In addition the reader subclass shows how to convert string
 data. 
+
+@c -------------------------------------------------------------------------
+@node OBJ,  , RawData, Library
+@section Wavefront .obj parser
+
+Like the GTO reader class, the WFObj reader class is used by
+sub-classing from it. The base class calls the derived class'
+functions to give it information about what's in the file.
+
+Currently the library parses only the original (old skool) OBJ
+format. So it can't handle the ``free form surface'' additions which
+include all manner of parameteric surfaces and curves. We'd like to
+incorporate those in the future, but since most applications don't
+write out those data there's not a huge need for it. 
+
+Our parser can handle some of the tricker aspects of the format (like
+negative indices) which are not usually handled properly. In addition,
+it detects out-of-bounds indices at the parsing stage so you don't
+have to worry about getting bogus data. It does not handle the
+``call'', ``scmp'', or ``csh'' tokens. 
+
+The parser will attempt to read badly formed .obj files by recovering
+at the next line of the file, but usually a badly formed file will
+result in drit.
+
+For example usage, see the @command{gto2obj} source code. While
+@command{gto2obj} does not use all the features of the parser, it does
+give a good indication how to do so.
 
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
@@ -2556,7 +2616,7 @@ writing the gto file.
 @c -------------------------------------------------------------------------
 @c -------------------------------------------------------------------------
 
-@node Utilities, Reference, Module, Top
+@node Utilities, Index, Module, Top
 @chapter Utilities
 
 @menu
@@ -2789,8 +2849,8 @@ The plugin can import everything that it exports.
 
 @c -------------------------------------------------------------------------
 
-@node Reference,  , Utilities, Top
-@appendix Reference
+@node Index,  , Utilities, Top
+@appendix Index
 
 @heading Properties
 @printindex vr
