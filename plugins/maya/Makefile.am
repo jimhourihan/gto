@@ -12,9 +12,9 @@ meldir = $(gto_maya_location)/scripts/others
 
 if GTO_BUILD_MAYA
 
-plugin_PROGRAMS = GtoIO.so
+dist_mel_SCRIPTS = gtoExportOptions.mel gtoExportSet.mel
 
-mel_SCRIPTS = gtoExportOptions.mel gtoExportSet.mel
+plugin_PROGRAMS = GtoIO.so
 
 GtoIO_so_SOURCES = GtoInDataBase.cpp \
                    GtoInNURBS.cpp \
@@ -28,17 +28,17 @@ GtoIO_so_SOURCES = GtoInDataBase.cpp \
                    GtoOut.cpp \
                    version.cpp 
 
-EXTRA_DIST = GtoInDataBase.h \
-             GtoInNURBS.h \
-             GtoInObject.h \
-             GtoInParticle.h \
-             GtoInPoly.h \
-             GtoInReader.h \
-             GtoInSet.h \
-             GtoInTransform.h \
-             GtoIO.h \
-             GtoOut.h \
-             version.h 
+noinst_HEADERS = GtoInDataBase.h \
+                 GtoInNURBS.h \
+                 GtoInObject.h \
+                 GtoInParticle.h \
+                 GtoInPoly.h \
+                 GtoInReader.h \
+                 GtoInSet.h \
+                 GtoInTransform.h \
+                 GtoIO.h \
+                 GtoOut.h \
+                 version.h 
 
 GtoIO_so_LDFLAGS = -shared \
                    -L$(top_srcdir)/lib/Gto \
