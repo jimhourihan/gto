@@ -1,0 +1,10 @@
+#! /bin/sh
+#
+# If the ./configure script is missing, you can run this script to create it
+#
+
+mkdir config
+aclocal \
+&& automake --gnu --add-missing \
+&& autoconf
+rm -rf autom4te.cache
