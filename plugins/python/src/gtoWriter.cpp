@@ -721,7 +721,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
     // Write that data!
     if( prop.type == Gto::Int )
     {
-        int data[dataSize];
+        int *data = new int[dataSize];
         int numItems = flatten( rawdata, data, dataSize, "int", PyInt_AsInt );
         if( PyErr_Occurred() )
         {
@@ -737,6 +737,8 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         }
         writer->m_writer->propertyData( data );
         writer->m_propCount++;
+        
+        delete [] data;
 
         Py_INCREF( Py_None );
         return Py_None;
@@ -744,7 +746,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
 
     if( prop.type == Gto::Float )
     {
-        float data[dataSize];
+        float *data = new float[dataSize];
         int numItems = flatten( rawdata, data, dataSize, "float", 
                                 PyFloat_AsFloat );
         if( PyErr_Occurred() )
@@ -762,12 +764,14 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         writer->m_writer->propertyData( data );
         writer->m_propCount++;
 
+        delete [] data;
+
         Py_INCREF( Py_None );
         return Py_None;
     }
     if( prop.type == Gto::Double )
     {
-        double data[dataSize];
+        double *data = new double[dataSize];
         int numItems = flatten( rawdata, data, dataSize, "double",
                                 PyFloat_AsDouble );
         if( PyErr_Occurred() )
@@ -784,12 +788,15 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         }
         writer->m_writer->propertyData( data );
         writer->m_propCount++;
+
+        delete [] data;
+
         Py_INCREF( Py_None );
         return Py_None;
     }
     if( prop.type == Gto::Short )
     {
-        unsigned short data[dataSize];
+        unsigned short *data = new unsigned short[dataSize];
         int numItems = flatten( rawdata, data, dataSize, "short",
                                 PyInt_AsShort );
         if( PyErr_Occurred() )
@@ -806,12 +813,15 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         }
         writer->m_writer->propertyData( data );
         writer->m_propCount++;
+
+        delete [] data;
+
         Py_INCREF( Py_None );
         return Py_None;
     }
     if( prop.type == Gto::Byte )
     {
-        unsigned char data[dataSize];
+        unsigned char *data = new unsigned char[dataSize];
         int numItems = flatten( rawdata, data, dataSize, "byte",
                                 PyInt_AsByte );
         if( PyErr_Occurred() )
@@ -828,12 +838,15 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         }
         writer->m_writer->propertyData( data );
         writer->m_propCount++;
+
+        delete [] data;
+
         Py_INCREF( Py_None );
         return Py_None;
     }
     if( prop.type == Gto::String )
     {
-        char *strings[dataSize];
+        char **strings = new char *[dataSize];
         int numItems = flatten( rawdata, strings, dataSize, "string",
                                 PyString_AsString );
         if( PyErr_Occurred() )
@@ -849,7 +862,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
             return NULL;
         }
 
-        int data[dataSize];
+        int *data = new int[dataSize];
         for( int i = 0; i < numItems; ++i )
         {
             data[i] = writer->m_writer->lookup( strings[i] );
@@ -863,8 +876,12 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
             }
         }
         writer->m_writer->propertyData( data );
-        Py_INCREF( Py_None );
         writer->m_propCount++;
+        
+        delete [] strings;
+        delete [] data;
+        
+        Py_INCREF( Py_None );
         return Py_None;
     }
 
