@@ -20,10 +20,14 @@
 #include "Reader.h"
 #include "Utilities.h"
 #include <fstream>
+#include <sstream>
+#include <sys/stat.h>
 #include <assert.h>
 #ifdef GTO_SUPPORT_ZIP
 #include <zlib.h>
 #endif
+
+int GTOParse(Gto::Reader*);
 
 #if ( __GNUC__ == 2 )
     #define IOS_CUR ios::cur
@@ -42,7 +46,9 @@ Reader::Reader(unsigned int mode)
       m_gzrval(0), 
       m_error(false), 
       m_needsClosing(false),
-      m_mode(mode)
+      m_mode(mode),
+      m_linenum(0),
+      m_charnum(0)
 {
 }
 
@@ -52,72 +58,114 @@ Reader::~Reader()
 }
 
 bool
-Reader::open(istream& i, const char *name)
+Reader::open(istream& i, const char *name, unsigned int ormode)
 {
-    if (m_in || m_gzfile) close();
+    if ((m_in && m_in != &i) || m_gzfile) close();
 
     m_in            = &i;
     m_needsClosing  = false;
     m_inName        = name;
     m_error         = false;
 
-    return read();
+    if ((m_mode | ormode) & TextOnly)
+    {
+        return readTextGTO();
+    }
+    else
+    {
+        readMagicNumber();
+
+        if (m_header.magic != Header::Magic ||
+            m_header.magic == Header::Cigam)
+        {
+            return false;
+        }
+
+        return readBinaryGTO();
+    }
 }
 
 bool
 Reader::open(const char *filename)
 {
     if (m_in) return false;
+    
+    struct stat buf;
+    if (stat( filename, &buf ) )
+    {
+        fail( "File does not exist" );
+        return false;
+    }
 
     m_inName = filename;
-    size_t i = m_inName.find(".gz", 0, 3);
 
+    //
+    //  Fail if not compiled with zlib and the extension is gz
+    //
+
+#ifndef GTO_SUPPORT_ZIP
+    size_t i = m_inName.find(".gz", 0, 3);
     if (i == (strlen(filename) - 3))
     {
-#ifdef GTO_SUPPORT_ZIP
-        m_gzfile = gzopen(filename, "rb");
-        
-        if (!m_gzfile)
-        {
-            fail( "file open failed" );
-            return false;
-        }
-#else
         fail( "this library was not compiled with zlib support" );
         return false;
-#endif
     }
-    else
-    {
+#endif
+
+    //
+    //  Figure out if this is a text GTO file
+    //
+
 #ifdef GTO_SUPPORT_ZIP
-        m_gzfile = gzopen(filename, "rb");
+    m_gzfile = gzopen(filename, "rb");
 
-        if (!m_gzfile)
-        {
-            //
-            //  Try .gz version before giving up completely
-            //
+    if (!m_gzfile)
+    {
+        //
+        //  Try .gz version before giving up completely
+        //
 
-            std::string temp(filename);
-            temp += ".gz";
-            return open(temp.c_str());
-        }
+        std::string temp(filename);
+        temp += ".gz";
+        return open(temp.c_str());
+    }
+
 #else
+    m_in = new ifstream(filename, ios::in|ios::binary);
+    
+    if ( !(*m_in) )
+    {
+        m_in = 0;
+        fail( "stream failed to open" );
+        return false;
+    }
+#endif
+
+    m_needsClosing = true;
+    m_error = false;
+
+    readMagicNumber();
+
+    if (m_header.magic == Header::MagicText ||
+        m_header.magic == Header::CigamText)
+    {
+        close();
         m_in = new ifstream(filename, ios::in|ios::binary);
-        
+
         if ( !(*m_in) )
         {
+            delete m_in;
             m_in = 0;
             fail( "stream failed to open" );
             return false;
         }
-        m_in->seekg(bytes, IOS_BEG);
-#endif
-    }
 
-    m_needsClosing = true;
-    m_error = false;
-    return read();
+        return open(*m_in, filename, TextOnly);
+    }
+    else
+    {
+        return readBinaryGTO();
+    }
 }
 
 void
@@ -136,6 +184,27 @@ Reader::close()
         }
 #endif
     }
+
+    //
+    //  Clean everything up in case the Reader
+    //  class is used for another file.
+    //
+
+    m_objects.clear();
+    m_components.clear();
+    m_properties.clear();
+    m_strings.clear();
+    m_stringMap.clear();
+    m_buffer.clear();
+
+    m_error        = false;
+    m_inName       = "";
+    m_needsClosing = false;
+    m_swapped      = false;
+    m_why          = "";
+    m_linenum      = 0;
+    m_charnum      = 0;
+    memset(&m_header, 0, sizeof(m_header));
 }
 
 void Reader::header(const Header&) {}
@@ -145,6 +214,7 @@ Reader::Request Reader::component(const string&, const ComponentInfo &) { return
 Reader::Request Reader::property(const string&, const PropertyInfo &) { return Request(true); }
 void* Reader::data(const PropertyInfo&, size_t) { return 0; }
 void Reader::dataRead(const PropertyInfo&) {}
+void Reader::descriptionComplete() {}
 
 Reader::Request 
 Reader::component(const string& name, 
@@ -197,11 +267,19 @@ swapShorts(void *data, size_t size)
 }
 
 void
+Reader::readMagicNumber()
+{
+    m_header.magic = 0;
+    read((char*)&m_header, sizeof(uint32));
+}
+
+void
 Reader::readHeader()
 {
-    read((char*)&m_header, sizeof(Header));
-    if (m_error) return;
+    read((char*)&m_header + sizeof(uint32), 
+         sizeof(Header) - sizeof(uint32));
 
+    if (m_error) return;
     m_swapped = false;
 
     if (m_header.magic == Header::Cigam)
@@ -211,7 +289,9 @@ Reader::readHeader()
     }
     else if (m_header.magic != Header::Magic)
     {
-        fail( "bad magic number" );
+        ostringstream str;
+        str << "bad magic number (" << hex << m_header.magic << ")";
+        fail( str.str() );
         return;
     }
 
@@ -225,6 +305,24 @@ Reader::readHeader()
     }
 
     header(m_header);
+}
+
+int
+Reader::internString(const std::string& s)
+{
+    StringMap::iterator i = m_stringMap.find(s);
+
+    if (i == m_stringMap.end())
+    {
+        m_strings.push_back(s);
+        int index = m_strings.size() - 1;
+        m_stringMap[s] = index;
+        return index;
+    }
+    else
+    {
+        return i->second;
+    }
 }
 
 void
@@ -298,9 +396,11 @@ Reader::readComponents()
 {
     int poffset = 0;
 
-    for (int i=0; i < m_objects.size(); i++)
+    for (Objects::iterator i = m_objects.begin();
+         i != m_objects.end();
+         ++i)
     {
-        const ObjectInfo &o = m_objects[i];
+        const ObjectInfo &o = *i;
 
         for (int q=0; q < o.numComponents; q++)
         {
@@ -351,9 +451,11 @@ Reader::readComponents()
 void
 Reader::readProperties()
 {
-    for (int i=0; i < m_components.size(); i++)
+    for (Components::iterator i = m_components.begin();
+         i != m_components.end();
+         ++i)
     {
-        const ComponentInfo &c = m_components[i];
+        const ComponentInfo &c = *i;
 
         for (int q=0; q < c.numProperties; q++)
         {
@@ -405,10 +507,10 @@ Reader::readProperties()
 bool
 Reader::accessObject(ObjectInfo& o)
 {
-    Request r = object( stringFromId(o.name), 
-                        stringFromId(o.protocolName), 
-                        o.protocolVersion,
-                        o);
+    Request r = object(stringFromId(o.name), 
+                       stringFromId(o.protocolName), 
+                       o.protocolVersion,
+                       o);
     
     o.requested  = r.m_want;
     o.objectData = r.m_data;
@@ -449,25 +551,44 @@ Reader::accessObject(ObjectInfo& o)
 }
 
 bool
-Reader::read()
+Reader::readTextGTO()
+{
+    m_header.magic = Header::MagicText;
+
+    if (!::GTOParse(this))
+    {
+        fail("failed to parse text GTO");
+        return false;
+    }
+    
+    header(m_header);
+    descriptionComplete();
+    return true;
+}
+
+bool
+Reader::readBinaryGTO()
 {
     readHeader();           if (m_error) return false; 
     readStringTable();      if (m_error) return false;
     readObjects();          if (m_error) return false;
     readComponents();       if (m_error) return false;
     readProperties();       if (m_error) return false;
+    descriptionComplete();
 
     if (m_mode & HeaderOnly)
     {
         return true;
     }
 
-    int propIndex = 0;
+    Properties::iterator p = m_properties.begin();
 
-    for (int i=0; i < m_components.size(); i++)
+    for (Components::iterator i = m_components.begin();
+         i != m_components.end();
+         ++i)
     {
-        ComponentInfo &comp = m_components[i];
-
+        ComponentInfo &comp = *i;
+            
         if (comp.flags & Gto::Transposed)
         {
             cerr << "ERROR: Transposed data for '"
@@ -478,18 +599,14 @@ Reader::read()
         }
         else
         {
-            for (int q=propIndex; 
-                 q < (propIndex + comp.numProperties); 
-                 q++)
+            for (Properties::iterator e = p + comp.numProperties; p != e; ++p)
             {
-                if (!readProperty(m_properties[q]))
+                if (!readProperty(*p))
                 {
                     return false;
                 }
             }
         }
-
-        propIndex += comp.numProperties;
     }
 
     return true;
@@ -696,7 +813,246 @@ int Reader::tell()
     {
         return gztell(m_gzfile);
     }
+#else
+    else
+    {
+        fail("m_in undefined");
+        return 0;
+    }
 #endif
+}
+
+//----------------------------------------------------------------------
+//
+//  Text parser entry points
+//
+
+void Reader::beginHeader(uint32 version)
+{
+    m_header.numStrings = 0;
+    m_header.numObjects = 0;
+    m_header.version    = version ? version : GTO_VERSION;
+    m_header.flags      = 1;
+}
+
+void Reader::addObject(const ObjectInfo& info)
+{
+    //
+    //  This function is requireed when the header info is read
+    //  out-of-order (as with a text GTO file). In order to be backwards
+    //  compatible with the info structures, we need to update pointers
+    //  when STL allocates new memory.
+    //
+    
+    if ((m_objects.size() > 0) && (m_objects.capacity() <= m_objects.size()))
+    {
+        const ObjectInfo* startAddress = &m_objects.front();
+        m_objects.push_back(info);
+        const ObjectInfo* newStartAddress = &m_objects.front();
+
+        for (Components::iterator i = m_components.begin();
+             i != m_components.end();
+             ++i)
+        {
+            size_t offset = i->object - startAddress;
+            i->object = newStartAddress + offset;
+        }
+    }
+    else
+    {
+        m_objects.push_back(info);
+    }
+}
+
+void Reader::addComponent(const ComponentInfo& info)
+{
+    //
+    //  See addObject coments
+    //
+    
+    if ((m_components.size() > 0) && (m_components.capacity() <= m_components.size()))
+    {
+        const ComponentInfo* startAddress = &m_components.front();
+        m_components.push_back(info);
+        const ComponentInfo* newStartAddress = &m_components.front();
+
+        for (Properties::iterator i = m_properties.begin();
+             i != m_properties.end();
+             ++i)
+        {
+            size_t offset = i->component - startAddress;
+            i->component = newStartAddress + offset;
+        }
+    }
+    else
+    {
+        m_components.push_back(info);
+    }
+}
+
+void Reader::beginObject(unsigned int name,
+                         unsigned int proto,
+                         unsigned int version)
+{
+    ObjectInfo info;
+    info.name            = name;
+    info.protocolName    = proto;
+    info.protocolVersion = version;
+    info.numComponents   = 0;
+    info.pad             = 0;
+    info.coffset         = 0;
+
+    Request r = object(stringFromId(name),
+                       stringFromId(proto),
+                       version,
+                       info);
+
+    info.requested  = r.want();
+    info.objectData = r.data();
+
+    addObject(info);
+}
+
+
+void Reader::beginComponent(unsigned int name,
+                            unsigned int interp)
+{
+    ComponentInfo info;
+    info.name           = name;
+    info.numProperties  = 0;
+    info.flags          = 0;
+    info.interpretation = interp;
+    info.pad            = 0;
+    info.poffset        = 0;
+    info.object         = &m_objects.back();
+
+    m_objects.back().numComponents++;
+
+    if (info.object->requested)
+    {
+        Request r = component(stringFromId(name),
+                              stringFromId(interp),
+                              info);
+
+        info.requested     = r.want();
+        info.componentData = r.data();
+    }
+    else
+    {
+        info.requested     = false;
+        info.componentData = 0;
+    }
+
+    addComponent(info);
+}
+
+void Reader::beginProperty(unsigned int name,
+                           unsigned int interp,
+                           unsigned int width,
+                           unsigned int size,
+                           DataType type)
+{
+    PropertyInfo info;
+    info.name           = name;
+    info.interpretation = interp;
+    info.size           = 0;
+    info.type           = type;
+    info.width          = width;
+    info.component      = &m_components.back();
+
+    m_components.back().numProperties++;
+
+    m_buffer.clear();
+
+    m_currentType.type  = type;
+    m_currentType.size  = size;
+    m_currentType.width = width;
+
+    if (info.component->requested)
+    {
+        Request r = property(stringFromId(name), 
+                             stringFromId(interp),
+                             info);
+
+        info.requested    = r.want();
+        info.propertyData = r.data();
+    }
+    else
+    {
+        info.requested    = false;
+        info.propertyData = 0;
+    }
+
+    m_properties.push_back(info);
+}
+
+size_t Reader::numAtomicValuesInBuffer() const
+{
+    return m_buffer.size() / dataSize(m_currentType.type);
+}
+
+size_t Reader::numElementsInBuffer() const
+{
+    return numAtomicValuesInBuffer() / m_currentType.width;
+}
+
+void Reader::fillToSize(size_t size)
+{
+    size_t elementSize = dataSize(m_currentType.type) * m_currentType.width;
+    ByteArray element(elementSize);
+
+    memcpy(&element[0], &m_buffer[m_buffer.size() - elementSize], elementSize);
+
+    while (numElementsInBuffer() != size)
+    {
+        copy(element.begin(), element.end(), back_inserter(m_buffer));
+    }
+}
+
+void Reader::parseError(const char* msg)
+{
+    cerr << "ERROR: parsing GTO file \""
+         << infileName()
+         << "\" at line " << linenum()
+         << ", char " << charnum()
+         << " : " << msg
+         << endl;
+}
+
+void Reader::parseWarning(const char* msg)
+{
+    cerr << "WARNING: parsing GTO file \""
+         << infileName()
+         << "\" at line " << linenum()
+         << ", char " << charnum()
+         << " : " << msg
+         << endl;
+}
+
+void Reader::endProperty()
+{
+    //
+    //  Give the data to the reader sub-class
+    //
+
+    PropertyInfo& info = m_properties.back();
+    info.size = numElementsInBuffer();
+
+    if (info.requested)
+    {
+        if (void* buffer = data(info, m_buffer.size()))
+        {
+            memcpy(buffer, &m_buffer.front(), m_buffer.size());
+            dataRead(info);
+        }
+    }
+
+    m_buffer.clear();
+}
+
+void Reader::endFile()
+{
+    m_header.numStrings = m_strings.size();
 }
 
 } // Gto

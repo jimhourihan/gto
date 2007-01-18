@@ -35,6 +35,7 @@
 #define GTO_PROTOCOL_STRAND              "strand"
 #define GTO_PROTOCOL_CAMERA              "camera"
 #define GTO_PROTOCOL_LIGHT               "light"
+#define GTO_PROTOCOL_GRID3D              "grid3D"
 
 #define GTO_COMPONENT_POINTS             "points"
 #define GTO_COMPONENT_SURFACE            "surface"
@@ -47,6 +48,7 @@
 #define GTO_COMPONENT_SHELLS             "shells"
 #define GTO_COMPONENT_IMAGE              "image"
 #define GTO_COMPONENT_STRAND             "strand"
+#define GTO_COMPONENT_CHANNELS           "channels"
 
 #define GTO_PROPERTY_POSITION            "position"          // float[3][]
 #define GTO_PROPERTY_VELOCITY            "velocity"          // float[3][]
@@ -70,10 +72,13 @@
 #define GTO_PROPERTY_VERTEX              "vertex"            // int[1][]
 #define GTO_PROPERTY_NORMAL              "normal"            // multiple
 #define GTO_PROPERTY_ST                  "st"                // multiple
+#define GTO_PROPERTY_STROOT              "stRoot"            // multiple
 #define GTO_PROPERTY_METHOD              "method"            // int[1][1]
 #define GTO_PROPERTY_VERTICES            "vertices"          // int[1][]
 #define GTO_PROPERTY_ELEMENTS            "elements"          // int[1][]
 #define GTO_PROPERTY_PIXELS              "pixels"
+#define GTO_PROPERTY_WIDTH               "width"
+#define GTO_PROPERTY_INTERP_BOUNDARY     "interpolateBoundary" // byte[1][1]
 
 #define GTO_POLYGON_POLYGON              0
 #define GTO_POLYGON_TRIANGLE             1

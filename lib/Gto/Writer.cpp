@@ -17,10 +17,16 @@
 // USA
 //
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "Writer.h"
 #include "Utilities.h"
 #include <fstream>
 #include <assert.h>
+#include <ctype.h>
+#include <stdio.h>
 
 #define GTO_DEBUG 0
 
@@ -28,20 +34,34 @@
 #include <zlib.h>
 #endif
 
+#ifdef WIN32
+#define snprintf _snprintf
+#endif
+
 namespace Gto {
 using namespace std;
 
 
 Writer::Writer() 
-    : m_out(0), m_gzfile(0), 
-      m_needsClosing(false), m_error(false), m_tableFinished(false)
+    : m_out(0), 
+      m_gzfile(0),
+      m_needsClosing(false), 
+      m_error(false),
+      m_tableFinished(false),
+      m_currentProperty(0),
+      m_type(CompressedGTO)
 {
     init(0);
 }
 
 Writer::Writer(ostream &o) 
-    : m_out(0), m_gzfile(0),
-      m_needsClosing(true), m_error(false), m_tableFinished(false)
+    : m_out(0), 
+      m_gzfile(0),
+      m_needsClosing(true), 
+      m_error(false), 
+      m_tableFinished(false),
+      m_currentProperty(0),
+      m_type(CompressedGTO)
 {
     init(&o);
 }
@@ -58,14 +78,30 @@ Writer::init(ostream *o)
 }
 
 bool
-Writer::open(const char* filename, bool compress)
+Writer::open(const char* filename, FileType type)
 {
     if (m_out || m_gzfile) return false;
 
     m_outName = filename;
+    m_type    = type;
 
+#ifndef GTO_SUPPORT_ZIP
+    if (type == CompressedGTO) type = BinaryGTO;
+#endif
+
+    if (type == BinaryGTO || type == TextGTO)
+    {
+        m_out = new ofstream(filename, ios::out|ios::binary);
+
+        if (!(*m_out))
+        {
+            m_out    = 0;
+            m_error  = true;
+            return false;
+        }
+    }
 #ifdef GTO_SUPPORT_ZIP
-    if (compress)
+    else if (type == CompressedGTO)
     {
         m_gzfile = gzopen(filename, "wb");
 
@@ -75,19 +111,6 @@ Writer::open(const char* filename, bool compress)
             m_error  = true;
             return false;
         }
-    }
-    else
-    {
-#endif
-        m_out = new ofstream(filename, ios::out|ios::binary);
-
-        if (!(*m_out))
-        {
-            m_out    = 0;
-            m_error  = true;
-            return false;
-        }
-#ifdef GTO_SUPPORT_ZIP
     }
 #endif
 
@@ -120,12 +143,24 @@ Writer::beginData()
 {
     m_currentProperty = 0;
     constructStringTable();
-    writeHead();
+
+    if (m_type == TextGTO)
+    {
+        writeFormatted("GTOa (%d)\n\n", GTO_VERSION);
+    }
+    else
+    {
+        writeHead();
+    }
 }
 
 void
 Writer::endData()
 {
+    if (m_type == TextGTO)
+    {
+        writeText("    }\n}\n");
+    }
 }
 
 void
@@ -186,6 +221,13 @@ Writer::lookup(const string& s) const
     }
 }
 
+std::string
+Writer::lookup(int n) const
+{
+    if (n >= m_names.size()) return "*bad-lookup*";
+    return m_names[n];
+}
+
 void
 Writer::beginObject(const char* name, 
                     const char *protocol, 
@@ -195,6 +237,7 @@ Writer::beginObject(const char* name,
     m_names.push_back(protocol);
 
     ObjectHeader header;
+    memset(&header, 0, sizeof(ObjectHeader));
     header.numComponents   = 0;
     header.name            = m_names.size() - 2;
     header.protocolName    = m_names.size() - 1;
@@ -209,6 +252,7 @@ Writer::beginComponent(const char* name, unsigned int flags)
     m_names.push_back(name);
     m_objects.back().numComponents++;
     ComponentHeader header;
+    memset(&header, 0, sizeof(ComponentHeader));
     
     header.numProperties  = 0;
     header.flags          = flags;
@@ -229,6 +273,7 @@ Writer::beginComponent(const char* name,
     m_names.push_back(name);
     m_objects.back().numComponents++;
     ComponentHeader header;
+    memset(&header, 0, sizeof(ComponentHeader));
     
     header.numProperties = 0;
     header.flags         = flags;
@@ -263,6 +308,7 @@ Writer::property(const char* name,
     m_components.back().numProperties++;
 
     PropertyHeader header;
+    memset(&header, 0, sizeof(PropertyHeader));
     header.size   = numElements;
     header.type   = type;
     header.width  = partsPerElement;
@@ -274,6 +320,9 @@ Writer::property(const char* name,
     header.interpretation = m_names.size() - 1;
 
     m_properties.push_back(header);
+    PropertyPath ppath(m_objects.size() - 1,
+                       m_components.size() - 1);
+    m_propertyMap[m_properties.size() - 1] = ppath;
 }
 
 
@@ -282,7 +331,7 @@ Writer::constructStringTable()
 {
     intern( "(Gto::Writer compiled " __DATE__ 
             " " __TIME__ 
-            ", $Id: Writer.cpp,v 1.3 2004/05/25 00:39:18 mike Exp $)" );
+            ", $Id: Writer.cpp,v 1.4 2007/01/18 19:25:58 mike Exp $)" );
 
     for (int i=0; i < m_names.size(); i++)
     {
@@ -345,6 +394,129 @@ Writer::constructStringTable()
     }
 
     m_tableFinished = true;
+}
+
+static bool gto_isalnum(const string& str)
+{
+    bool allnumbers = true;
+
+    for (int i=0, s=str.size(); i < s; i++)
+    {
+        int c = str[i];
+
+        if (!isalnum(c) && c != '_')
+        {
+            return false;
+        }
+
+        if (!isdigit(c)) allnumbers = false;
+    }
+
+    return !allnumbers;
+}
+
+void
+Writer::writeMaybeQuotedString(const string& str)
+{
+    static const char* keywords[] = {
+        "float", "double", "half", "bool", "int",
+        "short", "byte", "as", "GTOa", "string", 0 };
+
+    for (const char** k = keywords; *k; k++)
+    {
+        if (str == *k)
+        {
+            writeQuotedString(str);
+            return;
+        }
+    }
+    
+    if (gto_isalnum(str))
+    {
+        writeText(str);
+    }
+    else
+    {
+        writeQuotedString(str);
+    }
+}
+
+void
+Writer::writeQuotedString(const string& str)
+{
+    writeFormatted("\"");
+    static const char delim = '"';
+
+    for (int i=0; i < str.size(); i++)
+    {
+	char c = str[i];
+
+	if (c == 0)
+	{
+            write("");
+	}
+	else if (iscntrl(c))
+	{
+	    switch (c)
+	    {
+	      case '\n': writeFormatted("\\n"); break;
+	      case '\b': writeFormatted("\\b"); break;
+	      case '\r': writeFormatted("\\r"); break;
+	      case '\t': writeFormatted("\\t"); break;
+	      default:
+                  {
+                      char temp[41];
+                      temp[40] = 0;
+                      snprintf(temp, 40, "\\%o", int(c));
+                      writeFormatted(temp);
+                  }
+		  break;
+	    }
+	}
+	else if (c == delim)
+	{
+            writeFormatted("\\%c", delim);
+	}
+        else if (c & 0x80)
+        {
+            // UTF-8
+        }
+	else
+	{
+            write(&c, sizeof(char));
+	}
+    }
+
+    writeFormatted("\"");
+}
+
+void
+Writer::writeText(const std::string& s)
+{
+    if (m_out)
+    {
+        (*m_out) << s;
+    }
+#ifdef GTO_SUPPORT_ZIP
+    else if (m_gzfile)
+    {
+        gzwrite(m_gzfile, (void*)s.c_str(), s.size());
+    }
+#endif
+}
+
+void
+Writer::writeFormatted(const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    char* m;
+	/* AJG - windows vsnprintf hacko */
+	m = (char*)(malloc(1024*10*sizeof(char)));
+    // vasprintf(&m, format, ap);
+    vsprintf(m, format, ap);
+    write(m, strlen(m));
+    free(m);
 }
 
 void
@@ -474,11 +646,104 @@ Writer::propertyDataRaw(const void* data,
                         int width)
 {
     size_t p = m_currentProperty++;
-    size_t n = m_properties[p].size * m_properties[p].width;
+    const PropertyHeader& info = m_properties[p];
+    size_t n = info.size * info.width;
+    size_t ds = dataSize(info.type);
+    char* bdata = (char*)data;
 
     if (propertySanityCheck(propertyName, size, width))
     {
-        write(data, dataSize(m_properties[p].type) * n);
+        if (m_type == TextGTO)
+        {
+            PropertyPath p0 = p == 0 ? PropertyPath() : m_propertyMap[p-1];
+            PropertyPath p1 = m_propertyMap[p];
+
+            if (p0.objectIndex != p1.objectIndex)
+            {
+                if (p != 0)
+                {
+                    writeFormatted("    }\n}\n\n");
+                }
+
+                const ObjectHeader& o = m_objects[p1.objectIndex];
+                writeMaybeQuotedString(lookup(o.name));
+                writeFormatted(" : ");
+                writeMaybeQuotedString(lookup(o.protocolName));
+                writeFormatted(" (%d)\n{\n", o.protocolVersion);
+            }
+
+            if (p0.componentIndex != p1.componentIndex)
+            {
+                if (p != 0 && p0.objectIndex == p1.objectIndex)
+                {
+                    writeFormatted("    }\n\n");
+                }
+
+                const ComponentHeader& c = m_components[p1.componentIndex];
+                writeText("    ");
+                writeMaybeQuotedString(lookup(c.name));
+                writeFormatted("\n    {\n");
+            }
+
+            writeText("        ");
+            writeText(typeName(Gto::DataType(info.type)));
+            if (info.width > 1) writeFormatted("[%d]", info.width);
+            writeText(" ");
+            writeMaybeQuotedString(lookup(info.name));
+
+            if (info.interpretation)
+            {
+                writeText(" as ");
+                writeMaybeQuotedString(lookup(info.interpretation));
+            }
+
+            writeText(" =");
+
+            if (n == 0) writeText(" []");
+
+            if (n > 1) writeText(" [");
+
+            for (int i = 0; i < n; i++)
+            {
+                if (info.width > 1)
+                {
+                    if (i % info.width == 0)
+                    {
+                        if (i) writeFormatted(" ]");
+                        writeFormatted(" [");
+                    }
+                }
+
+                if (isNumber(DataType(info.type)))
+                {
+                    Number num = asNumber(bdata + (i * ds), 
+                                          DataType(info.type));
+
+                    if (num.type == Int)
+                    {
+                        writeFormatted(" %d", num._int);
+                    }
+                    else
+                    {
+                        writeFormatted(" %g", double(num._double));
+                    }
+                }
+                else
+                {
+                    char* s = bdata + (i*ds);
+                    writeText(" ");
+                    writeQuotedString(lookup(*(int*)s));
+                }
+            }
+
+            if (info.width > 1) writeText(" ]");
+            if (n > 1) writeText(" ]");
+            writeText("\n");
+        }
+        else
+        {
+            write(data, dataSize(m_properties[p].type) * n);
+        }
     }
 }
 

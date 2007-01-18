@@ -24,7 +24,34 @@
 
 namespace Gto {
 
+struct TypeSpec
+{
+    DataType    type;
+    int         width;
+    int         size;
+};
+
+struct Number
+{
+    union
+    {
+        int     _int;
+        double  _double;
+    };
+
+    DataType  type;
+};
+
+
 size_t dataSize(Gto::uint32);
+
+const char* typeName(Gto::DataType);
+
+bool isNumber(Gto::DataType);
+Number asNumber(void*, Gto::DataType);
+
+bool isGTOFile(const char*);
+
 
 } // Gto
 

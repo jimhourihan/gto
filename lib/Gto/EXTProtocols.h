@@ -20,6 +20,11 @@
 #define __Gto__EXTProtocols__h__
 #include <Gto/Protocols.h>
 
+#define GTO_EXT_PROTOCOL_DAMPER_CONSTRAINT    "damper constraint"
+#define GTO_EXT_PROTOCOL_PIN_CONSTRAINT       "pin constraint"
+#define GTO_EXT_PROTOCOL_RADIAL_FIELD         "radial field"
+#define GTO_EXT_PROTOCOL_SURFACE_FIELD        "surface field"
+#define GTO_EXT_PROTOCOL_WATER_GUY_FIELD      "water guy"
 #define GTO_EXT_PROTOCOL_AIR_FIELD            "air"
 #define GTO_EXT_PROTOCOL_CAMERA               GTO_PROTOCOL_CAMERA
 #define GTO_EXT_PROTOCOL_CHEAP_DENSITY_FIELD  "cheap density"
@@ -47,9 +52,11 @@
 #define GTO_EXT_PROTOCOL_SPLIT_EMITTER        "split emitter"
 #define GTO_EXT_PROTOCOL_DEPTH_SPLIT_EMITTER  "depth split emitter"
 #define GTO_EXT_PROTOCOL_SURFACE_EMITTER      "surface emitter"
+#define GTO_EXT_PROTOCOL_STADIUM_EMITTER      "stadium emitter"
 #define GTO_EXT_PROTOCOL_WIND_FIELD           "wind"
 #define GTO_EXT_PROTOCOL_HGT_VEL_FIELD        "hgt vel field"
 #define GTO_EXT_PROTOCOL_LEADING_EDGE_EMITTER "leading edge emitter"
+#define GTO_EXT_PROTOCOL_SECONDARY_STRAND     "secondary strand"
 
 #define GTO_EXT_COMPONENT_BODIES             "bodies"
 #define GTO_EXT_COMPONENT_TETRAHEDRA         "tetrahedra"

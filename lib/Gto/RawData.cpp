@@ -114,6 +114,7 @@ RawDataBaseReader::RawDataBaseReader() : Reader( Gto::Reader::None )
 
 RawDataBaseReader::~RawDataBaseReader()
 {
+    delete m_dataBase;
 }
 
 bool
@@ -204,6 +205,8 @@ RawDataBaseReader::dataRead(const PropertyInfo& info)
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
+    p->size = info.size;
+
     if (p->type == Gto::String)
     {
         int* ints = p->int32Data;
@@ -279,7 +282,9 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
                       if (stringId == -1)
                       {
                           cerr << "WARNING: writer detected bogus string id in "
-                               << property->name << endl;
+                               << property->name 
+                               << ", value is \"" << property->stringData[i]
+                               << "\"" << endl;
                           stringId = 0;
                       }
 
@@ -318,9 +323,9 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
 bool
 RawDataBaseWriter::write(const char *filename,
                          const RawDataBase& db, 
-                         bool compress)
+                         Writer::FileType type)
 {
-    if (!m_writer.open(filename, compress))
+    if (!m_writer.open(filename, type))
     {
         return false;
     }

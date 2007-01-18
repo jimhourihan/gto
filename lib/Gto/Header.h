@@ -31,8 +31,11 @@ namespace Gto {
 //  Types and MACROS
 //
 
-#define GTO_MAGIC   671
-#define GTO_VERSION 3
+#define GTO_MAGIC       0x29f
+#define GTO_MAGICl      0x9f020000
+#define GTO_MAGIC_TEXT  0x47544f61
+#define GTO_MAGIC_TEXTl 0x614f5447
+#define GTO_VERSION     3
 
 typedef unsigned int        uint32;
 typedef int                 int32;
@@ -47,8 +50,10 @@ typedef double              float64;
 
 struct Header
 {
-    static const unsigned int Magic = 0x0000029f;
-    static const unsigned int Cigam = 0x9f020000;
+    static const unsigned int MagicText = GTO_MAGIC_TEXT;
+    static const unsigned int CigamText = GTO_MAGIC_TEXTl;
+    static const unsigned int Magic     = GTO_MAGIC;
+    static const unsigned int Cigam     = GTO_MAGICl;
 
     uint32        magic;
     uint32        numStrings;

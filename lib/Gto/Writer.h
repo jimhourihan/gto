@@ -26,6 +26,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <stdarg.h>
 
 namespace Gto {
 
@@ -39,21 +40,45 @@ namespace Gto {
 class Writer
 {
 public:
+    struct PropertyPath
+    {
+        PropertyPath(size_t a=size_t(-1), size_t b=size_t(-1)) 
+            : objectIndex(a), componentIndex(b) {}
+        size_t objectIndex;
+        size_t componentIndex;
+    };
+
     typedef std::map<std::string, int>      StringMap;
     typedef std::vector<std::string>        StringVector;
     typedef std::vector<ComponentHeader>    Components;
     typedef std::vector<PropertyHeader>     Properties;
     typedef std::vector<ObjectHeader>       Objects;
+    typedef std::map<size_t, PropertyPath>  PropertyMap;
+
+    enum FileType
+    {
+        BinaryGTO,
+        CompressedGTO,
+        TextGTO
+    };
 
     Writer();
     Writer(std::ostream&);
     ~Writer();
 
     //
-    //  Optional open function which takes a filename
+    //  Optional open function which takes a filename. 
     //
 
-    bool            open(const char* filename, bool compress=true);
+    bool            open(const char* filename,
+                         FileType mode = CompressedGTO);
+    
+    //
+    //  Deprecated open API
+    //
+
+    bool            open(const char* f, bool c) 
+                    { return open(f, c ? CompressedGTO : BinaryGTO); }
 
     //
     //  Close stream if applicable.
@@ -114,6 +139,8 @@ public:
     int             lookup(const char*) const;
     int             lookup(const std::string&) const;
 
+    std::string     lookup(int) const;
+
     //
     //  Finish of declaration section
     //
@@ -167,6 +194,10 @@ private:
 
     void            write(const void*, size_t);
     void            write(const std::string&);
+    void            writeFormatted(const char*, ...);
+    void            writeText(const std::string&);
+    void            writeQuotedString(const std::string&);
+    void            writeMaybeQuotedString(const std::string&);
     void            flush();
 
     bool            propertySanityCheck(const char*, int, int);
@@ -177,6 +208,7 @@ private:
     Objects         m_objects;
     Components      m_components;
     Properties      m_properties;
+    PropertyMap     m_propertyMap;
     StringVector    m_names;
     StringMap       m_strings;
     bool            m_needsClosing;
@@ -184,6 +216,7 @@ private:
     bool            m_tableFinished;
     std::string     m_outName;
     size_t          m_currentProperty;
+    FileType        m_type;
 };
 
 template<typename T>
@@ -192,14 +225,7 @@ void Writer::propertyData(const T *data,
                           int size, 
                           int width)
 {
-    size_t p = m_currentProperty++;
-    size_t n = m_properties[p].size * m_properties[p].width;
-    assert(dataSize(m_properties[p].type) == sizeof(T));
-
-    if (propertySanityCheck(propertyName, size, width))
-    {
-        write(data, sizeof(T) * n);
-    }
+    propertyDataRaw(data, propertyName, size, width);
 }
 
 template<class T>
@@ -215,7 +241,7 @@ void Writer::propertyData(const std::vector<T>& container,
     //  make this a requirement of the implementation.
     //
 
-    propertyData(&container.front(), propertyName, size, width);
+    propertyDataRaw(&container.front(), propertyName, size, width);
 }
 
 
@@ -230,7 +256,7 @@ void Writer::propertyDataInContainer(const T &container,
 
     std::vector<value_type> data(container.size());
     std::copy(container.begin(), container.end(), data.begin());
-    propertyData(data, propertyName, size, width);
+    propertyDataRaw(&data.front(), propertyName, size, width);
 }
 
 } // Gto

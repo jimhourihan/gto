@@ -183,7 +183,10 @@ public:
     RawDataBaseWriter() : m_writer() {}
 
     bool            write(const char *filename, const RawDataBase&, 
-                          bool compress=true);
+                          Writer::FileType type=Writer::CompressedGTO);
+
+    bool            write(const char *f, const RawDataBase& db, bool c)
+                    { return write(f, db, c ? Writer::CompressedGTO : Writer::BinaryGTO); }
     
     void            close() { m_writer.close(); }
     

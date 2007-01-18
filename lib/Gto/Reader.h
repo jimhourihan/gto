@@ -18,11 +18,16 @@
 //
 #ifndef __Gto__Reader__h__
 #define __Gto__Reader__h__
-#include <string>
-#include <iostream>
-#include <string>
 #include <Gto/Header.h>
+#include <Gto/Utilities.h>
+#include <iostream>
+#include <map>
+#include <string>
+#include <string>
 #include <vector>
+#include <list>
+
+class GTOFlexLexer;
 
 namespace Gto {
 
@@ -36,10 +41,14 @@ namespace Gto {
 class Reader
 {
 public:
-
     //
     //  Types
     //
+
+    struct ObjectInfo;
+    struct ComponentInfo;
+    struct PropertyInfo;
+    friend class ::GTOFlexLexer;   // for ascii parser
 
     struct ObjectInfo : ObjectHeader
     {
@@ -66,6 +75,7 @@ public:
     {
         void*                propertyData;
         int                  offset;    // file offset
+
         const ComponentInfo* component;
 
     private:
@@ -73,26 +83,37 @@ public:
         friend class Reader;
     };
 
-    typedef std::vector<std::string>   StringTable;
     typedef std::vector<ObjectInfo>    Objects;
     typedef std::vector<ComponentInfo> Components;
     typedef std::vector<PropertyInfo>  Properties;
+    typedef std::vector<std::string>   StringTable;
+    typedef std::vector<unsigned char> ByteArray;
+    typedef std::map<std::string,int>  StringMap;
+
 
     //
     //  The open modes:
     //
-    //  None: the file is read as a stream with default API behavior.
+    //  None: the file is read as a stream with default API
+    //  behavior. The file may be text, binary, or compressed binary. 
+    //
+    //  BinaryOnly: only binary and compressed binary files will be
+    //  accepted. 
+    //
+    //  TextOnly: only text files will be accepted.
     //
     //  HeaderOnly: only the header information will be read. This is
     //  equivalent to requesting none of the data, but it will short
     //  circuit the reader into finishing successfully without seeking
-    //  through the file.
+    //  through the file. 
     //
-    //  RandomAccess: the file should be prepared for random access: no
-    //  header functions or data will be called until you specifically ask
-    //  for an object by name -- then they will called as if the file
-    //  contained only that data. You can do this as many times as you
-    //  want using the accessObject() function.
+    //  RandomAccess: the file should be prepared for random access:
+    //  no header functions or data will be called until you
+    //  specifically ask for an object by name -- then they will
+    //  called as if the file contained only that data. You can do
+    //  this as many times as you want using the accessObject()
+    //  function. RandomAccess implies BinaryOnly.
+    //
     //
 
     enum ReadMode
@@ -100,6 +121,8 @@ public:
         None             = 0,
         HeaderOnly       = 1 << 0,
         RandomAccess     = 1 << 1,
+        BinaryOnly       = 1 << 2,
+        TextOnly         = 1 << 3,
     };
 
     Reader(unsigned int mode = None);
@@ -113,9 +136,13 @@ public:
     //  If the mode is RandomAccess, then open will return having only read
     //  the header information.
     //
+    //  The stream open function can take additional ReadMode enum
+    //  to modify the input type. The ormode is |'d with the open mode.
+    //
 
     virtual bool        open(const char *filename);
-    virtual bool        open(std::istream&, const char *name);
+    virtual bool        open(std::istream&, const char *name, 
+                             unsigned int ormode = 0);
     void                close();
 
     //
@@ -131,11 +158,28 @@ public:
     bool                isSwapped() const { return m_swapped; }
     unsigned int        readMode() const { return m_mode; }
 
+    const std::string&  infileName() const { return m_inName; }
+
+    std::istream*       in() const { return m_in; }
+    int                 linenum() const { return m_linenum; }
+    int                 charnum() const { return m_charnum; }
+
+    Header&             fileHeader() { return m_header; }
+
     //
-    //  This function is called right after the file header is read.
+    //  This function is called right after the file header is read. 
     //
 
     virtual void        header(const Header&);
+
+    //
+    //  This function is called after all file, object, component, and
+    //  property structures have been read. For binary files, this is
+    //  just before the data is read. For text files, this is after the
+    //  entire file has been read.
+    //
+
+    virtual void        descriptionComplete();
 
     //
     //  RandomAccess functions. When the file is openned as RandomAccess,
@@ -165,13 +209,17 @@ public:
 
     struct Request
     {
-        Request() : m_want(true), m_data(0) {}
+        Request()
+            : m_want(true), m_data(0) {}
         Request(bool want, void* data = 0)
-          : m_want( want ), m_data( data ) {}
+            : m_want(want), m_data(data) {}
+
+        bool  want() const { return m_want; }
+        void* data() const { return m_data; }
 
     private:
-        bool    m_want;
-        void*   m_data;
+        bool        m_want;
+        void*       m_data;
         friend class Reader;
     };
 
@@ -221,14 +269,74 @@ public:
 
     virtual void        dataRead(const PropertyInfo&);
 
+    //------------------------------------------------------------
+    //
+    //  Text file parser
+    //
+
+    //
+    //  Override these to redirect error messages. If you throw
+    //  you will stop the parsing
+    //
+
+    virtual void        parseError(const char* msg);
+    virtual void        parseWarning(const char* msg);
+
+
+    //
+    //  Used by the text file parser
+    //
+
+    void                beginHeader(uint32 version);
+    void                beginObject(unsigned int name,
+                                    unsigned int protocol,
+                                    unsigned int pversion=1);
+
+    void                beginComponent(unsigned int name,
+                                       unsigned int interp);
+
+    void                beginProperty(unsigned int name,
+                                      unsigned int interp,
+                                      unsigned int width,
+                                      unsigned int size,
+                                      DataType type);
+
+    void                endProperty();
+    void                endFile();
+
+    void                addObject(const ObjectInfo&);
+    void                addComponent(const ComponentInfo&);
+
+    const TypeSpec&     currentType() const { return m_currentType; }
+
+    template <typename T>
+    void                addToPropertyBuffer(T);
+
+    size_t              numAtomicValuesInBuffer() const;
+    size_t              numElementsInBuffer() const;
+    void                fillToSize(size_t);
+
+    int                 internString(const std::string&);
+
+protected:
+    //
+    //  This function is responsible for calling the data functions
+    //  above. If you need to do some unpacking at the stream level
+    //  you can override this function. The function should return
+    //  true on success, false otherwise.
+    //
+
+    virtual bool        readProperty(PropertyInfo&);
+
 private:
-    bool                read();
+    bool                readBinaryGTO();
+    bool                readTextGTO();
+    void                readMagicNumber();
     void                readHeader();
     void                readStringTable();
     void                readObjects();
     void                readComponents();
     void                readProperties();
-    bool                readProperty(PropertyInfo&);
 
     void                read(char *, size_t);
     void                get(char &);
@@ -243,6 +351,7 @@ private:
     Components          m_components;
     Properties          m_properties;
     StringTable         m_strings;
+    StringMap           m_stringMap;
     std::istream*       m_in;
     void*               m_gzfile;
     int                 m_gzrval;
@@ -252,7 +361,21 @@ private:
     std::string         m_why;
     bool                m_swapped;
     unsigned int        m_mode;
+    int                 m_linenum;
+    int                 m_charnum;
+    ByteArray           m_buffer;
+    TypeSpec            m_currentType;
 };
+
+template <typename T>
+void
+Reader::addToPropertyBuffer(T val)
+{
+    size_t i = m_buffer.size();
+    m_buffer.insert(m_buffer.end(), sizeof(T), 0);
+    T* p = reinterpret_cast<T*>(&m_buffer[i]);
+    *p = val;
+}
 
 } // Gto
 
