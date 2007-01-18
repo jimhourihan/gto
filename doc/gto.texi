@@ -5,8 +5,12 @@
 @setchapternewpage off
 @c %**end of header
 
+@tex
+\global\emergencystretch = .9\hsize
+@end tex
+
 @ifinfo
-This file documents version 3.0 of the "GTO" File Format, Protocols,
+This file documents version 4.0 of the "GTO" File Format, Protocols,
 and Utilities.
 
 Permission is granted to make and distribute verbatim copies of
@@ -30,7 +34,7 @@ notice identical to this one.
 @c  two methods of forming a title page.
      
 @titlepage
-@title GTO: The Kitchen Sink of Geometry
+@title GTO: The Kitchen Sink of Data
 @subtitle File Format, Protocols, and Utilities.
 @author Jim Hourihan, Tweak Films
      
@@ -38,7 +42,7 @@ notice identical to this one.
 @c  start the copyright page.
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 2002-2004 Tweak Films. All rights reserved.
+Copyright @copyright{} 2002-2006 Tweak Films. All rights reserved.
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
 are preserved on all copies.
@@ -60,7 +64,7 @@ notice identical to this one.
 This document describes the GTO file format, protocols, and
 utilities. 
 
-Copyright @copyright{} 2002-2004 Tweak Films. All rights reserved.
+Copyright @copyright{} 2002-2006 Tweak Films. All rights reserved.
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
 are preserved on all copies.
@@ -70,25 +74,26 @@ manual under the conditions for verbatim copying, provided that the entire
 resulting derived work is distributed under the terms of a permission
 notice identical to this one.
 
-This document applies to version 3.0 of the file format.
+This document applies to version 4.0 of the file format.
 @end ifnottex
 
 @menu
 * Copying::                 GTO licensing terms.
 * Installation::            Compiling and Installing.
 * Overview::                Uses for the GTO format.
-* Format::                  File format on disk.
-* Types::                   Types of property data that can be stored.
-* Interpretation Strings::  Indicating intended use of property data.
-* Object Protocols::        How to interpret the data.
+* Binary Format::           Layout of Binary Files.
+* Text Format::             Syntax of Text Files.
+* Types::                   Types of Property Data That Can be Stored.
+* Interpretation Strings::  Indicating Intended Use of Property Data.
+* Object Protocols::        How to Interpret the Data.
 * Names::                   Naming Convensions.
-* Issues::                  Problems and questionable aspects of the format.
-* Extending::               Extending protocols or the file format.
-* Library::                 Reading and Writing using the C++ library.
-* Module::                  Reading and Writing using the Python module.
+* Issues::                  Problems and Questionable Aspects of the Format.
+* Extending::               Extending Protocols or the File Format.
+* Library::                 Reading and Writing Using the C++ Library.
+* Module::                  Reading and Writing Using the Python Module.
 * Utilities::               Utility Programs and Plug-ins.
-* Changes::                 Changes between versions.
-* Reference::               Index of functions, types, and variables.
+* Changes::                 Changes Between Versions.
+* Reference::               Index of Functions, Types, and Variables.
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -635,6 +640,8 @@ If you are using Maya 5.x you will need to use gcc 3.1 or greater to
 compile the plugin. In that case no compatibility rpms are
 necessary. Alias recommends using gcc 3.2.
 
+For Maya 6.x and 7.x use gcc 3.3.2 or a newer 3.3.
+
 If you are not using the Maya plugin, or you want to use the GTO
 library, but using a different compiler, you may need to run the build
 and installation process more than once with different compiler
@@ -653,10 +660,6 @@ The GTO library and binaries should build normally on OS X if you have
 installed the developer tools. You should have a version of the
 developer tools that uses gcc 3.1 or better.
 
-At the time of this writing, IBM has just released the XL compilers
-for OS X. We have not yet attempted to compile the GTO tools and
-library using this compiler.
-
 The Maya plugin on Mac OS X requires the use of CodeWarrior to compile
 a CFM shared object for Maya versions 4.x and 5.x. In addition, for
 the 4.x versions, you will need to hack the CodeWarrior system header
@@ -666,8 +669,8 @@ instructions did not work for us. However, there is no reason to
 suspect that givin the proper CodeWarrior version and modifications
 that it would not compile.
 
-We would be very obliged if someone figures out how to get that to
-work.
+For Maya 6.x and greater, you can use the installed version of gcc
+since Maya is now a Mach-O binary.
 
 @c ----------------------------------------------------------------------
 @node Windows,  , OSX, Installation
@@ -686,19 +689,24 @@ Your mileage may vary for other Windows compilers.
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
      
-@node Overview, Format, Installation, Top
+@node Overview, Binary Format, Installation, Top
 @chapter Overview
 
-The GTO format's primary usage is storage of static geometric
-data. The types of data you might find in a GTO file are things like
+Historically, GTO format's primary usage is storage of static geometric
+data. As such, the types of data you might find in a GTO file are things like
 polygonal meshes, various types of subdivision surfaces, NURBS or UBS
 surfaces, coordinate systems, hierarchies of objects, material
 bindings, and even images.
 
-In our facility -- Tweak Films -- the data in GTO files are rendered
+In our facility -- Tweak Films -- geometric data in GTO files is rendered
 directly by entropy (a prman compatible rib renderer) and used for
 modeling and 3D paint. We also use the GTO format in place of the
 venerable and yet nasty PDB file format for particles.
+
+As of GTO version 4.0, the format is being used for data not related
+to geometric data (especially pixel data) and animation curve data
+is now part of the format spec -- so that data is no longer ``static''
+as it has been in the past.
 
 From a historic point of view, the GTO file format is most closely
 related to the original inventor file format, the Stanford PLY format
@@ -711,22 +719,25 @@ primitive. Most importantly however, the GTO file format is intended
 to be very OBJ-like; its relatively easy to read and write and easy to
 ignore data you don't want or know about.
 
-GTO files are binary files. There is currently no ASCII/Unicode or
-other human readable version of the file other than the output of the
-@command{gtoinfo} program. Therefore we provide code for the binary
-format to give implementors a head start. The file is either big or
-little endian on disk, but should be readable on any platform.
+GTO files can be either binary or text files. Binary files are the 
+preferred format for large data sets. The GTO text format is intended 
+to be human readable/editable; the syntax is simple and concise.
+The text format is useful when storing ``bag of parameters'' files
+and similar data.
+
+We provide code for both the binary and text formats to give 
+implementors a head start. The binary file is either big or little endian 
+on disk, but should be readable on any platform.
 
 The GTO reader we provide can be use libz, so it can read and write
-compressed files natively. We find that compressed GTO files created
-by most 3D programs are approximately 60% leaner than uncompressed
-files.
+compressed files natively. We find that compressed GTO files created by 
+most 3D programs are approximately 60% leaner than uncompressed files.
 
-The file itself contains Objects which are composed of
-Components. Components are further composed of Properties. A Property
-contains an array of one of the predefined data types with a specified
-width. For example, you might have an object which looks something
-like this:
+GTO files conceptually contain @emph{objects} which are composed of
+@emph{components}. Components are further composed of @emph{properties}. 
+A property contains an array of one of the predefined data types with 
+a specified width. For example, you might have an object which looks 
+something like this:
 
 @example
 
@@ -742,24 +753,24 @@ like this:
 @end example
 
 Using the terminology above, the object ``cube'' contains five
-properties: ``position'', ``mass'', ``type'', ``size'', and
-``vertex''. The ``points'' component describes the points that make up
+properties: @strong{position}, @strong{mass}, @strong{type}, @strong{size}, and
+@strong{vertex}. The @strong{points} component describes the points that make up
 the cube vertices. Each point has a position and mass stored in
 properties of the same name. The position property data is composed of
-eight float[3] data items (or 8 3D points). The ``mass'' property is
+eight float[3] data items (or 8 3D points). The @strong{mass} property is
 composed of a 8 scalar floating point values (one for each point).
 
-The ``elements'' component contains two properties. ``type'' indicates
+The @strong{elements} component contains two properties. @strong{type} indicates
 the type of the element (for example, triangle, quad, or triangle
-strip). In this case the elements might all be quads. ``size''
+strip). In this case the elements might all be quads. @strong{size}
 indicates the number of vertices in each of the eight faces (elements)
-of the cube -- (4 for a cube). The ``vertex'' property of the
-``indices'' component contains the actual indices: 4 per face for a
+of the cube -- (4 for a cube). The @strong{vertex} property of the
+@strong{indices} component contains the actual indices: 4 per face for a
 total of 32.
 
 Of course you could store much more data with the cube object if you
 wanted to. For example, if you wanted velocity or color per point,
-this would be another property in the ``points'' component. 
+this would be another property in the @strong{points} component. 
 
 The meaning of this data is another story altogether. Its all handled
 by protocol. One application may store things in the GTO file that
@@ -773,8 +784,8 @@ document is different and more involved than the above example.)
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
 
-@node Format, Types, Overview, Top
-@chapter Format
+@node Binary Format, Text Format, Overview, Top
+@chapter Binary Format
 
 The GTO file has six major sections which appear in the following
 order. 
@@ -940,7 +951,378 @@ In (Text) diagram form the file looks something like this:
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
      
-@node    Types, Interpretation Strings, Format, Top
+@node Text Format, Types, Binary Format, Top
+@chapter Text Format
+
+As of version 4, GTO has a text representation in addition to the binary
+representation. The text representation is designed for human use; it is
+intended to be easy to modify or create from scratch in a text editor. It 
+is not intended to compete with XML formats (which are typically only human 
+readable in theory) nor is it intended to be used in place of the binary
+format which is much faster and more economical for storage of large data 
+sets.
+
+@menu
+* Example Text File::           Example of a Cube Stored as a Text GTO
+* Strings in a Text File::      How Strings are Used in a Text GTO
+* The Size of a Property::      Specifying Property Size
+* Value Brackets::              How Values are Specified 
+* Run Length Encoding of Values::   Encoding Redundancy
+* Syntax::                      Syntax Reference
+@end menu
+
+@node Example Text File, Strings in a Text File, Text Format, Text Format
+@section Example of a Cube Stored as a Text GTO
+
+Here's the example from the overview section: a cube stored using the 
+``polygon'' protocol:
+
+@example
+    GTOa (4)
+
+    # this is a comment
+
+    cube : polygon (2)
+    @{
+        points
+        @{
+            float[3] position = [ [ -2.5 2.5 2.5 ] 
+                                  [ -2.5 -2.5 2.5 ] 
+                                  [ 2.5 -2.5 2.5 ] 
+                                  [ 2.5 2.5 2.5 ] 
+                                  [ -2.5 2.5 -2.5 ] 
+                                  [ -2.5 -2.5 -2.5 ] 
+                                  [ 2.5 -2.5 -2.5 ] 
+                                  [ 2.5 2.5 -2.5 ] ]
+
+            float mass = [ 1 1 1 1 1 1 1 1 ]
+        @}
+
+        elements
+        @{
+            byte type = [ 2 2 2 2 2 2 ]
+            short size = [ 4 4 4 4 4 4 ]
+        @}
+
+        indices
+        @{
+            int vertex = [ 0 1 2 3 
+                           7 6 5 4 
+                           3 2 6 7 
+                           4 0 3 7 
+                           4 5 1 0 
+                           1 5 6 2 ]
+        @}
+    @}
+@end example
+
+The first line of the file is an identifier to tell the parser what variety 
+of GTO file it is: in this case @code{GTOa} which indicates a plain ASCII 
+text file. Currently the parser can only handle ASCII encoding; a 
+forthcoming version will allow UTF-8.
+
+Objects are declared using the syntax:
+
+@example
+    OBJECTNAME [ : PROTOCOL [ (PROTOCOL_VERSION) ] ]
+    @{
+        ... object contents ...
+    @}
+@end example
+
+The brackets enclose optional syntax. So the @code{PROTOCOL_VERSION} 
+(including the parens) is optional. The @code{PROTOCOL} is also optional; 
+if omitted (along with the colon) the protocol defaults to @strong{object}. 
+In the example, ``cube'' is the name of the object and ``polygon'' is the 
+name of the protocol--the protocol version is @code{2}.
+    
+Components must be declared inside the object brackets. The brackets denote
+a @emph{namespace} which is either an object namespace or a component namespace.
+Component namespaces must always be declared inside of an object namespace.
+Object namespaces can only appear at the top level of the file; in other words,
+objects cannot be inside another namespace.
+
+Components are declared like this:
+
+@example
+    COMPONENTNAME [as INTERPRETATION]
+    @{
+        ... component contents ...
+    @}
+@end example
+
+The @code{INTERPRETATION} can be any string. Properties can be declared 
+inside of the component namespace. The property declaration is the most
+flexible; since some aspects of the property (like its size) can be determined 
+by the parser from the property data, you can omit them.
+
+The property syntax in its most general form is:
+
+@example
+    TYPE[WIDTH][SIZE] PROPERTYNAME as INTERPRETATION = @emph{values} ...
+@end example
+
+The brackets around @code{WIDTH} and @code{SIZE} are literal in this case;
+they actually appear in the file. As you can see from the example, some of
+the property declaration syntax is optional. The @code{SIZE} can usually
+be determined from the values so it may be omitted. The @code{WIDTH} is 
+assumed to be @code{1} if it is omitted. The @code{as INTERPRETATION} 
+section of the declaration may also be omitted. 
+
+What cannot be omitted is the @code{TYPE}, @code{PROPERTYNAME}, and the
+assignment of values.
+
+@node Strings in a Text File, Value Brackets, Example Text File, Text Format
+@section How Strings are Handled in the Text Format
+
+With the exception of keywords and type names, any string in the text
+GTO file can be either be quoted or non-quoted. Non-quoted strings are
+restricted to strings which do not represent numbers. In addition, if a
+string contains punctuation or whitespace, it must be quoted. For
+example, if the name of the object in the cube example was ``four
+dimensional time-cube'' it would have to be declared like this:
+
+@example
+    "four dimensional time-cube" : polygon
+    @{
+        ...
+    @}
+@end example
+
+There is one additional exception: if a string is also a keyword or type 
+name, it must be quoted. For example, here's an exceptional property
+declaration:
+
+@example
+    int "int" as "as" = 1
+@end example
+
+In this case the quoted string ``int'' is being used as the property
+name, but because it is also the name of a GTO type, it must be quoted.
+The string ``as'' is being used as an interpretation string and must
+be quoted because ``as'' is also a keyword in the the GTO file.
+
+When in doubt quote.
+
+@node Value Brackets, The Size of a Property, Strings in a Text File, Text Format
+@section Value Brackets
+
+Generally, a property value and elements of the value are enclosed 
+in brackets:
+
+@example
+    TYPE[WIDTH] PROPERTYNAME = [ [a b ...] [d e ...] ... ]
+@end example
+
+In this documentation, the @emph{value} of a property is everything
+to the right of the ``='' and an @emph{element} is a fixed size 
+collection of numbers or strings. The @emph{size} of a property is
+the number of elements in its value. So in the example above,
+the @code{[a b ...]} portion of the syntax is an @emph{element}.
+
+Bracketing the property value is optional in one circumstance: when the 
+number of elements in the property value is one. For example, these 
+declarations are equivalent:
+
+@example
+    int foo = 1
+    int foo = [1]
+@end example
+
+If the width of the type is not one (elements are not scalar), then brackets 
+must be put around each element of the property. If the size is one but the
+width is not one, then the enclosing brackets are still optional:
+
+@example
+    int[2] foo = [1 2]
+    int[2] foo = [ [1 2] ]
+@end example
+
+If however the size of the property is greater than one, the enclosing
+value brackets are required:
+
+@example
+    # property of size 3
+    int[2] foo = [ [1 2] [3 4] [5 6] ]
+@end example
+
+To declare a property with no value use empty brackets:
+
+@example
+    int foo = []
+@end example
+
+@node The Size of a Property, Run Length Encoding of Values, Value Brackets, Text Format
+@section The Size of a Property
+
+The size of a property can be declared as part of its type declaration:
+
+@example
+    int[1][4] foo = [1 2 3 4]
+@end example
+
+In this case, ``foo'' contains four scalar elements. Because the size
+was specified, the following would be a syntax error:
+
+@example
+    int[1][4] foo = [1 2 3 4 5]
+@end example
+
+The parser would complain because five elements were supplied eventhough
+the property was declared as having only four. If no size is specified
+than the parser will determine the size from the number of elements in
+the value:
+
+@example
+    int[1] foo = [1 2 3 4 5]
+@end example
+
+So in this case ``foo'' has five elements. Note that in order to declare
+the size specifically, you must also declare the element width -- even if
+the width is one. In the last example, because we did not specify the
+size, the declaration could also have been:
+
+@example
+    int foo = [1 2 3 4 5]
+@end example
+
+In this case it is understood that the type is actually @code{int[1][5]}.
+
+@node Run Length Encoding of Values, Syntax, The Size of a Property, Text Format
+@section Run Length Encoding of Values
+
+In some cases, a value will contain many copies of an element. There is
+a special syntax for these cases; you can use an ellipsis to indicate
+that all remaining elements are identical. The ellipsis can only appear
+directly before the final bracket character.
+
+There is one restriction when using this syntax: the type of the
+property value must be completely specified (including the size of the
+property) and the value must be enclosed in brackets. For example:
+
+@example
+    int[1][100] mass = [1 ...]
+@end example
+
+The ellipsis is literal (its actually in the file as three dot characters) 
+The property ``mass'' will be one for all 100 elements. If the element has
+a width greater than one:
+
+@example
+    float[3][100] velocity = [ [0 0 0] ... ]
+@end example
+
+The ellipsis is used in place of an element. The following will 
+@emph{not} work:
+
+@example
+    float[3][100] velocity = [ [0 ...] ... ]
+@end example
+
+The intention here is to make all of the velocity elements @code{[0 0 0]}.
+However, this syntax is not correct and will produce a parsing error.
+
+@node Syntax,  , Run Length Encoding of Values, Text Format
+@section Syntax Reference
+
+The grammar for the text GTO file. @emph{INT} is an integer constant.
+@emph{FLOAT} is a floating point constant, with a possible exponent
+part. @emph{STRING} is either a quoted or non-quoted string. All other
+values are literal. Double quoted strings are keywords.
+
+@example
+    file::
+        "GTOa" object_list 
+        "GTOa" ( @emph{INT} ) object_list 
+
+    object_list::
+        object 
+        object_list object
+
+    object::
+        @emph{STRING} @{ component_list @}
+        @emph{STRING} : @emph{STRING} @{ component_list @}
+        @emph{STRING} : @emph{STRING} ( @emph{INT} ) @{ component_list @}
+
+    component_list::
+        component 
+        component_list component
+
+    interp_string_opt::
+        @emph{nothing}
+        "as" @emph{STRING}
+
+    component::
+        @emph{STRING} interp_string_opt @{ property_list @}
+
+    property_list::
+        property 
+        property_list property
+
+    property::
+        type @emph{STRING} interp_string_opt = atomic_value
+        type @emph{STRING} interp_string_opt = [ complex_element_list ]
+
+    type::
+        basic_type
+        basic_type [ @emph{INT} ]
+        basic_type [ @emph{INT} ] [ @emph{INT} ]
+
+    basic_type::
+        "float" "int" "string" "short" "byte" "half" 
+        "bool" "double"
+
+    complex_element_list::
+        @emph{nothing}
+        element_list 
+        element_list "..." 
+
+    element_list::
+        element 
+        element_list element
+
+    element::
+        atomic_value
+        [ atomic_value_list ]
+
+    atomic_value_list::
+        string_value_list 
+        numeric_value_list
+
+    atomic_value::
+        string_value 
+        numeric_value
+
+    string_value_list::
+        string_value 
+        string_value_list string_value 
+
+    string_value::
+        @emph{STRING}
+
+    numeric_value_list::
+        numeric_value 
+        numeric_value_list numeric_value
+
+    numeric_value::
+        float_num 
+        int_num
+
+    float_num::
+        @emph{FLOAT} 
+        - @emph{FLOAT}
+
+    int_num::
+        @emph{INT}
+        - @emph{INT}
+
+@end example
+
+
+@c ----------------------------------------------------------------------
+@c ----------------------------------------------------------------------
+     
+@node    Types, Interpretation Strings, Text Format, Top
 @chapter Types of Property Data.
 
 The GTO format pre-defines a small number of data types that can be
@@ -1140,6 +1522,16 @@ The width of the property should be four. The data represents a color
 @code{RGBA})
 @end deftp
 
+@deftp {Interpretation String} bezier
+The property represents a 2D bezier curve for animation.  The type
+should be a floting point type and the width six. Each element is a
+key frame value.
+@end deftp
+
+@deftp {Interpretation String} weighted
+In the case of bezier animation curves, the curve should be evaluated
+with weighted tangents.
+@end deftp
 
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
@@ -1202,6 +1594,7 @@ Minor Protocols
 * Difference::            Difference Files.
 * Sorted Shells::         Special ordering for Polygonal Surfaces.
 * Channels::              Texture and other data mapped to surfaces, etc.
+* Animation::             Animation curves and data streams.
 
 @end menu
 
@@ -1705,14 +2098,15 @@ cases better than others.
 
 The Image protocol describes image data in the form of an object. This
 data makes it possible to store texture maps, backgrounds, etc,
-directly in the GTO file. The GTO format is not intended as a general
-purpose image file format. Better formats for general purpose image
-storage are TIFF and OpenEXR.  
+directly in the GTO file. 
 
 When images are stored in a GTO file, use of Gzip compression is
-highly recommended since this protocol specifies no compression
-itself. As of version 2.1, the supplied Reader and Writer classes
-default to using zlib compression.
+highly recommended if the data is unencoded. As of version 2.1, the 
+supplied Reader and Writer classes default to using zlib compression.
+
+If the image data is encoded, its better @emph{not} to use 
+compression on the GTO file (especially if the file contains only
+image data).
 
 @deftypevr {Required Component} {} {image}
 The image data and other information will be stored in the
@@ -1782,6 +2176,19 @@ to @code{image.size[0] * image.size[1] * ... image.size[N]} where
 @strong{image.size} is the property defined above.
 @end deftypevr
 
+@subsection Additional Image Properties Used by GTV Files.
+
+The base GTO library does not deal with encoded image data or tiling
+of images. GTV is a specialization of the GTO format for storing
+movie frames. Some of the GTV properties are documentated here. (See
+documentation for the GTV library for more info).
+
+@deftypevr {Optional Property} {string[1]} {image.encoding}
+If the pixel data is encoded this property will indicate a method to
+decode it. Typical valies are ``jpeg'', ``jp2000'', ``piz'',
+``rle'', or ``zip''. The pixels will be stored in the 
+@strong{image.pixels} as @code{byte[1][]}. 
+@end deftypevr
 
 @c ----------------------------------------------------------------------
 
@@ -1984,7 +2391,7 @@ shell.
 
 @c ----------------------------------------------------------------------
 
-@node Channels,  , Sorted Shells, Object Protocols
+@node Channels, Animation, Sorted Shells, Object Protocols
 @section Channels Protocol
 
 This minor protocol declares data mapped onto geometric
@@ -2043,6 +2450,37 @@ string[1] cube.channels.specular = [ "st" "cube_specular.tif" ]
 string[1] cube.channels.bump     = [ "st" "cube_bump.tif" ]
 @end example
 
+
+@node Animation,  , Channels, Object Protocols
+@section Animation Curve Protocol
+
+The animation curve protocol defines a single component called
+@strong{animation} in which each property holds an animation curve or
+data stream. The property's interpretation string indicates how the
+data should be evaluated.
+
+@subsection Example
+
+Here is a cube with animation curves. 
+
+@example
+    Object "cube" protocol "polygon"
+        Component "points"
+            Property float[3][8] "position"
+        Component "elements"
+            Property byte[1][8] "type"
+            Property short[1][8] "size"
+        Component "indices"
+            Property int[1][32] "vertex"
+        Component "animation"
+            Property float[6][2] "xtran" interpret as "bezier"
+            Property float[6][2] "ytran" interpret as "bezier"
+            Property float[6][2] "ztran" interpret as "bezier"
+            Property float[6][5] "xrot" interpret as "bezier"
+            Property float[6][8] "yrot" interpret as "bezier"
+            Property float[6][10] "zrot" interpret as "bezier"
+            Property float[1][100] "xscale" interpret as "stream"
+@end example
 
 @c ----------------------------------------------------------------------
 @c ----------------------------------------------------------------------
@@ -2184,15 +2622,6 @@ component are data that is associated with the properties
 @itemize @bullet
 
 @item
-There is no ASCII version of a GTO file. Currently the closest thing
-to that is to use the @command{gtoinfo} command to dump the contents
-as ASCII. There is no program which takes that output and creates a
-binary GTO file, nor is there a reader or writer class for outputing
-ASCII GTO data. Ideally, there would be a dedicated ASCII format which
-is as analogous as possible to the binary format as well as support
-for the ASCII file type in the supplied reader and writer classes.
-
-@item
 There are currently no (publicly available) tools which verify that a
 file claiming to follow some protocol is correct.
 
@@ -2271,7 +2700,7 @@ document.
 
 If you have an extension to a protocol or would like to change an
 existing protocol, we would like to hear about it. You can send mail
-to @email{gto @emph{at} tweakfilms.com} with the changes you're using or would
+to  with the changes you're using or would
 like made. We will collect ideas and proposals and try to make
 releases in a timely manner. We'd also like to hear from you if you're
 using it unmodified.
@@ -2429,7 +2858,7 @@ class should return @code{Request(true)} to indicate that it is interested in th
 properties of this @var{component}.
 @end deftypefn
 
-@deftypefn {Virtual} {Reader::Request} Reader::property (const std::string& @var{name}, const PropertyInfo& @var{header})
+@deftypefn {Virtual} {Reader::Request} Reader::property (const std::string& @var{name}, {const char*} @var{interpString}, const PropertyInfo& @var{header})
 This function is called when the Reader base class encounters a
 PropertyHeader in the GTO file. If the derived class did not express
 interest in a particular object or the component that the property
@@ -2594,7 +3023,7 @@ optional and indicates whether or not the component property data
 should be output transposed or one property at a time (the default).
 @end deftypefn
 
-@deftypefn {Method} {void} Writer::property (const char* @var{name}, Gto::DataType @var{type}, size_t @var{numElements}, size_t @var{partsPerElement}=1)
+@deftypefn {Method} {void} Writer::property (const char* @var{name}, Gto::DataType @var{type}, size_t @var{numElements}, size_t @var{partsPerElement}=1, {const char*} @var{interpString}=0)
 Declare a property. The @var{name} is the name of the property as it
 appears in the gto file. The @var{type} is one of Gto::Double,
 Gto::Float, Gto::Int, Gto::String, Gto::Byte, Gto::Half, or
@@ -2603,7 +3032,8 @@ Gto::Short. @var{numElements} indicates the number of elements of size
 example, if the property is declared as a Gto::Float of
 with @var{partsPerElement} of 3 and there 10 of them, then the writer
 will expect an array of 30 floats when the propertyData is finally
-passed to it.
+passed to it. The last argument @var{interpString} is an optional
+interpretation string that can be stored with the property.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::endComponent ()
@@ -3007,8 +3437,8 @@ Command line tools
 
 Plug-ins:
 
-* gtoIO::        Maya likes gto files.
-* RiGtoPlugin::  Render gto files directly.
+* gtoIO::               Maya scene file I/O.
+* RiGtoPlugin::         Render gto files directly.
 
 @end menu
 
@@ -3092,8 +3522,14 @@ Use POSIX regular expression syntax.
 @item -glob
 Use shell-like regular expression (fnmatch). This is the default.
 
+@item -t
+Output text GTO file.
+
+@item -nc
+Output uncompressed binary GTO file.
+
 @item -o @var{out.gto}
-output .gto file
+Output .gto file
 
 @end table
 
@@ -3147,8 +3583,16 @@ Usage: @samp{gtomerge -o @var{outfile.gto} @var{infile1.gto} @var{infile2.gto} .
 Options:
 
 @table @option
+
 @item -o outfile.gto
 The resulting merged file to output.
+
+@item -t
+Ouput text GTO file.
+
+@item -nc
+Ouput uncompressed binary GTO file.
+
 @end table
 
 @command{gtomerge} takes a number of .gto input files and merges them
@@ -3187,7 +3631,14 @@ When outputing GTO files, this option will force the protocol to be
 @item -l
 When outputing GTO files, this option will force the protocol to be
 "loop".
+
+@item -t
+Ouput text GTO file.
+
+@item -nc
+Ouput uncompressed binary GTO file.
 @end table
+
 
 @command{gto2obj} takes either an input GTO file or Wavefront .obj
 file and outputs the other file type.
@@ -3204,6 +3655,14 @@ file and outputs the other file type.
 @section The @command{gtoimage} Utility
 
 Usage: @samp{gtoimage @var{infile} @var{outfile}}
+
+@table @option
+@item -t
+Ouput text GTO file.
+
+@item -nc
+Ouput uncompressed binary GTO file.
+@end table
 
 @command{gtoimage} reads a TIFF file and converts it into a GTO file
 containing one image object. 32 bit floating point images, 16 bit and
@@ -3229,7 +3688,7 @@ The @command{RiGtoRibOut} command is useful for:
 @itemize  
 
 @item
-It can be used as a debugging tool for the RiGtoPlugin Renderman® plugin.
+It can be used as a debugging tool for the RiGtoPlugin RenderMan® plugin.
 
 @item
 It can be used as a drop-in replacement for RiGtoPlugin, for RIB renderers that
@@ -3277,10 +3736,10 @@ has yet to be identified, so importing of normals is disabled in Maya 5.0.
 
 @c -------------------------------------------------------------------------
 
-@node RiGtoPlugin, RIB Instantiation, gtoIO, Utilities
-@section The @command{RiGtoPlugin} Renderman® plugin
+@node RiGtoPlugin,  , gtoIO, Utilities
+@section The @command{RiGtoPlugin} RenderMan® plugin
 
-Here you will find information on using the GTO Renderman® plugin.  The
+Here you will find information on using the GTO RenderMan® plugin.  The
 documentation is complete enough to get started with, but should be considered
 a work in progress.
 
@@ -3292,14 +3751,14 @@ a work in progress.
 * Cache Management::            Controlling RiGto's cache
 * Environment Variables::       Environment Variables affecting RiGtoPlugin
 * Usage Strategy::              How to use the Plugin
-* Miscellaneous Renderman® Stuff:: Additional data that might be useful
+* Miscellaneous RenderMan® Stuff:: Additional data that might be useful
 
 @end menu
 
 @c -------------------------------------------------------------------------
 
 @node RIB Instantiation, Config String Syntax, RiGtoPlugin, RiGtoPlugin
-@section RIB Instantiation
+@subsection RIB Instantiation
 
 The plugin is instantiated in a RIB Stream using the standard
 DynamicLoad procedural mechanism, like so:
@@ -3319,7 +3778,7 @@ Procedural "DynamicLoad" [ "RiGtoPlugin.so" "@var{CONFIG_STRING}" ] [ -1e6 1e6 -
 @c -------------------------------------------------------------------------
 
 @node Config String Syntax, On-List/Off-List Syntax, RIB Instantiation, RiGtoPlugin
-@section Config String Syntax
+@subsection Config String Syntax
 
 The configuration string passed into RiGtoPlugin consists
 of a variable number of space-separated tokens. They are, 
@@ -3379,7 +3838,7 @@ to create the requested geometry.
 @c -------------------------------------------------------------------------
 
 @node On-List/Off-List Syntax, Cache Management, Config String Syntax, RiGtoPlugin
-@section On-List/Off-List Syntax
+@subsection On-List/Off-List Syntax
 
 The syntax of the on-lists and off-lists is as follows:
 
@@ -3418,7 +3877,7 @@ create an off-list that looked like:
 @c -------------------------------------------------------------------------
 
 @node Cache Management, Environment Variables, On-List/Off-List Syntax, RiGtoPlugin
-@section Cache Management
+@subsection Cache Management
 
 By default, RiGtoPlugin maintains an internal cache 
 of all of the file sets it has read. The cache is keyed
@@ -3459,7 +3918,7 @@ cause caching to be disabled entirely.
 @c -------------------------------------------------------------------------
 
 @node Environment Variables, Usage Strategy, Cache Management, RiGtoPlugin
-@section Environment Variables
+@subsection Environment Variables
 
 @defvr {Environment Variable} @code{TWK_RI_GTO_NO_SUBDS}
 If this environment variable is defined and set to anything 
@@ -3476,8 +3935,8 @@ disable all caching of geometry data to save memory.
 
 @c -------------------------------------------------------------------------
 
-@node Usage Strategy, Miscellaneous Renderman® Stuff, Environment Variables, RiGtoPlugin
-@section Usage Strategy
+@node Usage Strategy, Miscellaneous RenderMan® Stuff, Environment Variables, RiGtoPlugin
+@subsection Usage Strategy
 
 The RiGtoPlugin was designed with a particular data structure in
 mind. Used ideally, there would be a GTO file consisting of all of
@@ -3532,8 +3991,8 @@ Procedural "DynamicLoad" [ "RiGtoPlugin.so" "thing.ref.gto thing.0013.open.gto t
 
 @c -------------------------------------------------------------------------
 
-@node Miscellaneous Renderman® Stuff,  , Usage Strategy, RiGtoPlugin
-@section Miscellaneous Renderman® Stuff
+@node Miscellaneous RenderMan® Stuff,  , Usage Strategy, RiGtoPlugin
+@subsection Miscellaneous RenderMan® Stuff
 
 
 RiGtoPlugin stores some useful data in attributes that
@@ -3584,6 +4043,33 @@ Attribute "user" "float refToWorld[16]" [ @var{the matrix values} ]
 
 
 @itemize @bullet
+
+@item Version 4.0
+
+@itemize @bullet
+@item
+Human readable plain text version of GTO. Some readers may not function if 
+they assume that the property size is known when the property() virtual 
+function is called. The property size is only really known when the data()
+virtual function is called.
+
+@item
+Animation curves are now stored per-object using the animation
+protocol.
+
+@item
+New GTV file format is a GTO derived movie file format.
+
+@end itemize
+
+@item Version 3.1
+
+@itemize @bullet
+
+@item
+RenderMan plug-in documentation added.
+
+@end itemize
 
 @item Version 3.0
 

@@ -33,7 +33,7 @@ using namespace std;
 class ObjReader : public WFObj::Reader
 {
 public:
-    ObjReader(RawDataBase* db, const char* protocol) 
+    ObjReader(RawDataBase* db, const char* protocol)
         : m_db(db), m_protocol(protocol) {}
     virtual ~ObjReader() {}
 
@@ -121,7 +121,7 @@ ObjReader::finished()
 
     Property* p;
 
-    p = new Property(GTO_PROPERTY_POSITION, 
+    p = new Property(GTO_PROPERTY_POSITION,
                      GTO_INTERPRET_COORDINATE,
                      Float, m_vertices.size() / 3, 3, true);
     copy(m_vertices.begin(), m_vertices.end(), p->floatData);
@@ -133,7 +133,7 @@ ObjReader::finished()
 
     if (!m_normals.empty())
     {
-        p = new Property(GTO_PROPERTY_NORMAL, 
+        p = new Property(GTO_PROPERTY_NORMAL,
                          GTO_INTERPRET_NORMAL,
                          Float, m_normals.size() / 3, 3, true);
         copy(m_normals.begin(), m_normals.end(), p->floatData);
@@ -146,7 +146,7 @@ ObjReader::finished()
 
     if (!m_sts.empty())
     {
-        p = new Property(GTO_PROPERTY_ST, 
+        p = new Property(GTO_PROPERTY_ST,
                          GTO_INTERPRET_COORDINATE,
                          Float, m_sts.size() / 2, 2, true);
         copy(m_sts.begin(), m_sts.end(), p->floatData);
@@ -157,7 +157,7 @@ ObjReader::finished()
     //  Elements properties
     //
 
-    p = new Property(GTO_PROPERTY_SIZE, 
+    p = new Property(GTO_PROPERTY_SIZE,
                      GTO_INTERPRET_SIZE,
                      Short, m_sizes.size(), 1, true);
     copy(m_sizes.begin(), m_sizes.end(), p->uint16Data);
@@ -171,7 +171,7 @@ ObjReader::finished()
     //  Indices properties
     //
 
-    p = new Property(GTO_PROPERTY_VERTEX, 
+    p = new Property(GTO_PROPERTY_VERTEX,
                      GTO_INTERPRET_INDICES,
                      Int, m_indices.size(), 1, true);
     copy(m_indices.begin(), m_indices.end(), p->int32Data);
@@ -179,7 +179,7 @@ ObjReader::finished()
 
     if (!m_nindices.empty())
     {
-        p = new Property(GTO_PROPERTY_NORMAL, 
+        p = new Property(GTO_PROPERTY_NORMAL,
                          GTO_INTERPRET_INDICES,
                          Int, m_nindices.size(), 1, true);
         copy(m_nindices.begin(), m_nindices.end(), p->int32Data);
@@ -188,7 +188,7 @@ ObjReader::finished()
 
     if (!m_stindices.empty())
     {
-        p = new Property(GTO_PROPERTY_ST, 
+        p = new Property(GTO_PROPERTY_ST,
                          GTO_INTERPRET_INDICES,
                          Int, m_stindices.size(), 1, true);
         copy(m_stindices.begin(), m_stindices.end(), p->int32Data);
@@ -237,7 +237,7 @@ writeObj(ostream& out, Object* o)
     for (int i = 0; i < o->components.size(); i++)
     {
         Component* c = o->components[i];
-        
+
         for (int j = 0; j < c->properties.size(); j++)
         {
             Property* p = c->properties[j];
@@ -402,11 +402,13 @@ writeObjDB(const char* filename, const char* obj, RawDataBase* db)
     }
 
     writeObj(file, outObj);
+
+    return true;
 }
 
 //----------------------------------------------------------------------
 
-string 
+string
 basename(string path)
 {
     size_t lastSlash = path.rfind( "/" );
@@ -446,9 +448,11 @@ usage()
          << "OUTFILE    an obj or gto file" << endl
          << "-c         output as catmull-clark surface" << endl
          << "-l         output as loop surface" << endl
+         << "-t         output as text GTO (when appropriate)" << endl
+         << "-nc        force uncompressed GTO (when appropriate)" << endl
          << "-o NAME    select gto object NAME for output" << endl
          << endl;
-    
+
     exit(-1);
 }
 
@@ -456,11 +460,13 @@ usage()
 
 int main(int argc, char *argv[])
 {
-    char* inFile   = 0;
-    char* outFile  = 0;
-    char* protocol = GTO_PROTOCOL_POLYGON;
-    char* outObj   = 0;
-    int   replace  = 0;
+    char* inFile     = 0;
+    char* outFile    = 0;
+    char* protocol   = GTO_PROTOCOL_POLYGON;
+    char* outObj     = 0;
+    int   replace    = 0;
+    int   nocompress = 0;
+    int   text       = 0;
 
     for (int i=1; i < argc; i++)
     {
@@ -471,6 +477,14 @@ int main(int argc, char *argv[])
         else if (!strcmp(argv[i], "-l"))
         {
             protocol = GTO_PROTOCOL_LOOP;
+        }
+        else if (!strcmp(argv[i], "-t"))
+        {
+            text = 1;
+        }
+        else if (!strcmp(argv[i], "-nc"))
+        {
+            nocompress = 1;
         }
         else if (!strcmp(argv[i], "-o"))
         {
@@ -495,7 +509,7 @@ int main(int argc, char *argv[])
 
     if (!inFile || !outFile)
     {
-	cerr << "ERROR: no infile or outfile specified.\n" << endl;
+        cerr << "ERROR: no infile or outfile specified.\n" << endl;
         usage();
     }
 
@@ -518,6 +532,7 @@ int main(int argc, char *argv[])
     //  In
     //
 
+    RawDataBaseReader reader;
     RawDataBase* db;
     cout << "INFO: reading " << inFile << endl;
 
@@ -534,8 +549,6 @@ int main(int argc, char *argv[])
     }
     else
     {
-        RawDataBaseReader reader;
-
         if (!reader.open(inFile))
         {
             cerr << "ERROR: reading file " << inFile << endl;
@@ -554,8 +567,11 @@ int main(int argc, char *argv[])
     if (oext == "gto")
     {
         RawDataBaseWriter writer;
+        Writer::FileType type = Writer::CompressedGTO;
+        if (nocompress) type = Writer::BinaryGTO;
+        if (text) type = Writer::TextGTO;
 
-        if (!writer.write(outFile, *db))
+        if (!writer.write(outFile, *db, type))
         {
             cerr << "ERRROR: writing file " << outFile << endl;
             exit(-1);

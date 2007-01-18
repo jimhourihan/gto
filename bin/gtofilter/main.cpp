@@ -15,8 +15,10 @@
 using namespace Gto;
 using namespace std;
 
-bool verbose = false;
-bool glob    = true;
+bool verbose    = false;
+bool glob       = true;
+bool text       = false;
+bool nocompress = false;
 
 regex_t excludeRegex;
 regex_t includeRegex;
@@ -31,6 +33,11 @@ struct FullProperty
 };
 
 typedef vector<FullProperty> FullProperties;
+
+struct Empty_p
+{
+    bool operator() (Object* o) { return o->components.empty(); }
+};
 
 void gather(RawDataBase* db, FullProperties& all)
 {
@@ -71,45 +78,62 @@ void filter(RawDataBase* db,
     for (int i=0; i < properties.size(); i++)
     {
         const FullProperty &fp = properties[i];
-        bool deleteIt = false;
+        bool imatch = false;
+        bool ematch = false;
 
         if (include)
         {
+            bool matched;
+
             if (glob)
             {
-                deleteIt = fnmatch(include, fp.name.c_str(), 0) ? false : true;
+                matched = !fnmatch(include, fp.name.c_str(), 0);
             }
             else
             {
-                deleteIt = regexec(&includeRegex, fp.name.c_str(), 0, 0, 0);
+                matched = !regexec(&includeRegex, fp.name.c_str(), 0, 0, 0);
             }
 
-            if (verbose && !deleteIt)
+            if (verbose && matched)
             {
                 cout << "gtomerge: include pattern matched "
                      << fp.name << endl;
             }
+
+            if (matched) imatch = true;
         }
 
         if (exclude)
         {
+            bool matched;
+
             if (glob)
             {
-                deleteIt = !fnmatch(exclude, fp.name.c_str(), 0) ? true : false;
+                matched = !fnmatch(exclude, fp.name.c_str(), 0);
             }
             else
             {
-                deleteIt = !regexec(&excludeRegex, fp.name.c_str(), 0, 0, 0);
+                matched = !regexec(&excludeRegex, fp.name.c_str(), 0, 0, 0);
             }
 
-            if (verbose && deleteIt)
+            if (verbose && matched)
             {
                 cout << "gtomerge: exclude pattern matched "
                      << fp.name << endl;
             }
+
+            if (matched) ematch = true;
         }
 
-        if (deleteIt)
+        if (include && imatch && exclude && ematch)
+        {
+            cout << "gtomerge: including " << fp.name 
+                 << " despite matching include and exclude pattern"
+                 << endl;
+        }
+        else if ((include && !exclude && !imatch) || 
+                 (!include && exclude && ematch) ||
+                 (include && !imatch && exclude && ematch))
         {
             Object *o = fp.object;
             Component *c = fp.component;
@@ -134,12 +158,32 @@ void filter(RawDataBase* db,
             }
         }
     }
+
+    //
+    //  Do a clean up pass to handle "empty" input data as well
+    //
+
+    size_t n = db->objects.size();
+
+    db->objects.erase(remove_if(db->objects.begin(),
+                                db->objects.end(),
+                                Empty_p()),
+                      db->objects.end());
+
+    if (verbose && n != db->objects.size())
+    {
+        cout << "gtofilter: removed " << (n - db->objects.size())
+             << " empty objects from input"
+             << endl;
+    }
 }
 
 void usage()
 {
     cout << "USAGE: "
          << "gtofilter [options] -o outfile.gto infile.gto\n"
+         << "-nc                    force uncompressed file output\n"
+         << "-t                     output text format\n"
          << "-regex                 use basic posix regular expressions\n"
          << "-glob                  use glob regular expressions (default)\n"
          << "-ie/--include regex    inclusion regex\n"
@@ -180,6 +224,14 @@ int main(int argc, char *argv[])
         else if (!strcmp(argv[i], "-v"))
         {
             verbose = true;
+        }
+        else if (!strcmp(argv[i], "-nc"))
+        {
+            nocompress = true;
+        }
+        else if (!strcmp(argv[i], "-t"))
+        {
+            text = true;
         }
         else if (!strcmp(argv[i], "-glob"))
         {
@@ -254,8 +306,11 @@ int main(int argc, char *argv[])
     }
 
     RawDataBaseWriter writer;
+    Writer::FileType type = Writer::CompressedGTO;
+    if (nocompress) type = Writer::BinaryGTO;
+    if (text) type = Writer::TextGTO;
 
-    if (!writer.write(outFile, *db))
+    if (!writer.write(outFile, *db, type))
     {
 	cerr << "ERROR: unable to write file " << outFile
 	     << endl;

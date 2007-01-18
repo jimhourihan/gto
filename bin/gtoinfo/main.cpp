@@ -1,4 +1,4 @@
-// 
+//
 //  Copyright (c) 2003 Tweak Films
 //
 //  This program is free software; you can redistribute it and/or
@@ -15,7 +15,7 @@
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 //  02111-1307, USA.
-// 
+//
 #include <Gto/Reader.h>
 #include <fstream>
 #include <iostream>
@@ -45,53 +45,54 @@ ObjectSet filteredObjects;
 class Reader : public Gto::Reader
 {
 public:
-    Reader(unsigned int mode) : 
-        Gto::Reader(mode), 
-        m_objectName(Gto::uint32(-1)),
-        m_componentName(Gto::uint32(-1)) {}
+    Reader(unsigned int mode)
+        : Gto::Reader(mode),
+          m_objectName(Gto::uint32(-1)),
+          m_componentName(Gto::uint32(-1)) {}
 
-    Gto::uint32		m_objectName;
-    Gto::uint32		m_componentName;
+    Gto::uint32         m_objectName;
+    Gto::uint32         m_componentName;
     vector<char>        m_buffer;
     typedef Gto::Reader::Request Request;
 
-    void		headerOutput(const Gto::Reader::PropertyInfo&);
-    void		outputPropertyHeader(const Gto::Reader::PropertyInfo &);
+    void                headerOutput(const Gto::Reader::PropertyInfo&);
+    void                outputPropertyHeader(const Gto::Reader::PropertyInfo &);
+    void                outputStringTable();
 
-    virtual void	header(const Gto::Header&);
+    virtual void        descriptionComplete();
 
-    virtual Request	object(const std::string& name,
-			       const std::string& protocol,
-			       unsigned int protocolVersion,
-			       const Gto::Reader::ObjectInfo &header);
+    virtual Request     object(const std::string& name,
+                               const std::string& protocol,
+                               unsigned int protocolVersion,
+                               const Gto::Reader::ObjectInfo &header);
 
-    virtual Request	component(const std::string& name,
+    virtual Request     component(const std::string& name,
                                   const std::string& interp,
-				  const Gto::Reader::ComponentInfo &header);
+                                  const Gto::Reader::ComponentInfo &header);
 
-    virtual Request	property(const std::string& name,
+    virtual Request     property(const std::string& name,
                                  const std::string& interp,
-				 const Gto::Reader::PropertyInfo &header);
+                                 const Gto::Reader::PropertyInfo &header);
 
-    virtual void*	data(const PropertyInfo&, size_t bytes);
+    virtual void*       data(const PropertyInfo&, size_t bytes);
     virtual void        dataRead(const PropertyInfo&);
 
-   virtual void	data(const PropertyInfo&, 
-		     const float*, size_t numItems);
+    virtual void        data(const PropertyInfo&,
+                             const float*, size_t numItems);
 
-   virtual void	data(const PropertyInfo&, 
-		     const double*, size_t numItems);
+    virtual void        data(const PropertyInfo&,
+                             const double*, size_t numItems);
 
-   virtual void	data(const PropertyInfo&, 
-		     const int*, size_t numItems);
+    virtual void        data(const PropertyInfo&,
+                             const int*, size_t numItems);
 
-   virtual void	data(const PropertyInfo&, 
-		     const unsigned short*, size_t numItems);
+    virtual void        data(const PropertyInfo&,
+                             const unsigned short*, size_t numItems);
 
-   virtual void	data(const PropertyInfo&, 
-		     const unsigned char*, size_t numItems);
+    virtual void        data(const PropertyInfo&,
+                             const unsigned char*, size_t numItems);
 
-   virtual void	data(const PropertyInfo&, bool);
+    virtual void        data(const PropertyInfo&, bool);
 
 };
 
@@ -104,37 +105,37 @@ Reader::headerOutput(const Gto::Reader::PropertyInfo& pinfo)
 
     if (m_objectName != oinfo->name)
     {
-	//
-	//  Output the object header information
-	//
+        //
+        //  Output the object header information
+        //
 
-	m_objectName = oinfo->name;
+        m_objectName = oinfo->name;
         m_componentName = 0;
 
-	cout << "object \""
-	     << stringFromId(m_objectName)
-	     << "\" protocol \""
-	     << stringFromId(oinfo->protocolName)
-	     << "\" v"
-	     << oinfo->protocolVersion
-	     << endl;
+        cout << "object \""
+             << stringFromId(m_objectName)
+             << "\" protocol \""
+             << stringFromId(oinfo->protocolName)
+             << "\" v"
+             << oinfo->protocolVersion
+             << endl;
     }
 
     if (m_componentName != cinfo->name)
     {
-	//
-	//  Output the component header information
-	//
+        //
+        //  Output the component header information
+        //
 
-	m_componentName = cinfo->name;
+        m_componentName = cinfo->name;
 
-	cout << "  component \""
-	     << stringFromId(m_componentName)
-	     << "\"";
+        cout << "  component \""
+             << stringFromId(m_componentName)
+             << "\"";
 
         if (outputInterp && stringFromId(cinfo->interpretation) != "")
         {
-            cout << " interpret as \"" 
+            cout << " interpret as \""
                  << stringFromId(cinfo->interpretation)
                  << "\" ";
         }
@@ -144,12 +145,12 @@ Reader::headerOutput(const Gto::Reader::PropertyInfo& pinfo)
 }
 
 void
-Reader::header(const Gto::Header &header)
+Reader::descriptionComplete()
 {
     union EndianTest
-    { 
-	unsigned char c[4]; 
-	unsigned int i; 
+    {
+        unsigned char c[4];
+        unsigned int i;
     };
 
     EndianTest x;
@@ -158,66 +159,81 @@ Reader::header(const Gto::Header &header)
 
     if (outputHeader)
     {
-	cout << "GTO file version " << header.version
-	     << ", " << header.numStrings << " strings, ";
+        cout << "GTO file version " << fileHeader().version
+             << ", " << fileHeader().numStrings << " strings, ";
 
-	if (big)
-	{
-	    if (isSwapped()) cout << "little endian\n";
-	    else cout << "big endian\n";
-	}
-	else
-	{
-	    if (isSwapped()) cout << "big endian\n";
-	    else cout << "little endian\n";
-	}
+        if (fileHeader().magic == Gto::Header::MagicText)
+        {
+            cout << "text format\n";
+        }
+        else
+        {
+            if (big)
+            {
+                if (isSwapped()) cout << "little endian binary\n";
+                else cout << "big endian binary\n";
+            }
+            else
+            {
+                if (isSwapped()) cout << "big endian binary\n";
+                else cout << "little endian binary\n";
+            }
+        }
+
+        for (Gto::Reader::Properties::const_iterator p = properties().begin();
+             p != properties().end();
+             ++p)
+        {
+            outputPropertyHeader(*p);
+        }
     }
+
+    if (outputStrings) outputStringTable();
+}
+
+void
+Reader::outputStringTable()
+{
+    const StringTable &strings = stringTable();
+
+    for (int i=0; i < strings.size(); i++)
+    {
+        if (i && !formatData) cout << ", ";
+        cout << i << ": \"" << strings[i] << "\"";
+        if (formatData) cout << endl;
+    }
+
+    cout << endl;
+    exit(0);
 }
 
 Reader::Request
 Reader::object(const std::string &name,
-	       const std::string &protocol,
-	       unsigned int version,
-	       const Gto::Reader::ObjectInfo &info)
+               const std::string &protocol,
+               unsigned int version,
+               const Gto::Reader::ObjectInfo &info)
 {
-    if (outputStrings)
-    {
-	const StringTable &strings = stringTable();
-	for (int i=0; i < strings.size(); i++)
-	{
-	    if (i && !formatData) cout << ", ";
-	    cout << i << ": \"" << strings[i] << "\"";
-	    if (formatData) cout << endl;
-	}
-
-	cout << endl;
-	exit(0);
-    }
-
-    return Request(true);
+    return Request(outputData);
 }
 
 Reader::Request
 Reader::component(const std::string &n,
                   const std::string &i,
-		  const Gto::Reader::ComponentInfo& c)
+                  const Gto::Reader::ComponentInfo& c)
 {
-    return Request(true);
+    return Request(outputData);
 }
 
 Reader::Request
-Reader::property(const std::string&, 
+Reader::property(const std::string&,
                  const std::string&,
                  const Gto::Reader::PropertyInfo &info)
 {
-    if (outputHeader)
-    {
-	outputPropertyHeader(info);
-    }
+    if (!outputData) return Request(false);
 
     if (filtered)
     {
-        return Request(filteredProperties.find(&info) 
+        return Request(filteredProperties.find(&info)
                        != filteredProperties.end());
     }
     else
@@ -232,34 +248,34 @@ Reader::outputPropertyHeader(const Gto::Reader::PropertyInfo &info)
     headerOutput(info);
 
     const char* type;
-    
+
     switch (info.type)
     {
-      case Gto::Int:	 type = "int"; break;
-      case Gto::Float:	 type = "float"; break;
+      case Gto::Int:     type = "int"; break;
+      case Gto::Float:   type = "float"; break;
       case Gto::Double:  type = "double"; break;
-      case Gto::Half:	 type = "half"; break;
+      case Gto::Half:    type = "half"; break;
       case Gto::String:  type = "string"; break;
-      case Gto::Short:	 type = "short"; break;
-      case Gto::Byte:	 type = "byte"; break;
+      case Gto::Short:   type = "short"; break;
+      case Gto::Byte:    type = "byte"; break;
       case Gto::Boolean: type = "bool"; break;
-      default:		 type = "unknown"; break;
+      default:           type = "unknown"; break;
     }
 
     cout << "    property " << type
-	 << "[" << info.width << "]"
-	 << "[" << info.size << "]"
-	 << " \"" 
-	 << stringFromId(info.name)
-	 << "\"";
+         << "[" << info.width << "]"
+         << "[" << info.size << "]"
+         << " \""
+         << stringFromId(info.name)
+         << "\"";
 
     if (outputInterp && stringFromId(info.interpretation) != "")
     {
-        cout << " interpret as \"" 
+        cout << " interpret as \""
              << stringFromId(info.interpretation)
              << "\" ";
     }
-    
+
     cout << endl;
 }
 
@@ -295,6 +311,8 @@ Reader::data(const PropertyInfo& info, size_t bytes)
               break;
         }
     }
+
+    return 0;
 }
 
 void
@@ -330,39 +348,39 @@ void Reader::data(const PropertyInfo& info, const float* data, size_t numItems)
     if (!outputData) return;
 
     cout << "float[" << info.width << "] "
-	 << stringFromId(info.component->object->name)
-	 << "."  << stringFromId(info.component->name)
-	 << "." << stringFromId(info.name)
-	 << " = ";
+         << stringFromId(info.component->object->name)
+         << "."  << stringFromId(info.component->name)
+         << "." << stringFromId(info.name)
+         << " = ";
 
-    if (formatData) 
+    if (formatData)
     {
-	cout << endl << "[" << endl;
+        cout << endl << "[" << endl;
     }
     else
     {
-	cout << "[";
+        cout << "[";
     }
 
     for (int i=0; i < numItems; i++)
     {
-	if (formatData) cout << "    ";
+        if (formatData) cout << "    ";
 
         if (info.width > 1 )
         {
             cout << " [";
             for( int j = 0; j < info.width; ++j )
             {
-            	cout << " " << data[(i*info.width)+j];
+                cout << " " << data[(i*info.width)+j];
             }
             cout << " ]";
         }
         else
         {
-	    cout << " " << data[i];
+            cout << " " << data[i];
         }
-	
-	if (formatData) cout << endl;
+
+        if (formatData) cout << endl;
     }
 
     cout << (formatData ? "" : " ") << "]" << endl;
@@ -373,39 +391,39 @@ void Reader::data(const PropertyInfo& info, const double* data, size_t numItems)
     if (!outputData) return;
 
     cout << "double[" << info.width << "] "
-	 << stringFromId(info.component->object->name)
-	 << "."  << stringFromId(info.component->name)
-	 << "." << stringFromId(info.name)
-	 << " = ";
+         << stringFromId(info.component->object->name)
+         << "."  << stringFromId(info.component->name)
+         << "." << stringFromId(info.name)
+         << " = ";
 
-    if (formatData) 
+    if (formatData)
     {
-	cout << endl << "[" << endl;
+        cout << endl << "[" << endl;
     }
     else
     {
-	cout << "[";
+        cout << "[";
     }
 
     for (int i=0; i < numItems; i++)
     {
-	if (formatData) cout << "    ";
+        if (formatData) cout << "    ";
 
         if (info.width > 1 )
         {
             cout << " [";
             for( int j = 0; j < info.width; ++j )
             {
-            	cout << " " << data[(i*info.width)+j];
+                cout << " " << data[(i*info.width)+j];
             }
             cout << " ]";
         }
         else
         {
-	    cout << " " << data[i];
+            cout << " " << data[i];
         }
-	
-	if (formatData) cout << endl;
+
+        if (formatData) cout << endl;
     }
 
     cout << (formatData ? "" : " ") << "]" << endl;
@@ -417,70 +435,70 @@ void Reader::data(const PropertyInfo& info, const int* data, size_t numItems)
 
     if (info.type == Gto::Int)
     {
-	cout << "int[" 
-	     << info.width << "] "
-	     << stringFromId(info.component->object->name)
-	     << "."  << stringFromId(info.component->name)
-	     << "." << stringFromId(info.name)
-	     << " = ";
+        cout << "int["
+             << info.width << "] "
+             << stringFromId(info.component->object->name)
+             << "."  << stringFromId(info.component->name)
+             << "." << stringFromId(info.name)
+             << " = ";
 
-	if (formatData)
-	{
-	    cout << endl << "[" << endl;
-	}
-	else
-	{
-	    cout << "[";
-	}
+        if (formatData)
+        {
+            cout << endl << "[" << endl;
+        }
+        else
+        {
+            cout << "[";
+        }
 
-	for (int i=0; i < numItems; i++)
-	{
-	    if (formatData) cout << "    ";
+        for (int i=0; i < numItems; i++)
+        {
+            if (formatData) cout << "    ";
 
-	    if (info.width > 1)
-	    {
-		cout << " [";
-		for( int j = 0; j < info.width; ++j )
-		{
-		    cout << " " << data[(i*info.width)+j];
-		}
-		cout << " ]";
-	    }
-	    else
-	    {
-        	cout << " " << data[i];
-	    }
-	    
-	    if (formatData) cout << endl;
-	}
+            if (info.width > 1)
+            {
+                cout << " [";
+                for( int j = 0; j < info.width; ++j )
+                {
+                    cout << " " << data[(i*info.width)+j];
+                }
+                cout << " ]";
+            }
+            else
+            {
+                cout << " " << data[i];
+            }
+
+            if (formatData) cout << endl;
+        }
     }
     else
     {
-	cout << "string[" 
-	     << info.width << "] "
-	     << stringFromId(info.component->object->name)
-	     << "."  << stringFromId(info.component->name)
-	     << "." << stringFromId(info.name)
-	     << " = ";
+        cout << "string["
+             << info.width << "] "
+             << stringFromId(info.component->object->name)
+             << "."  << stringFromId(info.component->name)
+             << "." << stringFromId(info.name)
+             << " = ";
 
-	if (formatData)
-	{
-	    cout << endl << "[" << endl;
-	}
-	else
-	{
-	    cout << "[";
-	}
+        if (formatData)
+        {
+            cout << endl << "[" << endl;
+        }
+        else
+        {
+            cout << "[";
+        }
 
-	for (int i=0; i < numItems; i++)
-	{
-	    if (formatData) cout << "    ";
-	    
-	    if( info.width > 1 )
-	    {
-		cout << " [";
-		for( int j = 0; j < info.width; ++j )
-		{
+        for (int i=0; i < numItems; i++)
+        {
+            if (formatData) cout << "    ";
+
+            if( info.width > 1 )
+            {
+                cout << " [";
+                for( int j = 0; j < info.width; ++j )
+                {
                     if (numericStrings)
                     {
                         cout << " " << data[(i*info.width)+j];
@@ -490,11 +508,11 @@ void Reader::data(const PropertyInfo& info, const int* data, size_t numItems)
                         cout << " \"" << stringFromId(data[(i*info.width)+j]);
                         cout << "\"";
                     }
-		}
-		cout << " ]";
-	    }
-	    else
-	    {
+                }
+                cout << " ]";
+            }
+            else
+            {
                 if (numericStrings)
                 {
                     cout << " " << data[i];
@@ -503,111 +521,111 @@ void Reader::data(const PropertyInfo& info, const int* data, size_t numItems)
                 {
                     cout << " \"" << stringFromId(data[i]) << "\"";
                 }
-	    }
-	    
-	    if (formatData) cout << endl;
-	}
+            }
+
+            if (formatData) cout << endl;
+        }
     }
 
     cout << (formatData ? "" : " ") << "]" << endl;
 }
 
-void Reader::data(const PropertyInfo& info, 
-		  const unsigned short* data, 
-		  size_t numItems)
+void Reader::data(const PropertyInfo& info,
+                  const unsigned short* data,
+                  size_t numItems)
 {
     if (!outputData) return;
 
     if (info.type == Gto::Short)
     {
-	cout << "short[" 
-	     << info.width 
-	     << "] "
-	     << stringFromId(info.component->object->name)
-	     << "."  << stringFromId(info.component->name)
-	     << "." << stringFromId(info.name)
-	     << " = ";
+        cout << "short["
+             << info.width
+             << "] "
+             << stringFromId(info.component->object->name)
+             << "."  << stringFromId(info.component->name)
+             << "." << stringFromId(info.name)
+             << " = ";
 
-	if (formatData)
-	{
-	    cout << endl << "[" << endl;
-	}
-	else
-	{
-	    cout << "[";
-	}
+        if (formatData)
+        {
+            cout << endl << "[" << endl;
+        }
+        else
+        {
+            cout << "[";
+        }
 
 
-	for (int i=0; i < numItems; i++)
-	{
-	    if (formatData) cout << "    ";
-	    
-	    if( info.width > 1 )
-	    {
-		cout << " [";
-		for( int j = 0; j < info.width; ++j )
-		{
-		    cout << " " << data[(i*info.width)+j];
-		}
-		cout << " ]";
-	    }
-	    else
-	    {
-        	cout << " " << data[i];
-	    }
+        for (int i=0; i < numItems; i++)
+        {
+            if (formatData) cout << "    ";
 
-	    if (formatData) cout << endl;
-	}
+            if( info.width > 1 )
+            {
+                cout << " [";
+                for( int j = 0; j < info.width; ++j )
+                {
+                    cout << " " << data[(i*info.width)+j];
+                }
+                cout << " ]";
+            }
+            else
+            {
+                cout << " " << data[i];
+            }
+
+            if (formatData) cout << endl;
+        }
     }
 
     cout << (formatData ? "" : " ") << "]" << endl;
 }
 
-void Reader::data(const PropertyInfo& info, 
-		  const unsigned char* data, 
-		  size_t numItems)
+void Reader::data(const PropertyInfo& info,
+                  const unsigned char* data,
+                  size_t numItems)
 {
     if (!outputData) return;
 
     if (info.type == Gto::Byte)
     {
-	cout << "byte[" 
-	     << info.width 
-	     << "] "
-	     << stringFromId(info.component->object->name)
-	     << "."  << stringFromId(info.component->name)
-	     << "." << stringFromId(info.name)
-	     << " = ";
+        cout << "byte["
+             << info.width
+             << "] "
+             << stringFromId(info.component->object->name)
+             << "."  << stringFromId(info.component->name)
+             << "." << stringFromId(info.name)
+             << " = ";
 
-	if (formatData)
-	{
-	    cout << endl << "[" << endl;
-	}
-	else
-	{
-	    cout << "[";
-	}
+        if (formatData)
+        {
+            cout << endl << "[" << endl;
+        }
+        else
+        {
+            cout << "[";
+        }
 
-	for (int i=0; i < numItems; i++)
-	{
-	    if (formatData) cout << "    ";
+        for (int i=0; i < numItems; i++)
+        {
+            if (formatData) cout << "    ";
 
-	    if( info.width > 1 )
-	    {
-		cout << " [";
-		for( int j = 0; j < info.width; ++j )
-		{
-		    cout << " " << int(data[(i*info.width)+j]);
-		}
-		cout << " ]";
-	    }
-	    else
-	    {
-        	cout << " " << int(data[i]);
-	    }
+            if( info.width > 1 )
+            {
+                cout << " [";
+                for( int j = 0; j < info.width; ++j )
+                {
+                    cout << " " << int(data[(i*info.width)+j]);
+                }
+                cout << " ]";
+            }
+            else
+            {
+                cout << " " << int(data[i]);
+            }
 
-	    if (formatData) cout << endl;
-	}
+            if (formatData) cout << endl;
+        }
     }
 
     cout << (formatData ? "" : " ") << "]" << endl;
@@ -644,7 +662,7 @@ void filterData(const std::string& filterExpr, Reader& reader)
             filteredObjects.insert(o);
         }
     }
-    
+
     for (int i=0; i < objects.size(); i++)
     {
         Gto::Reader::ObjectInfo* p = &objects[i];
@@ -673,7 +691,7 @@ void usage()
          << "-r/--readall                   force data read\n"
          << "--help                         usage\n"
          << endl;
-    
+
     exit(-1);
 }
 
@@ -685,46 +703,46 @@ int main(int argc, char *argv[])
 
     for (int i=1; i < argc; i++)
     {
-	const char *arg = argv[i];
+        const char *arg = argv[i];
 
-	if (*arg == '-')
-	{
-	    if (!strcmp(arg, "-d") ||
-		!strcmp(arg, "--dump"))
-	    {
-		outputData   = true;
-		outputHeader = false;
-	    }
-	    else if (!strcmp(arg, "-a") ||
-		     !strcmp(arg, "--all"))
-	    {
-		outputData   = true;
-		outputHeader = true;
+        if (*arg == '-')
+        {
+            if (!strcmp(arg, "-d") ||
+                !strcmp(arg, "--dump"))
+            {
+                outputData   = true;
+                outputHeader = false;
+            }
+            else if (!strcmp(arg, "-a") ||
+                     !strcmp(arg, "--all"))
+            {
+                outputData   = true;
+                outputHeader = true;
                 outputInterp = true;
-	    }
-	    else if (!strcmp(arg, "-h") ||
-		     !strcmp(arg, "--header"))
-	    {
-		outputData   = false;
-		outputHeader = true;
-	    }
-	    else if (!strcmp(arg, "-s") ||
-		     !strcmp(arg, "--strings"))
-	    {
-		outputData   = false;
-		outputHeader = false;
-		outputStrings = true;
-	    }
-	    else if (!strcmp(arg, "-r") ||
-		     !strcmp(arg, "--readall"))
-	    {
-		readAll      = true;
-	    }
-	    else if (!strcmp(arg, "-l") ||
-		     !strcmp(arg, "--line"))
-	    {
-		formatData   = true;
-	    }
+            }
+            else if (!strcmp(arg, "-h") ||
+                     !strcmp(arg, "--header"))
+            {
+                outputData   = false;
+                outputHeader = true;
+            }
+            else if (!strcmp(arg, "-s") ||
+                     !strcmp(arg, "--strings"))
+            {
+                outputData   = false;
+                outputHeader = false;
+                outputStrings = true;
+            }
+            else if (!strcmp(arg, "-r") ||
+                     !strcmp(arg, "--readall"))
+            {
+                readAll      = true;
+            }
+            else if (!strcmp(arg, "-l") ||
+                     !strcmp(arg, "--line"))
+            {
+                formatData   = true;
+            }
             else if (!strcmp(arg, "-n") ||
                      !strcmp(arg, "--numeric-strings"))
             {
@@ -742,20 +760,20 @@ int main(int argc, char *argv[])
                 filterExpr = argv[i];
                 filtered = true;
             }
-	    else
-	    {
+            else
+            {
                 usage();
-	    }
-	}
-	else
-	{
-	    inFile = arg;
-	}
+            }
+        }
+        else
+        {
+            inFile = arg;
+        }
     }
 
     if (!inFile)
     {
-	cout << "no input .gto file specified.\n" << flush;
+        cout << "no input .gto file specified.\n" << flush;
         cout << endl;
         usage();
     }
@@ -769,7 +787,7 @@ int main(int argc, char *argv[])
 
     if ( !reader.open(inFile) )
     {
-	cerr << "Error reading file " << inFile << endl;
+        cerr << "Error reading file " << inFile << endl;
     }
 
     if (filterExpr != "")

@@ -18,7 +18,6 @@
 //
 #include <Gto/RawData.h>
 #include <Gto/Protocols.h>
-#include <WFObj/Reader.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -224,6 +223,8 @@ usage()
          << endl
          << "INFILE     a tiff file" << endl
          << "OUTFILE    a gto file" << endl
+         << "-t         text GTO output" << endl
+         << "-nc        uncompressed GTO output" << endl
          << endl;
     
     exit(-1);
@@ -233,16 +234,22 @@ usage()
 
 int main(int argc, char *argv[])
 {
-    char* inFile   = 0;
-    char* outFile  = 0;
-    char* outObj   = 0;
-    int   replace  = 0;
-
+    char* inFile     = 0;
+    char* outFile    = 0;
+    char* outObj     = 0;
+    int   replace    = 0;
+    int   nocompress = 0;
+    int   text       = 0;
+    
     for (int i=1; i < argc; i++)
     {
-        if (*argv[i] == '-')
+        if (!strcmp(argv[i], "-t"))
         {
-            usage();
+            text = 1;
+        }
+        else if (!strcmp(argv[i], "-nc"))
+        {
+            nocompress = 1;
         }
         else
         {
@@ -300,8 +307,11 @@ int main(int argc, char *argv[])
     if (oext == "gto")
     {
         RawDataBaseWriter writer;
+        Writer::FileType type = Writer::CompressedGTO;
+        if (nocompress) type = Writer::BinaryGTO;
+        if (text) type = Writer::TextGTO;
 
-        if (!writer.write(outFile, *db))
+        if (!writer.write(outFile, *db, type))
         {
             cerr << "ERRROR: writing file " << outFile << endl;
             exit(-1);
