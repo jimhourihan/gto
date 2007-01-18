@@ -23,6 +23,7 @@
 #include <maya/MMatrix.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <sys/types.h>
 #include <Gto/Protocols.h>
 #include <Gto/Reader.h>
@@ -48,11 +49,15 @@ public:
     const MObject &mayaParentObject() const { return m_mayaParentObject; }
     bool wasRenamed() const { return m_wasRenamed; }
 
+    void mayaObject( MObject &o )  { m_mayaObject = o; }
+    void mayaParentObject( MObject &o ) { m_mayaParentObject = o; }
+
     //**************************************************************************
     // READER STUFF
     enum
     {
         OBJECT_C = 1,
+        CHANNELS_C,
         NEXT_C
     };
 
@@ -63,6 +68,13 @@ public:
         NEXT_P
     };
     
+    struct TextureChannel
+    {
+        std::string mappingType;
+        std::string texFilename;
+    };
+    typedef std::map<std::string, TextureChannel> TexChannelMap;
+        
     virtual Request component( const std::string &name ) const;
     
     virtual Request property( const std::string &name,
@@ -78,48 +90,11 @@ public:
                            void *propertyData,
                            const StringTable &strings );
 
-#if 0
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const float *items,
-                       size_t numItems,
-                       size_t width);
-
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const double *items,
-                       size_t numItems,
-                       size_t width);
- 
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const int *items,
-                       size_t numItems,
-                       size_t width);
-
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const unsigned short *items,
-                       size_t numItems,
-                       size_t width);
-
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const unsigned char *items,
-                       size_t numItems,
-                       size_t width);
-
-    virtual void data( void *componentData,
-                       void *propertyData,
-                       const std::vector<std::string> &item,
-                       size_t numItems,
-                       size_t width);
-
-#endif 
-
+    // Override to declare this as a new object to Maya
     virtual void declareMaya() {};
-    
-    void addToDefaultSG();
+
+    // Override to modify an existing Maya object with keyframe data
+    virtual void declareMayaDiff() {};
     
     void computeLocalTransform( const Object *parent );
     const MMatrix &globalTransform() const { return m_globalTransform; }
@@ -130,6 +105,8 @@ public:
 protected:
     void setTransform( const float *transform );
     void setName();
+    void addToDefaultSG();
+    void addTextureChannelAttributes();
     
 protected:
     std::string m_name;
@@ -148,6 +125,9 @@ protected:
     
     std::vector<float> m_tmpFloatData;
     int m_tmpIntData;
+    
+    int m_textureAssignmentIds[2];
+    TexChannelMap m_textureMappings;
 };
 
 } // End namespace GtoIOPlugin

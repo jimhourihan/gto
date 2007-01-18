@@ -19,9 +19,11 @@
 #include "version.h"
 
 #include <iostream>
+#include <maya/MGlobal.h>
 #include <maya/MMatrix.h>
 #include <maya/MFnTransform.h>
 #include <maya/MTransformationMatrix.h>
+#include <maya/MAnimUtil.h>
 #include "GtoInTransform.h"
 
 namespace GtoIOPlugin {
@@ -60,6 +62,29 @@ void Transform::declareMaya()
     // Set misc stuff...
     setName();
 }
+
+//******************************************************************************
+void Transform::declareMayaDiff()
+{
+    MFnTransform transformNode( m_mayaObject );
+
+    MMatrix mm;
+    for( int row = 0; row < 4; ++row )
+    {
+        for( int col = 0; col < 4; ++col )
+        {
+            mm( row, col ) = m_localTransform[col][row];
+        }
+    }
+
+    transformNode.set( MTransformationMatrix( mm ) );
+    
+    MString melCmd = std::string( "setKeyframe " + name() + ".translate;" ).c_str();
+    melCmd += std::string( "setKeyframe " + name() + ".rotate;" ).c_str();
+    melCmd += std::string( "setKeyframe " + name() + ".scale;" ).c_str();
+    MGlobal::executeCommand( melCmd );
+}
+
 
 
 } // End namespace GtoIOPlugin

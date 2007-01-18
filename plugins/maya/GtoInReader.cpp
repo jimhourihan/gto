@@ -27,6 +27,7 @@
 #include "GtoInNURBS.h"
 #include "GtoInPoly.h"
 #include "GtoInParticle.h"
+#include "GtoInCamera.h"
 
 namespace GtoIOPlugin {
 using namespace std;
@@ -84,6 +85,12 @@ Request Reader::object( const std::string &name,
         m_set.addObject( newObj );
         return Request( true, (void *)newObj );
     }
+//     else if( protocol == GTO_PROTOCOL_CAMERA )
+//     {
+//         Object *newObj = new Camera( name, protocol, protocolVersion );
+//         m_set.addObject( newObj );
+//         return Request( true, (void *)newObj );
+//     }
     else
     {
         string str = "Skipping " + name + ", unknown protocol: " + protocol;

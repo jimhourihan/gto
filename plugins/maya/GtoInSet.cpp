@@ -26,6 +26,9 @@
 #include <maya/MDagModifier.h>
 #include <maya/MDGModifier.h>
 #include <maya/MFnTransform.h>
+#include <maya/MSelectionList.h>
+#include <maya/MItSelectionList.h>
+
 #include "GtoInSet.h"
 
 namespace GtoIOPlugin {
@@ -200,6 +203,39 @@ void Set::reparentAll()
             transformNode.setName( parentName );
             dagMod.reparentNode( childObj, newParentObj );
         }
+    }
+}
+
+// *****************************************************************************
+//******************************************************************************
+void Set::declareMayaDiff()
+{
+    MStatus status = MS::kSuccess;
+    std::vector<Object *>::const_iterator iter = m_objects.begin();
+    for ( ; iter != m_objects.end(); ++iter )
+    {
+        Object *obj = (*iter);
+        
+        MSelectionList slist;
+        status = slist.add( obj->name().c_str() );
+        if( ! status )
+        {
+            MGlobal::displayWarning( std::string( "No maya node matches: " 
+                                         + obj->name() ).c_str() );
+            return;
+        }
+        if( slist.length() > 1 )
+        {
+            MGlobal::displayWarning( std::string( "More than one maya node matches: " 
+                                         + obj->name() ).c_str() );
+        }
+
+        MItSelectionList iter( slist );
+        MObject o;
+        iter.getDependNode( o );
+
+        obj->mayaObject( o );
+        obj->declareMayaDiff();
     }
 }
 

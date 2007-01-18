@@ -22,12 +22,15 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <set>
 
 #include <maya/MString.h>
 #include <maya/MStatus.h>
 #include <maya/MAnimControl.h>
 
 #include <Gto/Writer.h>
+#include "GtoMayaAttribute.h"
 
 namespace GtoIOPlugin {
 
@@ -40,12 +43,27 @@ namespace GtoIOPlugin {
 
 #define GTO_MAYA_USER_PROTOCOL_ATTRIBUTE "GTO_protocol"
 #define GTO_MAYA_USER_PROTOCOL_VERSION_ATTRIBUTE "GTO_protocolVersion"
+#define GTO_MAYA_INTERP_BOUNDARY_ATTRIBUTE "GTO_interpBoundary"
+#define GTO_MAYA_SUBD_ATTRIBUTE "GTO_subd"
+
+#define GTO_TRANSFORM_COMPONENT_NAME "transform"
+
+#ifdef verify
+// STUPID name collision with AssertMacros.h on OSX
+#undef verify
+#endif
+
 
 class GtoExporter
 {
 public:
+
+    // object name -> attribute vector 
+    typedef std::map<std::string, GtoMayaAttributes*> NodeUserAttributesMap;
+
     GtoExporter( MTime fs, 
                  MTime fe,
+                 bool quiet,
                  double shutter,
                  bool subd,
                  bool normals,
@@ -58,7 +76,12 @@ public:
                  bool isDifferenceFile,
                  bool diffPoints,
                  bool diffMatrix,
-                 bool diffNormals );
+                 bool diffNormals,
+                 bool allUserAttributes,
+                 bool allMayaAttributes,
+                 bool faceMaterials,
+                 bool ascii,
+                 bool exportTransformAttrs );
     ~GtoExporter();
     
     MStatus doIt();
@@ -71,6 +94,9 @@ public:
     void NURBSHeader(MDagPath&);
     void NURBSData(MDagPath&);
 
+    void CurveHeader( MDagPath & );
+    void CurveData( MDagPath & );
+
     void CSHeader(MDagPath&);
     void CSData(MDagPath&);
 
@@ -81,13 +107,16 @@ public:
     void DagData(MDagPath&);
 
     void PolygonHeader( MDagPath &, const char *protocol, unsigned int );
-    void PolygonData( MDagPath & );
+    void PolygonData( MDagPath &, const char *protocol );
 
     void CameraHeader( MDagPath &, int protocolVersion );
     void CameraData( MDagPath & );
 
     void LightHeader( MDagPath &, int protocolVersion );
     void LightData( MDagPath & );
+
+    void TexChannelsHeader( MDagPath & );
+    void TexChannelsData( MDagPath & );
 
     MStatus doFrame( MTime );
 
@@ -100,7 +129,29 @@ public:
     bool hasUserProtocolVersion( MDagPath &dp );
     int userProtocolVersion( MDagPath &dp );
 
+    bool subdInterpBoundary( MDagPath &dp );
+    bool isSubd( MDagPath &dp );
+
+//--
+    void findAttributes( MDagPath &, GtoMayaAttributes * );
+    void findTransformAttributes( MDagPath &, GtoMayaAttributes * );
+    void getAttribute( MDagPath &, const char* attrName, GtoMayaAttributes *,
+                       const char* gtoComponentName=NULL );
+
+    void attributesHeader( MDagPath & ) const;
+    void attributesData( MDagPath & ) const;
+
+    void animatedAttributesHeader( MDagPath & ) const;
+    void animatedAttributesData( MDagPath & ) const;
+
+
 private:
+    struct TextureAssignment
+    {
+        std::string mappingType;
+        std::string textureFile;
+    };
+
     int m_maxRecursion;
     MString m_fileName;
     MString m_outputString;
@@ -116,7 +167,13 @@ private:
     bool m_normalize;
     bool m_verify;
     bool m_hidden;
-    
+    bool m_quiet;
+    bool m_allUserAttributes;
+    bool m_allMayaAttributes;
+    bool m_faceMaterials;
+    bool m_ascii;
+    bool m_exportTransformAttrs;
+
     MTime m_fs;
     MTime m_fe;
     double m_shutterAngle;
@@ -126,6 +183,10 @@ private:
     Gto::Writer *m_writer;
 
     std::vector<MObject> m_objects;
+    
+    std::set<std::string> m_noExportAttributes;
+
+    NodeUserAttributesMap m_attributes;
 };
 
 } // End namespace GtoIOPlugin

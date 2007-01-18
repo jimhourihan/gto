@@ -400,7 +400,7 @@ void Poly::declareMaya()
     if( m_normalValues != NULL && m_normalIndices != NULL )
     {
 
-#if MAYA_API_VERSION < 500
+#if MAYA_API_VERSION != 500
 
         // Due to a bizarre internal Maya issue, we have to sort the
         // normals based on vertex index to avoid O(N^2) time for
@@ -452,14 +452,12 @@ void Poly::declareMaya()
 
 #else
 
-        // Maya's normal setting procedures have been re-broken for Maya 5.0.
-        // The code above which is quite zippy in Maya 4.x is now back to 
-        // O(N^2).  Alias's API Knowledgbase solution ( available at
-        // http://www.alias.com/eng/support/maya/knowledgebase/api/2755.jhtml )
+        // Maya's normal setting procedures are horribly broken in Maya 5.0.
+        // The code above which is quite zippy in Maya 4.x and Maya 6.0 is
+        // O(N^2) in Maya 5.0.  Alias's API Knowledgbase solution (available at
+        // http://www.alias.com/eng/support/maya/knowledgebase/api/2755.jhtml)
         // is also slow as a dead snail.  Therefore, sadly, normals importing
-        // is disabled for Maya 5.x until someone from Alias responds to our
-        // requests for more information.  Please feel free to prod Alias 
-        // yourselves, and let us know if you get any information on this issue.
+        // is disabled for Maya 5.x.
 
 #endif
 
@@ -504,6 +502,7 @@ void Poly::declareMaya()
     // Set misc stuff...
     setName();
     addToDefaultSG();
+    addTextureChannelAttributes();
 }
 
 } // End namespace GtoIOPlugin

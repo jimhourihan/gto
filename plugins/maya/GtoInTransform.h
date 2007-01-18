@@ -37,6 +37,8 @@ public:
     virtual ~Transform();
   
     virtual void declareMaya();
+    virtual void declareMayaDiff();
+
 };
 
 } // End namespace GtoIOPlugin

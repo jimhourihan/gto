@@ -50,7 +50,7 @@
 namespace GtoIOPlugin {
 
 #define GTOIO_MAJOR_VERSION 1
-#define GTOIO_MINOR_VERSION 17
+#define GTOIO_MINOR_VERSION 25
 
 const char *versionString();
 

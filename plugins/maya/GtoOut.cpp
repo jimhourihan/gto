@@ -20,6 +20,8 @@
 
 #include <maya/MGlobal.h>
 #include <maya/MMatrix.h>
+#include <maya/MAnimUtil.h>
+#include <maya/MFnAnimCurve.h>
 #include <maya/MDagPath.h>
 #include <maya/MDagPathArray.h>
 #include <maya/MPlug.h>
@@ -32,25 +34,47 @@
 #include <maya/MFnMesh.h>
 #include <maya/MFnCamera.h>
 #include <maya/MFnLight.h>
+#include <maya/MFnAmbientLight.h>
+#include <maya/MFnAreaLight.h>
+#include <maya/MFnDirectionalLight.h>
 #include <maya/MFnPointLight.h>
 #include <maya/MFnSpotLight.h>
-#include <maya/MFnDirectionalLight.h>
+#include <maya/MFnNurbsCurve.h>
 #include <maya/MColor.h>
 #include <maya/MFloatPointArray.h>
 #include <maya/MItMeshPolygon.h>
 #include <maya/MItSurfaceCV.h>
+#include <maya/MItCurveCV.h>
+#include <maya/MFileIO.h>
+#include <maya/MComputation.h>
+#include <maya/MFnAttribute.h>
+#include <maya/M3dView.h>
+#include <maya/MObjectHandle.h>
+#include <maya/MItDependencyNodes.h>
+
 #include <Gto/Protocols.h>
 
+#include "TwkMaya.h"
+
+#ifndef M_PI
+#define M_PI 3.1415926535897931
+#endif
+
 #include <string.h>
+#include <assert.h>
 #include <algorithm>
 #include "GtoOut.h"
 
 namespace GtoIOPlugin {
 using namespace std;
 
+extern MString replaceFrameCookies( const MString &in, int frame );
+
+
 // *****************************************************************************
 GtoExporter::GtoExporter( MTime fs, 
                           MTime fe,
+                          bool quiet,
                           double shutter,
                           bool subd,
                           bool normals,
@@ -63,8 +87,17 @@ GtoExporter::GtoExporter( MTime fs,
                           bool isDifferenceFile,
                           bool diffPoints,
                           bool diffMatrix,
-                          bool diffNormals )
+                          bool diffNormals,
+                          bool allUserAttributes,
+                          bool allMayaAttributes,
+                          bool faceMaterials,
+                          bool ascii,
+                          bool exportTransformAttrs )
 {
+    m_fs = fs;
+    m_fe = fe;
+    m_quiet = quiet;
+    m_shutterAngle = shutter;
     m_maxRecursion = maxRecurse;
     m_fileName = filename;
     m_asSubD = subd;
@@ -77,16 +110,64 @@ GtoExporter::GtoExporter( MTime fs,
     m_diffPoints = diffPoints;
     m_diffMatrix = diffMatrix;
     m_diffNormals = diffNormals;
+    m_allUserAttributes = allUserAttributes;
+    m_allMayaAttributes = allMayaAttributes;
     
-    m_fs = fs;
-    m_fe = fe;
-    m_shutterAngle = shutter;
+    m_faceMaterials = faceMaterials;
+    m_ascii = ascii;
+    m_exportTransformAttrs = exportTransformAttrs;
+
+    // All of the transform attributes are handled as a special case
+    m_noExportAttributes.insert( "translateX" );
+    m_noExportAttributes.insert( "translateY" );
+    m_noExportAttributes.insert( "translateZ" );
+    
+    m_noExportAttributes.insert( "rotateX" );
+    m_noExportAttributes.insert( "rotateY" );
+    m_noExportAttributes.insert( "rotateZ" );
+    m_noExportAttributes.insert( "rotateOrder" );
+    m_noExportAttributes.insert( "rotationInterpolation" );
+    
+    m_noExportAttributes.insert( "scaleX" );
+    m_noExportAttributes.insert( "scaleY" );
+    m_noExportAttributes.insert( "scaleZ" );
+    
+    m_noExportAttributes.insert( "shearXY" );
+    m_noExportAttributes.insert( "shearXZ" );
+    m_noExportAttributes.insert( "shearYZ" );
+
+    m_noExportAttributes.insert( "rotatePivotX" );
+    m_noExportAttributes.insert( "rotatePivotY" );
+    m_noExportAttributes.insert( "rotatePivotZ" );
+
+    m_noExportAttributes.insert( "rotatePivotTranslateX" );
+    m_noExportAttributes.insert( "rotatePivotTranslateY" );
+    m_noExportAttributes.insert( "rotatePivotTranslateZ" );
+
+    m_noExportAttributes.insert( "scalePivotX" );
+    m_noExportAttributes.insert( "scalePivotY" );
+    m_noExportAttributes.insert( "scalePivotZ" );
+
+    m_noExportAttributes.insert( "scalePivotTranslateX" );
+    m_noExportAttributes.insert( "scalePivotTranslateY" );
+    m_noExportAttributes.insert( "scalePivotTranslateZ" );
+
+    m_noExportAttributes.insert( "rotateAxisX" );
+    m_noExportAttributes.insert( "rotateAxisY" );
+    m_noExportAttributes.insert( "rotateAxisZ" );
+
+    m_noExportAttributes.insert( "transMinusRotatePivotX" );
+    m_noExportAttributes.insert( "transMinusRotatePivotY" );
+    m_noExportAttributes.insert( "transMinusRotatePivotZ" );
+    //  -- End transform attributes
 }
+
 
 // *****************************************************************************
 GtoExporter::~GtoExporter()
 {
 }
+
 
 // *****************************************************************************
 static float radToDeg( float rad )
@@ -94,14 +175,24 @@ static float radToDeg( float rad )
     return rad * 57.2957795130823230; // == 180.0 / PI
 }
 
+
 // *****************************************************************************
-static bool isVisible( MDagPath &dp )
+static bool isVisible( MDagPath dp )
 {
-    MFnDependencyNode dn( dp.node() );
-    MPlug iPlug = dn.findPlug( "visibility" );
-    bool visibility;
-    iPlug.getValue( visibility );
-    return visibility;
+    // Check if given node OR any of its parents are hidden...
+    do
+    {
+        MFnDependencyNode dn( dp.node() );
+        MPlug iPlug = dn.findPlug( "visibility" );
+        bool visible;
+        iPlug.getValue( visible );
+        if( ! visible )
+        {
+            return false;
+        }
+    } while( dp.pop() == MS::kSuccess );
+
+    return true;
 }
 
 
@@ -126,6 +217,8 @@ MStatus GtoExporter::doIt()
     //
     // Loop over time
     //
+    MComputation computation;
+    computation.beginComputation();
     for( MTime t( m_fs ); t <= m_fe; t += 1.0 )
     {
         doFrame( t );
@@ -137,28 +230,14 @@ MStatus GtoExporter::doIt()
             doFrame( t + m_shutterAngle );
             m_fileName = fname;
         }
+        if( computation.isInterruptRequested() )
+        {
+            break;
+        }
     }
+    computation.endComputation();
 
     return MS::kSuccess;
-}
-
-//******************************************************************************
-MString replaceFrameCookies( const MString &in, int frame )
-{
-    char fn[40];
-    sprintf( fn, "%04d", frame );
-    MStringArray array;
-    in.split( '#', array );
-
-    MString out = array[0];
-
-    for( size_t i=1; i < array.length(); i++ )
-    {
-        out += fn;
-        out += array[i];
-    }
-
-    return out;
 }
 
 //******************************************************************************
@@ -211,6 +290,7 @@ void GtoExporter::getNames( MDagPath &dp, int rlevel )
     }
 }
 
+
 //******************************************************************************
 bool GtoExporter::verify()
 {
@@ -225,7 +305,16 @@ bool GtoExporter::verify()
 
         if( list.hasItem( dp ) )
         {
-            sortedList.add( dp );
+            MObject object = dp.node();
+            if( object.hasFn( MFn::kDagNode ) )
+            {
+                MFnDagNode dn( object );
+                MPlug iPlug = dn.findPlug( "intermediateObject" );
+                bool intermediate;
+                iPlug.getValue( intermediate );
+
+                if( ! intermediate ) sortedList.add( dp );
+            }
         }
     }
 
@@ -255,8 +344,10 @@ bool GtoExporter::verify()
             err += m_allNames[i].c_str();
             err += "\"\n";
             ok = false;
-
-            MGlobal::displayError( err );
+            if( ! m_quiet )
+            {
+                MGlobal::displayError( err );
+            }
         }
     }
 
@@ -272,9 +363,13 @@ MStatus GtoExporter::doFrame( MTime t )
     MGlobal::getActiveSelectionList( list );
     MSelectionList sortedList;
 
-    
     MAnimControl::setCurrentTime( t );
-    MGlobal::viewFrame( t );
+
+// Is this necessary to force an eval?  Sometimes?
+//    MGlobal::viewFrame( t );   
+
+//     M3dView currentView = M3dView::active3dView();
+//     currentView.refresh( true, true, true );
 
     m_writer = new Gto::Writer;
     if( m_writer == NULL )
@@ -286,7 +381,9 @@ MStatus GtoExporter::doFrame( MTime t )
     if( m_fileName != "" )
     {
         MString fname = replaceFrameCookies( m_fileName, int( t.value() ) );
-        m_writer->open( fname.asChar() );
+
+        m_writer->open( fname.asChar(), 
+                    m_ascii ? Gto::Writer::TextGTO : Gto::Writer::CompressedGTO );
     }
     else
     {
@@ -296,6 +393,10 @@ MStatus GtoExporter::doFrame( MTime t )
     
     // Intern an orphan string to embed the gtoIO version 
     m_writer->intern( versionString() );
+
+    // Intern an orphan string to embed the Maya scene filename
+    MString exportedFromStr = "(Exported from " + MFileIO::currentFile() + ")";
+    m_writer->intern( exportedFromStr.asChar() );
 
     for( MItDag it( MItDag::kBreadthFirst ); !it.isDone(); it.next() )
     {
@@ -323,6 +424,7 @@ MStatus GtoExporter::doFrame( MTime t )
     {
         MDagPath dp;
         sortedList.getDagPath( i, dp );
+        
         //
         //  If any of the parents are selected skip them.
         //
@@ -396,6 +498,24 @@ void GtoExporter::output( MDagPath &dp, bool data, int recursionLevel )
 
     m_objects.push_back( object );
 
+    if( ! data )
+    {
+        GtoMayaAttributes *attrs = new GtoMayaAttributes;
+        m_attributes[dp.partialPathName().asChar()] = attrs;
+
+        if( m_allUserAttributes || m_allMayaAttributes ) 
+        {
+            findAttributes( dp, attrs );
+        }
+        if( m_exportTransformAttrs && (object.apiType() == MFn::kTransform) )
+        {
+            findTransformAttributes( dp, attrs );
+        }
+        
+        std::sort( attrs->begin(), attrs->end(), sortByComponent );
+    }
+    
+
     if( object.hasFn( MFn::kTransform ) )
     {
         if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
@@ -435,13 +555,24 @@ void GtoExporter::output( MDagPath &dp, bool data, int recursionLevel )
             NURBSHeader( dp );
         }
     }
+    else if( object.hasFn( MFn::kNurbsCurve ) )
+    {
+        if( data )
+        {
+            CurveData( dp );
+        }
+        else
+        {
+            CurveHeader( dp );
+        }
+    }
     else if( object.hasFn( MFn::kMesh ) )
     {
-        if( m_asSubD )
+        if( m_asSubD || isSubd( dp ) )
         {
             if( data )
             {
-                PolygonData( dp );
+                PolygonData( dp, GTO_PROTOCOL_CATMULL_CLARK );
             }
             else
             {
@@ -453,7 +584,7 @@ void GtoExporter::output( MDagPath &dp, bool data, int recursionLevel )
         {
             if( data )
             {
-                PolygonData( dp );
+                PolygonData( dp, GTO_PROTOCOL_POLYGON );
             }
             else
             {
@@ -484,12 +615,13 @@ void GtoExporter::output( MDagPath &dp, bool data, int recursionLevel )
             LightHeader( dp, GTO_LIGHT_VERSION );
         }
     }
-    else
+    else if (!m_quiet)
     {
         MString er = "gtoOut: the object \"";
         er += m_objectName;
         er += "\" is not exportable to gto\n";
         MGlobal::displayWarning( er );
+        return;
     }
 }
 
@@ -536,6 +668,11 @@ void GtoExporter::TransformHeader( MDagPath &dp )
     m_writer->beginComponent( GTO_COMPONENT_OBJECT );
     m_writer->property( GTO_PROPERTY_GLOBAL_MATRIX, Gto::Float, 
                         numInstances, 16 );
+    
+    if( m_hidden )
+    {
+        m_writer->property( "visibility", Gto::Byte, numInstances, 1 );
+    }
 
     if( dp.apiType() != MFn::kTransform 
         && ! dp.hasFn( MFn::kCamera )
@@ -558,6 +695,14 @@ void GtoExporter::TransformHeader( MDagPath &dp )
     }
 
     m_writer->endComponent();
+
+    attributesHeader( dp );
+
+    if( ! m_isDifferenceFile )
+    {
+        animatedAttributesHeader( dp );
+        TexChannelsHeader( dp );
+    }
 }
 
 //******************************************************************************
@@ -585,6 +730,12 @@ void GtoExporter::TransformData( MDagPath &dp )
     }
     m_writer->propertyData( outG );
     delete [] outG;
+
+    if( m_hidden )
+    {
+        char v = (char)isVisible( dp );
+        m_writer->propertyData( &v );
+    }
     
     if( dp.apiType() != MFn::kTransform 
         && ! dp.hasFn( MFn::kCamera )
@@ -633,6 +784,14 @@ void GtoExporter::TransformData( MDagPath &dp )
     }
     m_writer->propertyData( parents );
     delete [] parents;
+
+    attributesData( dp );
+
+    if( ! m_isDifferenceFile )
+    {
+        animatedAttributesData( dp );
+        TexChannelsData( dp );
+    }
 }
 
 //******************************************************************************
@@ -644,12 +803,6 @@ void GtoExporter::NURBSHeader( MDagPath &dp )
     int nv = nurbs.numCVsInV();
     
     int npoints = nu * nv;
-
-//     int degreeU = nurbs.degreeU();
-//     int degreeV = nurbs.degreeV();
-    
-//     int spansU = nu - degreeU;
-//     int spansV = nv - degreeV;
 
     string protocol = GTO_PROTOCOL_NURBS;
     int protocolVersion = GTO_NURBS_VERSION;
@@ -724,27 +877,31 @@ void GtoExporter::NURBSData( MDagPath &dp )
     {
         MObject object = dp.node();
         MFnNurbsSurface nurbs( object );
+        nurbs.updateSurface();
 
         int nu = nurbs.numCVsInU();
         int nv = nurbs.numCVsInV();
 
         if( nu < 2 || nv < 2 ) 
         {
-            MString error( "Ill-defined nurbs object: " );
-            error += nurbs.name();
-            MGlobal::displayError( error );
+            if( ! m_quiet )
+            {
+                MString error( "Ill-defined nurbs object: " );
+                error += nurbs.name();
+                MGlobal::displayError( error );
+            }
             return;
         }
 
         vector<float> positions;
         vector<float> weights;
-        MItSurfaceCV rawcvs(object, true); // v-major order for gto
+        MItSurfaceCV rawCVs(object, true); // v-major order for gto
 
-        for (;!rawcvs.isDone(); rawcvs.nextRow()) 
+        for (;!rawCVs.isDone(); rawCVs.nextRow()) 
         {
-            for(;!rawcvs.isRowDone();rawcvs.next()) 
+            for(;!rawCVs.isRowDone();rawCVs.next()) 
             {
-                MPoint pt = rawcvs.position(MSpace::kObject);
+                MPoint pt = rawCVs.position(MSpace::kObject);
                 positions.push_back(float(pt.x));
                 positions.push_back(float(pt.y));
                 positions.push_back(float(pt.z));
@@ -879,6 +1036,7 @@ void GtoExporter::PolygonHeader( MDagPath &dp,
     int nelements = mesh.numPolygons();
     int nnormals = mesh.numNormals();
     int nindices  = 0;
+    bool interpBoundary = subdInterpBoundary( dp );
 
     for( MItMeshPolygon p( dp.node() ); ! p.isDone(); p.next() ) 
     {
@@ -923,6 +1081,10 @@ void GtoExporter::PolygonHeader( MDagPath &dp,
             m_writer->beginComponent( GTO_COMPONENT_ELEMENTS);
             m_writer->property( GTO_PROPERTY_TYPE, Gto::Byte, nelements, 1 );
             m_writer->property( GTO_PROPERTY_SIZE, Gto::Short, nelements, 1 );
+            if( m_faceMaterials )
+            {
+                m_writer->property( "materialID", Gto::Int, nelements, 1 );
+            }
             m_writer->endComponent();
 
             //--
@@ -970,8 +1132,19 @@ void GtoExporter::PolygonHeader( MDagPath &dp,
             //--
 
             m_writer->beginComponent( GTO_COMPONENT_SMOOTHING );
-            m_writer->property( "method", Gto::Int, 1, 1 );
+            m_writer->property( GTO_PROPERTY_METHOD, Gto::Int, 1, 1 );
             m_writer->endComponent();
+            
+            //--
+            
+            if( ( protocol == GTO_PROTOCOL_CATMULL_CLARK )
+                  && ( ! interpBoundary ) )
+            {
+                m_writer->beginComponent( GTO_COMPONENT_SURFACE );
+                m_writer->property( GTO_PROPERTY_INTERP_BOUNDARY, 
+                                    Gto::Byte, 1, 1 );
+                m_writer->endComponent();
+            }
         }  //  End if( ! m_isDifference...
     }
 
@@ -985,8 +1158,9 @@ void GtoExporter::PolygonHeader( MDagPath &dp,
     m_writer->endObject();
 }
 
+
 //******************************************************************************
-void GtoExporter::PolygonData( MDagPath &dp )
+void GtoExporter::PolygonData( MDagPath &dp, const char *protocol  )
 {
     // Only bother with all this if we're not writing a difference file
     // that should ONLY have matrices in it...
@@ -995,10 +1169,14 @@ void GtoExporter::PolygonData( MDagPath &dp )
             && ! m_diffPoints 
             && ! m_diffNormals ) )
     {
-        MObject object = dp.node();
-        MFnMesh mesh( object );
+        MFnMesh mesh( dp );
+        
+        mesh.updateSurface();
+        mesh.syncObject();
+        
         MFloatPointArray rawPoints;
         mesh.getPoints( rawPoints );
+        bool interpBoundary = subdInterpBoundary( dp );
 
         int nuv = mesh.numUVs();
         int nnormals = mesh.numNormals();
@@ -1033,7 +1211,7 @@ void GtoExporter::PolygonData( MDagPath &dp )
             int pindex = 0;
             int total = 0;
 
-            for( MItMeshPolygon p( object ); !p.isDone(); p.next() ) 
+            for( MItMeshPolygon p( dp ); !p.isDone(); p.next() ) 
             {
                 int nv = p.polygonVertexCount();
                 total += nv;
@@ -1055,7 +1233,7 @@ void GtoExporter::PolygonData( MDagPath &dp )
             int *normalindices = nnormals ? (new int[total]) : 0;
 
             pindex = 0;
-            for( MItMeshPolygon p( object ); ! p.isDone(); p.next() ) 
+            for( MItMeshPolygon p( dp ); ! p.isDone(); p.next() ) 
             {
                 for( int q = 0, nv = p.polygonVertexCount(); q < nv; q++ )
                 {
@@ -1075,6 +1253,17 @@ void GtoExporter::PolygonData( MDagPath &dp )
 
                     pindex++;
                 }
+            }
+
+            // output elements.materialID here
+            if( m_faceMaterials )
+            {
+                MObjectArray shaders;
+                MIntArray indices;
+
+                MStatus status = mesh.getConnectedShaders( 0, shaders, indices );  STATUS;
+
+                m_writer->propertyData( &(indices[0]) );
             }
 
             // output indices.vertex here
@@ -1138,12 +1327,21 @@ void GtoExporter::PolygonData( MDagPath &dp )
                 }
 
                 m_writer->propertyData( sts );
+                delete sts;
             }
-
+            
             // output smoothing.smoothing
             int method = m_normals ? GTO_SMOOTHING_METHOD_PARTITIONED 
                                    : GTO_SMOOTHING_METHOD_NONE;
             m_writer->propertyData( &method );
+
+            // output surface.interpolateBoundary
+            if( ( protocol == GTO_PROTOCOL_CATMULL_CLARK )
+                  && ( ! interpBoundary ) )
+            {
+                char interpBoundaryData = (char)interpBoundary;
+                m_writer->propertyData( &interpBoundaryData );
+            }
         }
     }
 
@@ -1160,13 +1358,21 @@ void GtoExporter::CameraHeader( MDagPath &dp, int protocolVersion )
 {
     m_writer->intern( m_objectName.asChar() );
 
-    m_writer->beginObject( m_objectName.asChar(), "camera", protocolVersion );
+    m_writer->beginObject( m_objectName.asChar(), "camera", 1 );
 
     m_writer->beginComponent( "camera" );
-    m_writer->property( "fov", Gto::Float, 1, 1 );
+    m_writer->property( "shutter", Gto::Float, 1, 1 );
+    m_writer->property( "background", Gto::Float, 1, 3, "color" );
+    m_writer->endComponent();
+
+    m_writer->beginComponent( "frustum" );
+    m_writer->property( "left", Gto::Float, 1, 1 );
+    m_writer->property( "right", Gto::Float, 1, 1 );
+    m_writer->property( "bottom", Gto::Float, 1, 1 );
+    m_writer->property( "top", Gto::Float, 1, 1 );
     m_writer->property( "near", Gto::Float, 1, 1 );
     m_writer->property( "far", Gto::Float, 1, 1 );
-    m_writer->property( "aspect", Gto::Float, 1, 1 );
+    m_writer->property( "ortho", Gto::Int, 1, 1 );
     m_writer->endComponent();
 
     // Output the transform header, unless this is a difference file and
@@ -1183,18 +1389,43 @@ void GtoExporter::CameraHeader( MDagPath &dp, int protocolVersion )
 void GtoExporter::CameraData( MDagPath &dp )
 {
     MFnCamera camera( dp.node() );
-    
 
-    float fov = camera.verticalFieldOfView() 
-                        * 57.2957795130823230; // == 180.0 / PI;
+    // Component "camera"
+    float shutter = camera.shutterAngle() * 180.0 / M_PI;
+    
+    MFnDependencyNode cameraDn = dp.node();
+    MPlug bgColorRPlug = cameraDn.findPlug ( "backgroundColorR" );
+    MPlug bgColorGPlug = cameraDn.findPlug ( "backgroundColorG" );
+    MPlug bgColorBPlug = cameraDn.findPlug ( "backgroundColorB" );
+    float background[3];
+    bgColorRPlug.getValue( background[0] );
+    bgColorGPlug.getValue( background[1] );
+    bgColorBPlug.getValue( background[2] );
+    
+    m_writer->propertyData( &shutter );
+    m_writer->propertyData( background );
+
+    // Component "frustum"
+    float aspect = camera.aspectRatio();
     float near = camera.nearClippingPlane();
     float far = camera.farClippingPlane();
-    float aspect = camera.aspectRatio();
-    
-    m_writer->propertyData( &fov );
+
+    int ortho = camera.isOrtho();
+
+    CameraFrustum frustum( RIBCameraFOV( camera ), aspect, near, far );
+
+    float left = frustum.left();
+    float right = frustum.right();
+    float bottom = frustum.bottom();
+    float top = frustum.top();
+
+    m_writer->propertyData( &left );
+    m_writer->propertyData( &right );
+    m_writer->propertyData( &bottom );
+    m_writer->propertyData( &top );
     m_writer->propertyData( &near );
     m_writer->propertyData( &far );
-    m_writer->propertyData( &aspect );
+    m_writer->propertyData( &ortho );
 
     // Output the transform, unless this is a difference file and
     // we didn't ask for difference matrices
@@ -1207,45 +1438,11 @@ void GtoExporter::CameraData( MDagPath &dp )
 //******************************************************************************
 void GtoExporter::LightHeader( MDagPath &dp, int protocolVersion )
 {
-    MFnLight light( dp.node() );
-
+    MDagPath parent = dp;
+    parent.pop();
     m_writer->intern( m_objectName.asChar() );
 
     m_writer->beginObject( m_objectName.asChar(), "light", protocolVersion );
-
-    m_writer->beginComponent( "shader" );
-
-    // Name of light shader
-    m_writer->property( "name", Gto::String, 1, 1 );
-
-    // Properties common to all light shaders
-    m_writer->property( "lightcolor", Gto::Float, 1, 4 );
-    m_writer->property( "intensity", Gto::Float, 1, 1 );
-    m_writer->property( "falloff", Gto::Float, 1, 1 );
-
-    // Properties specific to certain light types
-    if( dp.apiType() == MFn::kPointLight )
-    {
-        m_writer->intern( "point_lgt" );
-    }
-    else if( dp.apiType() == MFn::kSpotLight )
-    {
-        m_writer->intern( "spot_lgt" );
-        
-        m_writer->property( "coneangle", Gto::Float, 1, 1 );
-        m_writer->property( "conedeltaangle", Gto::Float, 1, 1 );
-        m_writer->property( "beamdistribution", Gto::Float, 1, 1 );
-    }
-    else if( dp.apiType() == MFn::kDirectionalLight )
-    {
-        m_writer->intern( "distant_lgt" );
-    }
-    else
-    {
-        cerr << "Unsupported light type" << endl;
-    }
-
-    m_writer->endComponent();
 
     // Output the transform header, unless this is a difference file and
     // we didn't ask for difference matrices
@@ -1260,66 +1457,149 @@ void GtoExporter::LightHeader( MDagPath &dp, int protocolVersion )
 //******************************************************************************
 void GtoExporter::LightData( MDagPath &dp )
 {
-    if( dp.apiType() == MFn::kPointLight )
-    {
-        MFnPointLight pLight( dp.node() );
-        int strId = m_writer->lookup( "point_lgt" );
-        m_writer->propertyData( &strId );
-        
-        MColor lightcolor = pLight.color();
-        m_writer->propertyData( &lightcolor[0] );
-        
-        float intensity = pLight.intensity();
-        m_writer->propertyData( &intensity );
+    MFnLight light( dp.node() );
+    MStatus status;
 
-        float decayRate = pLight.decayRate();
-        m_writer->propertyData( &decayRate );
-    }
-    else if( dp.apiType() == MFn::kSpotLight )
-    {
-        MFnSpotLight sLight( dp.node() );
-        int strId = m_writer->lookup( "spot_lgt" );
-        m_writer->propertyData( &strId );
-
-        MColor lightcolor = sLight.color();
-        m_writer->propertyData( &lightcolor[0] );
-        
-        float intensity = sLight.intensity();
-        m_writer->propertyData( &intensity );
-
-        float decayRate = sLight.decayRate();
-        m_writer->propertyData( &decayRate );
-
-        float coneAngle = radToDeg( sLight.coneAngle() );
-        m_writer->propertyData( &coneAngle );
-        
-        float coneDeltaAngle = radToDeg( sLight.penumbraAngle() );
-        m_writer->propertyData( &coneDeltaAngle );
-        
-        float beamDistribution = sLight.dropOff();
-        m_writer->propertyData( &beamDistribution );
-
-    }
-    else if( dp.apiType() == MFn::kDirectionalLight )
-    {
-        MFnDirectionalLight dLight( dp.node() );
-        int strId = m_writer->lookup( "distant_lgt" );
-        m_writer->propertyData( &strId );
-
-        MColor lightcolor = dLight.color();
-        m_writer->propertyData( &lightcolor[0] );
-        
-        float intensity = dLight.intensity();
-        m_writer->propertyData( &intensity );
-
-        float decayRate = dLight.decayRate();
-        m_writer->propertyData( &decayRate );
-
-    }
-    else
-    {
-        cerr << "Undetermined light type" << endl;
-    }
+//     const char *shader = NULL;
+//     if( dp.hasFn( MFn::kAmbientLight ) ) shader = "ambient_lgt";
+//     else if( dp.hasFn( MFn::kAreaLight ) ) shader = "area_lgt";
+//     else if( dp.hasFn( MFn::kDirectionalLight ) ) shader = "distant_lgt";
+//     else if( dp.hasFn( MFn::kPointLight ) ) shader = "point_lgt";
+//     else if( dp.hasFn( MFn::kSpotLight ) ) shader = "mayaspot_lgt";
+// 
+//     assert( shader );
+//  
+//     // Properties common to all light types:
+//     int shaderId = m_writer->lookup( shader );
+//     m_writer->propertyData( &shaderId );
+// 
+//     float intensity = light.intensity();
+//     m_writer->propertyData( &intensity );
+// 
+//     float color[3];
+//     light.color().get( color );
+//     m_writer->propertyData( color );
+// 
+//     float Ldiff = 1.0;
+//     if ( !light.lightDiffuse( ) ){
+//         //this doesn't work for some reason    Ldiff = 0.0;
+//     }
+//     m_writer->propertyData( &Ldiff );
+// 
+//     float Lspec = 1.0;
+//     if ( !light.lightSpecular( ) ){
+//         //this doesn't work for some reason    Lspec = 0.0; 
+//     }
+//     m_writer->propertyData( &Lspec );
+// 
+//     // Type-specific properties:
+//     if( dp.hasFn( MFn::kAmbientLight ) )
+//     {
+//         // None
+//     }
+//     else if( dp.hasFn( MFn::kAreaLight ) )
+//     {
+//         MFnAreaLight area( dp.node() );
+// 
+//         float falloff = (float)area.decayRate();
+//         m_writer->propertyData( &falloff );
+//     }
+//     else if( dp.hasFn( MFn::kDirectionalLight ) )
+//     {
+//         // None
+//     }
+//     else if( dp.hasFn( MFn::kPointLight ) )
+//     {
+//         MFnPointLight point( dp.node() );
+// 
+//         float falloff = (float)point.decayRate();
+//         m_writer->propertyData( &falloff );
+//     }
+//     else if( dp.hasFn( MFn::kSpotLight ) )
+//     {
+//         MFnSpotLight spot( dp.node() );
+//         MFnSpotLight::MDecayRegion decayRegion = MFnSpotLight::kFirst;
+//         MFnSpotLight::MBarnDoor    barnDoor    = MFnSpotLight::kRight;
+//  
+//         float falloff = (float)spot.decayRate();
+//         m_writer->propertyData( &falloff );
+// 
+//         float coneangle = spot.coneAngle() * 180.0f / M_PI;
+//         m_writer->propertyData( &coneangle );
+// 
+//         float conedeltaangle = spot.penumbraAngle() * 180.0f / M_PI;
+//         m_writer->propertyData( &conedeltaangle );
+// 
+//         float beamdistribution = (float)spot.dropOff();
+//         m_writer->propertyData( &beamdistribution );
+// 
+//         float usedecayregions = (float)spot.useDecayRegions( );
+//         m_writer->propertyData( &usedecayregions );
+//         
+//         float decayreg1start = (float)spot.startDistance( decayRegion );
+//         m_writer->propertyData( &decayreg1start );
+// 
+//         float decayreg1end = (float)spot.endDistance( decayRegion );
+//         m_writer->propertyData( &decayreg1end );
+//         
+//         decayRegion = MFnSpotLight::kSecond;
+//         float decayreg2start = (float)spot.startDistance( decayRegion );
+//         m_writer->propertyData( &decayreg2start );
+// 
+//         float decayreg2end = (float)spot.endDistance( decayRegion );
+//         m_writer->propertyData( &decayreg2end );
+//         
+//         decayRegion = MFnSpotLight::kThird;
+//         float decayreg3start = (float)spot.startDistance( decayRegion );
+//         m_writer->propertyData( &decayreg3start );
+// 
+//         float decayreg3end = (float)spot.endDistance( decayRegion );
+//         m_writer->propertyData( &decayreg3end );
+// 
+//         float usebarndoors = (float)spot.barnDoors( );
+//         m_writer->propertyData( &usebarndoors );
+//        
+//         barnDoor = MFnSpotLight::kRight; 
+//         float barnanglepx = (float)spot.barnDoorAngle( barnDoor );
+//         m_writer->propertyData( &barnanglepx );
+//  
+//         barnDoor = MFnSpotLight::kLeft; 
+//         float barnanglenx = (float)spot.barnDoorAngle( barnDoor );
+//         m_writer->propertyData( &barnanglenx );
+//  
+//         barnDoor = MFnSpotLight::kTop; 
+//         float barnanglepy = (float)spot.barnDoorAngle( barnDoor );
+//         m_writer->propertyData( &barnanglepy );
+// 
+//         barnDoor = MFnSpotLight::kBottom; 
+//         float barnangleny = (float)spot.barnDoorAngle( barnDoor );
+//         m_writer->propertyData( &barnangleny );
+//  
+//         float shadowcolor[3];
+//         spot.shadowColor().get( shadowcolor );
+//         m_writer->propertyData( shadowcolor );
+// 
+//         float usedepthmap = (float)spot.MFnNonExtendedLight::useDepthMapShadows( );
+//         m_writer->propertyData( &usedepthmap );
+// 
+//         float shadowres = (float)spot.MFnNonExtendedLight::depthMapResolution( &status );
+//         m_writer->propertyData( &shadowres );
+// 
+//         float shadowblur = (float)spot.MFnNonExtendedLight::depthMapFilterSize( &status );
+//         m_writer->propertyData( &shadowblur );
+//         
+//         float shadowbias = (float)spot.MFnNonExtendedLight::depthMapBias( &status );
+//         m_writer->propertyData( &shadowbias );
+// 
+//         float useRayTrace = (float)spot.useRayTraceShadows( );
+//         m_writer->propertyData( &useRayTrace );
+// 
+//         float shadowradius = (float)spot.MFnNonExtendedLight::shadowRadius( );
+//         m_writer->propertyData( &shadowradius );
+// 
+//         float shadowsamples = (float)spot.numShadowSamples( );
+//         m_writer->propertyData( &shadowsamples );
+//     }
 
 
     // Output the transform, unless this is a difference file and
@@ -1384,6 +1664,561 @@ int GtoExporter::userProtocolVersion( MDagPath &dp )
 
     return attrValue;
 }
+
+
+// *****************************************************************************
+// *****************************************************************************
+// *****************************************************************************
+
+
+// *****************************************************************************
+void GtoExporter::CurveHeader( MDagPath &dp )
+{
+    MFnNurbsCurve curve( dp.node() );
+
+    int npoints = curve.numCVs();
+
+    string protocol = "NURBSCurve";
+    int protocolVersion = 1;
+    if( hasUserProtocol( dp ) )
+    {
+        protocol = userProtocol( dp );
+    }
+    if( hasUserProtocolVersion( dp ) )
+    {
+        protocolVersion = userProtocolVersion( dp );
+    }
+
+    m_writer->beginObject( m_objectName.asChar(), 
+                           protocol.c_str(), protocolVersion );
+
+    // Only bother with all this if we're not writing a difference file
+    // that should ONLY have matrices in it...
+    if( ! ( m_isDifferenceFile 
+            && m_diffMatrix 
+            && ! m_diffPoints ) )
+    {
+        MDoubleArray rawVknots;
+        curve.getKnots( rawVknots );
+
+        int vKnots = rawVknots.length() + 2; //spansU + 2 * degreeU - 1;
+
+        m_writer->beginComponent( GTO_COMPONENT_POINTS );
+        m_writer->property( GTO_PROPERTY_POSITION, Gto::Float, npoints, 3 );
+        
+        // Only output points.weights property if this is NOT a difference file
+        if( ! m_isDifferenceFile )
+        {
+            m_writer->property( GTO_PROPERTY_WEIGHT,  Gto::Float, npoints, 1 );
+        }
+        
+        m_writer->endComponent();
+
+        // Only output surface component if this is NOT a difference file
+        if( ! m_isDifferenceFile )
+        {
+            m_writer->beginComponent( GTO_COMPONENT_SURFACE );
+            m_writer->property( GTO_PROPERTY_DEGREE, Gto::Int, 1, 1 );
+            m_writer->property( GTO_PROPERTY_VKNOTS, Gto::Float, vKnots, 1 );
+            m_writer->property( GTO_PROPERTY_VRANGE, Gto::Float, 2, 1 );
+            m_writer->property( GTO_PROPERTY_VFORM, Gto::Int, 1, 1 );
+            m_writer->endComponent();
+        }
+    }
+
+    // Output the transform header, unless this is a difference file and
+    // we didn't ask for difference matrices
+    if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
+    {
+        TransformHeader( dp );
+    }
+
+    m_writer->endObject();
+}
+
+
+// *****************************************************************************
+void GtoExporter::CurveData( MDagPath &dp )
+{
+    // Only bother with all this if we're not writing a difference file
+    // that should ONLY have matrices in it...
+    if( ! ( m_isDifferenceFile 
+            && m_diffMatrix 
+            && ! m_diffPoints ) )
+    {
+        MObject object = dp.node();
+        MFnNurbsCurve curve( dp.node() );
+
+        int npoints = curve.numCVs();
+
+        if( npoints < 2 ) 
+        {
+            if( ! m_quiet )
+            {
+                MString error( "Ill-defined curve object: " );
+                error += curve  .name();
+                MGlobal::displayError( error );
+            }
+            return;
+        }
+
+        vector<float> positions;
+        vector<float> weights;
+        MItCurveCV rawCVs( object );
+
+        for (;!rawCVs.isDone(); rawCVs.next()) 
+        {
+            MPoint pt = rawCVs.position(MSpace::kObject);
+            positions.push_back(float(pt.x));
+            positions.push_back(float(pt.y));
+            positions.push_back(float(pt.z));
+            weights.push_back(float(pt.w));
+        }
+
+        // output points.positions here
+        m_writer->propertyDataInContainer(positions);
+
+        // Only output points.weights property data and
+        // surface component data if this is NOT a difference file
+        if( ! m_isDifferenceFile )
+        {
+            // output points.weights here
+            m_writer->propertyDataInContainer(weights);
+
+            //----------------------------------------------------------------------
+
+            int vDegree = curve.degree();
+            m_writer->propertyData(&vDegree);
+
+            MDoubleArray rawVknots;
+            curve.getKnots(rawVknots); 
+
+            // TODO: Don't hard-code degree 3
+            vector<float> vknots(rawVknots.length()+2);
+
+            //
+            // Double up end knots.
+            //
+            for (size_t i=0; i < rawVknots.length(); i++)
+            {
+                vknots[i+1] = float(rawVknots[i]);
+            }
+            vknots[0] = vknots[1];
+            vknots.back() = vknots[vknots.size()-2];
+
+            //
+
+            float vRange[2];
+
+            double vMin_d, vMax_d;
+            curve.getKnotDomain(vMin_d, vMax_d);
+            float vmin = float(vMin_d);
+            float vmax = float(vMax_d);
+            vRange[0] = vmin;
+            vRange[1] = vmax;
+
+            // Normalize knots, if requested...
+            if( m_normalize )
+            {
+                if ( vmax != vmin )
+                {
+                    for ( std::vector<float>::iterator iter = vknots.begin();
+                          iter != vknots.end(); ++iter )
+                    {
+                        (*iter) = ( (*iter) - vmin ) / ( vmax - vmin );
+                    }
+
+                    vRange[0] = 0.0f;
+                    vRange[1] = 1.0f;
+                }
+            }
+
+            // Write knots
+            m_writer->propertyDataInContainer(vknots);
+
+            // Write range
+            m_writer->propertyData(vRange);
+            
+            // Write form
+            MFnNurbsCurve::Form formV = curve.form();
+            m_writer->propertyData( &formV );
+            
+        }  //  End if( ! m_isDifference...
+    }
+
+    // Output the transform header, unless this is a difference file and
+    // we didn't ask for difference matrices
+    if( ! ( m_isDifferenceFile && ! m_diffMatrix ) )
+    {
+        TransformData( dp );
+    }
+}
+
+// *****************************************************************************
+void GtoExporter::TexChannelsHeader( MDagPath &dp )
+{
+    MStatus status;
+    MFnDependencyNode dn( dp.node() );
+
+    MString prefix( "texChan_" );
+    int prefixLen = prefix.length();
+    
+    std::vector<std::string> texChannels;
+
+    for( int i = 0; i < dn.attributeCount(); ++i )
+    {
+        MObject attrObj = dn.attribute( i );
+        MFnAttribute attr( attrObj );
+        MString longName = attr.name();
+        if( longName.substring( 0, prefixLen-1 ) == prefix )
+        {
+            MPlug channelPlug = dn.findPlug( attrObj, &status );
+            CHECK_MSTATUS( status );
+
+            MPlug mappingTypeElement = channelPlug.elementByPhysicalIndex( 0, &status  );
+            CHECK_MSTATUS( status );
+            MPlug filenameElement = channelPlug.elementByPhysicalIndex( 1, &status  );
+            CHECK_MSTATUS( status );
+
+            MString mappingType;
+            mappingTypeElement.getValue( mappingType );
+
+            MString filename;
+            filenameElement.getValue( filename );
+
+            m_writer->intern( mappingType.asChar() );
+            m_writer->intern( filename.asChar() );
+
+            texChannels.push_back( attr.shortName().asChar() );
+        }
+    }
+
+    if( texChannels.size() > 0 )
+    {
+        m_writer->beginComponent( GTO_COMPONENT_CHANNELS );
+        for( int i = 0; i < texChannels.size(); ++i )
+        {
+            m_writer->property( texChannels[i].c_str(), Gto::String, 2, 1 );
+        }
+        m_writer->endComponent();
+    }
+}
+
+
+// *****************************************************************************
+void GtoExporter::TexChannelsData( MDagPath &dp )
+{
+    MStatus status;
+    MFnDependencyNode dn( dp.node() );
+
+    MString prefix( "texChan_" );
+    int prefixLen = prefix.length();
+
+    for( int i = 0; i < dn.attributeCount(); ++i )
+    {
+        MObject attrObj = dn.attribute( i );
+        MFnAttribute attr( attrObj );
+        MString longName = attr.name();
+        if( longName.substring( 0, prefixLen-1 ) == prefix )
+        {
+            MPlug channelPlug = dn.findPlug( attrObj, &status );
+            CHECK_MSTATUS( status );
+
+            MPlug mappingTypeElement = channelPlug.elementByPhysicalIndex( 0, &status  );
+            CHECK_MSTATUS( status );
+            MPlug filenameElement = channelPlug.elementByPhysicalIndex( 1, &status  );
+            CHECK_MSTATUS( status );
+
+            MString mappingType;
+            mappingTypeElement.getValue( mappingType );
+            
+            MString filename;
+            filenameElement.getValue( filename );
+
+            int assignment[2];
+            assignment[0] = m_writer->lookup( mappingType.asChar() );
+            assignment[1] = m_writer->lookup( filename.asChar() );
+            m_writer->propertyData( assignment );
+        }
+    }
+}
+
+// *****************************************************************************
+bool GtoExporter::subdInterpBoundary( MDagPath &dp )
+{
+    MFnDependencyNode dn( dp.node() );
+
+    MPlug attrPlug = dn.findPlug( GTO_MAYA_INTERP_BOUNDARY_ATTRIBUTE );
+    if( attrPlug.isNull() )
+    {
+        return true; // (default is to interpolate boundaries)
+    }
+
+    bool attrValue;
+    attrPlug.getValue( attrValue );
+
+    return attrValue;
+}
+
+// *****************************************************************************
+bool GtoExporter::isSubd( MDagPath &dp )
+{
+    MFnDependencyNode dn( dp.node() );
+
+    MPlug attrPlug = dn.findPlug( GTO_MAYA_SUBD_ATTRIBUTE );
+    if( attrPlug.isNull() )
+    {
+        return false; // (default is to regular polys)
+    }
+
+    bool attrValue;
+    attrPlug.getValue( attrValue );
+
+    return attrValue;
+}
+
+
+// *****************************************************************************
+// *****************************************************************************
+// *****************************************************************************
+// *****************************************************************************
+
+void GtoExporter::findAttributes( MDagPath &dp, GtoMayaAttributes *attrs )
+{
+// #define CONT(x) { std::cerr << plug.info() << ": " << x << std::endl; continue; }
+#define CONT(x) { continue; }
+
+    MStatus status;
+
+    MFnDependencyNode dn( dp.node(), &status );    STATUS;
+
+    for( int i = 0; i < dn.attributeCount(); ++i )
+    {
+        MObject attrObj = dn.attribute( i );
+        MFnAttribute attr( attrObj ); 
+
+        MPlug plug( dp.node(), attrObj );
+        
+        if( ! GtoMayaAttribute::canExport( plug ) ) CONT( "! canExport()" );
+        if( m_noExportAttributes.count( attr.name().asChar() ) > 0 ) CONT( "noExportAttributes" );
+
+        if( ! attr.isDynamic() && ! m_allMayaAttributes )
+        {
+            continue;
+        }
+
+        MObjectHandle objHandle( dp.node() );
+        MObjectHandle attrHandle( attrObj );
+        
+        GtoMayaAttribute* gma = new GtoMayaAttribute( objHandle, attrHandle );
+        attrs->push_back( gma );
+    }
+}
+
+
+// *****************************************************************************
+void GtoExporter::getAttribute( MDagPath& dp, const char* attrName, 
+                                GtoMayaAttributes* attrs,
+                                const char *gtoComponentName )
+{
+    MStatus status;
+    MFnDependencyNode dn( dp.node(), &status );   STATUS;
+    if( ! status ) return;
+
+    for( int i = 0; i < dn.attributeCount(); ++i )
+    {
+        MObject attrObj = dn.attribute( i );
+        MFnAttribute attr( attrObj ); 
+        if( attr.name() == attrName )
+        {
+            MObjectHandle objHandle( dp.node() );
+            MObjectHandle attrHandle( attrObj );
+
+            GtoMayaAttribute* gma = new GtoMayaAttribute( objHandle, attrHandle, 
+                                                          gtoComponentName );
+            attrs->push_back( gma );
+            break;
+        }
+    }
+}
+
+
+// *****************************************************************************
+void GtoExporter::findTransformAttributes( MDagPath &dp, 
+                                           GtoMayaAttributes *attrs )
+{
+    if( GetVectorAttr( dp.node(), "translate" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "translateX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "translateY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "translateZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+    
+    if( GetVectorAttr( dp.node(), "rotate" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "rotateX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotateY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotateZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+    if( GetEnumAttr( dp.node(), "rotateOrder" ) != 0 )
+    {
+        getAttribute( dp, "rotateOrder", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+    if( GetEnumAttr( dp.node(), "rotationInterpolation" ) != 1 )
+    {
+        getAttribute( dp, "rotationInterpolation", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+    
+    if( GetVectorAttr( dp.node(), "scale" ) != MVector( 1, 1, 1 ) )
+    {
+        getAttribute( dp, "scaleX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "scaleY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "scaleZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+    
+    if( GetVectorAttr( dp.node(), "shear" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "shearXY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "shearXZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "shearYZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+
+    if( GetVectorAttr( dp.node(), "rotatePivot" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "rotatePivotX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotatePivotY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotatePivotZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+
+    if( GetVectorAttr( dp.node(), "rotatePivotTranslate" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "rotatePivotTranslateX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotatePivotTranslateY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotatePivotTranslateZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+
+    if( GetVectorAttr( dp.node(), "scalePivot" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "scalePivotX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "scalePivotY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "scalePivotZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+
+    if( GetVectorAttr( dp.node(), "scalePivotTranslate" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "scalePivotTranslateX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "scalePivotTranslateY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "scalePivotTranslateZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+
+    if( GetVectorAttr( dp.node(), "rotateAxis" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "rotateAxisX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotateAxisY", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "rotateAxisZ", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+    if( GetVectorAttr( dp.node(), "transMinusRotatePivot" ) != MVector( 0, 0, 0 ) )
+    {
+        getAttribute( dp, "transMinusRotatePivotX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "transMinusRotatePivotX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+        getAttribute( dp, "transMinusRotatePivotX", attrs, GTO_TRANSFORM_COMPONENT_NAME );
+    }
+}
+
+
+// *****************************************************************************
+void GtoExporter::attributesHeader( MDagPath &dp ) const
+{
+    MStatus status;
+
+    MFnDependencyNode dn( dp.node(), &status );    STATUS;
+    GtoMayaAttributes* myAttrs = m_attributes.find( dp.partialPathName().asChar() )->second;
+
+    if( (! myAttrs) || (myAttrs->size() == 0) ) return;
+
+    std::string component = "";
+    for( int i = 0; i < myAttrs->size(); ++i )
+    {
+        const GtoMayaAttribute *attr = (*myAttrs)[i];
+        if( component != attr->componentName() )
+        {
+            if( component != "" ) m_writer->endComponent();
+            component = attr->componentName();
+            m_writer->beginComponent( component.c_str() );
+        }
+        attr->writeGtoHeader( m_writer );
+    }
+    if( component != "" ) m_writer->endComponent();
+}
+
+
+// *****************************************************************************
+void GtoExporter::attributesData( MDagPath &dp ) const
+{
+    MStatus status;
+
+    MFnDependencyNode dn( dp.node(), &status );    STATUS;
+    GtoMayaAttributes* myAttrs = m_attributes.find( dp.partialPathName().asChar() )->second;
+
+    if( (! myAttrs) || (myAttrs->size() == 0) ) return;
+
+    for( int i = 0; i < myAttrs->size(); ++i )
+    {
+        const GtoMayaAttribute *attr = (*myAttrs)[i];
+        attr->writeGtoData( m_writer );
+    }
+}
+
+
+// *****************************************************************************
+void GtoExporter::animatedAttributesHeader( MDagPath &dp ) const
+{
+    MStatus status;
+
+    MFnDependencyNode dn( dp.node(), &status );    STATUS;
+    GtoMayaAttributes* myAttrs = m_attributes.find( dp.partialPathName().asChar() )->second;
+
+    if( (! myAttrs) || (myAttrs->size() == 0) ) return;
+
+    GtoMayaAttributes animatedAttrs;
+
+    for( int i = 0; i < myAttrs->size(); ++i )
+    {
+        GtoMayaAttribute *attr = (*myAttrs)[i];
+        if( attr->isAnimated() ) animatedAttrs.push_back( attr );
+    }
+    
+    if( ! animatedAttrs.empty() )
+    {
+        m_writer->beginComponent( ":curves" );
+        for( int i = 0; i < animatedAttrs.size(); ++i )
+        {
+            animatedAttrs[i]->animCurve()->writeGtoHeader( (*m_writer) );
+        }
+        m_writer->endComponent();
+    }
+}
+
+
+// *****************************************************************************
+void GtoExporter::animatedAttributesData( MDagPath &dp ) const
+{
+    MStatus status;
+
+    MFnDependencyNode dn( dp.node(), &status );    STATUS;
+    GtoMayaAttributes* myAttrs = m_attributes.find( dp.partialPathName().asChar() )->second;
+
+    if( (! myAttrs) || (myAttrs->size() == 0) ) return;
+
+    GtoMayaAttributes animatedAttrs;
+
+    for( int i = 0; i < myAttrs->size(); ++i )
+    {
+        GtoMayaAttribute *attr = (*myAttrs)[i];
+        if( attr->isAnimated() ) attr->animCurve()->writeGtoData( (*m_writer) );
+    }
+}
+
 
 } // End namespace GtoIOPlugin
 

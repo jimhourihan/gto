@@ -24,6 +24,7 @@
 #include <sstream>
 #include <math.h>
 
+#include <maya/MTime.h>
 #include <maya/MString.h>
 #include <maya/MStringArray.h>
 #include <maya/MAnimControl.h>
@@ -34,6 +35,30 @@
 #include "GtoInSet.h"
 #include "GtoOut.h"
 #include "version.h"
+
+#define DEFAULT_OPTIONS "recurse=1;"                \
+                        "recurseLimit=0;"           \
+                        "subd=1;"                   \
+                        "st=1;"                     \
+                        "faceMat=0;"                \
+                        "normals=1;"                \
+                        "diffpositions=0;"          \
+                        "diffmatrices=0;"           \
+                        "diffnormals=0;"            \
+                        "isdifference=0;"           \
+                        "normalize=1;"              \
+                        "hidden=0;"                 \
+                        "verify=1;"                 \
+                        "userAttr=1;"               \
+                        "mayaAttr=1;"               \
+                        "xformAttr=1;"              \
+                        "quiet=0;"                  \
+                        "ascii=0;"                  \
+                        "anim=0;"                   \
+                        "fs=1;"                     \
+                        "fe=240;"                   \
+                        "shutter=0"
+
 
 namespace GtoIOPlugin {
 using namespace std;
@@ -48,22 +73,90 @@ MStatus GtoIO::reader( const MFileObject &file,
                        const MString &optionsString,
                        MPxFileTranslator::FileAccessMode mode )
 {
-    DataBase dataBase;
-    Set *set = dataBase.set( file.fullName().asChar() );
-    if( set == NULL )
+    MString filename = file.fullName();
+    bool readAsDifference = false;
+    int fs = 0;
+    int fe = 0;
+
+    MStringArray args;
+    optionsString.split( ';', args );
+    for( size_t i = 0; i < args.length(); ++i )
     {
-        MGlobal::displayError( "Unable to open file for some "
-                               "reason.  Permissions?" );
-        return MS::kFailure;
+        MStringArray thisArg;
+        args[i].split( '=', thisArg );
+        MString argName( thisArg[0] );
+        MString argValue( thisArg[1] );
+
+        if( argName == "readDiff" && argValue == "1" )
+        {
+            readAsDifference = true;
+        }
+        else if( argName == "fs" )
+        {
+            fs = argValue.asInt();
+        }
+        else if( argName == "fe" )
+        {
+            fe = argValue.asInt();
+        }
     }
 
-    set->computeLocalTransforms();
+    if( readAsDifference )
+    {
+        MGlobal::displayInfo( "PreMunge name: " + filename );
 
-    set->declareMaya();
-    
-    set->reparentAll();
-    
-    dataBase.destroyAll();
+        if( filename.index( '#' ) < 0 )
+        {
+            // By this point, Maya will have already appended a 
+            // ".gto" to the filename if the user didn't include it,
+            // so we're guaranteed to find a '.' in the filename
+            filename = filename.substring( 0, filename.index( '.' ) )
+                       + "#.gto";
+        }
+
+        for( int f = fs; f <= fe; ++f )
+        {
+            MGlobal::viewFrame( MTime( double(f) ) );
+
+            MString fname = replaceFrameCookies( filename, f );
+
+            MGlobal::displayInfo( "Reading " + fname );
+
+            DataBase dataBase;
+            Set *set = dataBase.set( fname.asChar() );
+            if( set == NULL )
+            {
+                MGlobal::displayError( "Unable to open file for some "
+                                       "reason.  Permissions?" );
+                return MS::kFailure;
+            }
+
+            set->computeLocalTransforms();
+
+            set->declareMayaDiff();
+
+            dataBase.destroyAll();
+        }
+    }
+    else
+    {
+        DataBase dataBase;
+        Set *set = dataBase.set( filename.asChar() );
+        if( set == NULL )
+        {
+            MGlobal::displayError( "Unable to open file for some "
+                                   "reason.  Permissions?" );
+            return MS::kFailure;
+        }
+
+        set->computeLocalTransforms();
+
+        set->declareMaya();
+
+        set->reparentAll();
+
+        dataBase.destroyAll();
+    }
 
     return MS::kSuccess;
 }
@@ -89,7 +182,13 @@ MStatus GtoIO::writer( const MFileObject &file,
     bool diffMatrix = false;
     bool diffNormals = false;
     bool isDifferenceFile = false;
-    
+    bool quiet = false;
+    bool allUserAttributes = false;
+    bool allMayaAttributes = false;
+    bool allXformAttributes = false;
+    bool faceMaterials = false;
+    bool ascii = false;
+
     if( ( mode == MPxFileTranslator::kExportAccessMode ) ||
         ( mode == MPxFileTranslator::kSaveAccessMode ) )
     {
@@ -111,6 +210,14 @@ MStatus GtoIO::writer( const MFileObject &file,
         {
             maxRecurse = 100000;
         }
+        else if( argName == "quiet" && argValue == "1" )
+        {
+            quiet = true;
+        }
+        else if( argName == "ascii" && argValue == "1" )
+        {
+            ascii = true;
+        }
         else if( argName == "subd" && argValue == "1" )
         {
             subd = true;
@@ -122,6 +229,10 @@ MStatus GtoIO::writer( const MFileObject &file,
         else if( argName == "st" && argValue == "1" )
         {
             exportST = true;
+        }
+        else if( argName == "faceMat" && argValue == "1" )
+        {
+            faceMaterials = true;
         }
         else if( argName == "diffpositions" && argValue == "1" )
         {
@@ -150,6 +261,18 @@ MStatus GtoIO::writer( const MFileObject &file,
         else if( argName == "verify" && argValue == "0" )
         {
             verify = false;
+        }
+        else if( argName == "userAttr" && argValue == "1" )
+        {
+            allUserAttributes = true;
+        }
+        else if( argName == "mayaAttr" && argValue == "1" )
+        {
+            allMayaAttributes = true;
+        }
+        else if( argName == "xformAttr" && argValue == "1" )
+        {
+            allXformAttributes = true;
         }
         else if( argName == "anim" && argValue == "1" )
         {
@@ -195,10 +318,11 @@ MStatus GtoIO::writer( const MFileObject &file,
     
     // TODO: Find a more graceful way to get options to GtoExporter
 
-    GtoExporter exporter( fs, fe, shutter, subd, normals, exportST, filename, 
+    GtoExporter exporter( fs, fe, quiet, shutter, subd, normals, exportST, filename, 
                           maxRecurse, normalize, hidden, verify, 
                           isDifferenceFile, diffPoints, diffMatrix, 
-                          diffNormals );
+                          diffNormals, allUserAttributes, allMayaAttributes, 
+                          faceMaterials, ascii, allXformAttributes );
 
     MStatus result = exporter.doIt();
     return result;
@@ -221,10 +345,13 @@ MPxFileTranslator::MFileKind GtoIO::identifyFile( const MFileObject &file,
         return MPxFileTranslator::kIsMyFileType;
     }
 
-    const int gz_magic[2] = {0x1f, 0x8b}; /* gzip magic header */
+    const char gz_magic[2] = {0x1f, 0x8b}; /* gzip magic header */
     if( magic[0] == gz_magic[0] && magic[1] == gz_magic[1] )
     {
-        return MPxFileTranslator::kIsMyFileType;
+        if( strstr( file.name().asChar(), ".gto" ) )
+        {
+            return MPxFileTranslator::kIsMyFileType;
+        }
     }
 
     return MPxFileTranslator::kNotMyFileType;
@@ -235,6 +362,25 @@ MPxFileTranslator::MFileKind GtoIO::identifyFile( const MFileObject &file,
 void *GtoIO::creator()
 {
     return new GtoIO;
+}
+
+//******************************************************************************
+MString replaceFrameCookies( const MString &in, int frame )
+{
+    char fn[40];
+    sprintf( fn, "%04d", frame );
+    MStringArray array;
+    in.split( '#', array );
+
+    MString out = array[0];
+
+    for( size_t i=1; i < array.length(); i++ )
+    {
+        out += fn;
+        out += array[i];
+    }
+
+    return out;
 }
 
 } // End namespace GtoIOPlugin
@@ -251,7 +397,7 @@ MStatus initializePlugin( MObject _obj )
     stat = plugin.registerFileTranslator( "GTO",
                                           "none",
                                           GtoIOPlugin::GtoIO::creator,
-                                          "gtoExportOptions", "",
+                                          "gtoIOOptions", "",
                                           false );
     if( ! stat )
     {

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003 Tweak Films
+// Copyright (C) 2007 Tweak Films
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public License
@@ -45,6 +45,17 @@ global int $GtoIOpolyCollapse = 0;
 global int $GtoIOnurbsCollapse = 0;
 global int $GtoIOgeneralCollapse = 0;
 global int $GtoIOanimCollapse = 0;
+global int $GtoIOattribCollapse = 0;
+
+// NOTE:  As of Maya 7.0, if these optionVars are not here, the file format
+// plugin has incomplete access to the real scene graph.  LAME!
+optionVar -intValue "GTOAnimationFile" true;
+optionVar -intValue "exportIncludeShaders" true;
+optionVar -intValue "exportIncludeHistory" true;
+optionVar -intValue "exportIncludeChannels" true;
+optionVar -intValue "exportIncludeExpressions" true;
+optionVar -intValue "exportIncludeConstraints" true;
+
 
 // *********************************
 global proc gtoIO_recurseCallback()
@@ -57,7 +68,21 @@ global proc gtoIO_recurseCallback()
     {
         intFieldGrp -edit -en false optRecurseLimit;
     }
-    
+}
+
+// *********************************
+global proc gtoIO_AllAttribCallback()
+{
+   if( `checkBox -q -v optMayaAttributes` )
+    {
+        checkBox -e -v true -en false optXformAttributes;
+        checkBox -e -v true -en false optUserAttributes;
+    }
+    else
+    {
+        checkBox -e -en true optXformAttributes;
+        checkBox -e -en true optUserAttributes;
+    }
 }
 
 // *********************************
@@ -107,16 +132,165 @@ global proc gtoIO_animCallback()
             -v2 `playbackOptions -q -max`
             optFrameRange;
         floatFieldGrp -edit -en true optShutter;
-        checkBox -e -v true optDifference;
+        checkBox -e -en true optDifference;
     }
     else
     {
         intFieldGrp -edit -en false optFrameRange;
         floatFieldGrp -edit -en false optShutter;
-        checkBox -e -v false optDifference;
+        checkBox -e -en false optDifference;
     }
     gtoIO_differenceCallback();
 }
+
+
+// *********************************
+global proc int gtoIOOptions( string $parent,
+                              string $action,
+                              string $initialSettings,
+                              string $resultCallback )
+{
+    string $windowTitle = `window -q -t "OptionBoxWindow"`;
+    string $titleWords[];
+    tokenize $windowTitle $titleWords;
+    if( $titleWords[0] == "Import" )
+    {
+        return gtoImportOptions( $parent, $action, $initialSettings, $resultCallback );
+    }
+    else if( $titleWords[0] == "Export" )
+    {
+        return gtoExportOptions( $parent, $action, $initialSettings, $resultCallback );
+    }
+    else
+    {
+        setParent $parent;
+        confirmDialog -t "Error" 
+                      -m "Sorry, GtoIO does not (yet) support exporting the whole scene.  Use Export Selection instead." 
+                      -db "OK";
+        deleteUI BoxLayout;
+        error "Can't Export All, use Export Selection instead.";
+        return -1;
+    }
+    return -1;
+}
+
+
+// *********************************
+global proc int gtoImportOptions( string $parent,
+                                  string $action,
+                                  string $initialSettings,
+                                  string $resultCallback )
+{
+    int       $bResult;
+    string    $currentOptions;
+    string    $optionList[];
+    string    $optionBreakDown[];
+    int       $index;
+
+    if( $action == "post" )
+    {
+        // Build UI elements
+        setParent $parent;
+         // Spacer
+        columnLayout -h 10;
+
+        setParent $parent;
+        frameLayout -collapsable false 
+                    -label "Animation" 
+                    -bv false
+                    gtoIOAnimFrame;
+            columnLayout;
+                columnLayout -co left 40;
+                    checkBox 
+                        -l "Read as difference GTO(s)"
+                        -al left
+                        optReadDiff;
+                    intFieldGrp
+                        -nf 2
+                        -co3 30 10 20
+                        -ct3 left right right
+                        -cal 1 left
+                        -l "Frame Range"
+                        optFrameRange;
+                setParent ..;
+        setParent $parent;
+                                
+        // Now set UI controls to current settings
+        $currentOptions = $initialSettings;
+        
+        if( size( $currentOptions ) == 0 )
+        {
+            $currentOptions = `file -q -options`;
+        }
+        else
+        {
+            optionVar -sv "gtoIOExportOptions" $currentOptions;
+        }
+        if( size($currentOptions) > 0 )
+        {
+            tokenize($currentOptions, ";", $optionList);
+            for( $index = 0; $index < size($optionList); $index++ )
+            {
+                tokenize($optionList[$index], "=", $optionBreakDown);
+
+                if ($optionBreakDown[0] == "fs")
+                {
+                    int $fs = int($optionBreakDown[1]);
+                    intFieldGrp -e -v1 $fs optFrameRange;
+                }
+                else if ($optionBreakDown[0] == "fe")
+                {
+                    int $fe = int($optionBreakDown[1]);
+                    intFieldGrp -e -v2 $fe optFrameRange;
+                }
+                else if ($optionBreakDown[0] == "readDiff")
+                {
+                    float $sa = float($optionBreakDown[1]);
+                    if ($optionBreakDown[1] == "0") 
+                    {
+                        checkBox -e -v false optReadDiff;
+                    }
+                    else
+                    {
+                        checkBox -e -v true optReadDiff;
+                    }
+                }
+            }
+        }
+        $result = 1;
+    
+    } 
+    // Build the options string from the values in the UI
+    else if ($action == "query") 
+    {
+        setParent $parent;
+
+        if (`checkBox -q -v optReadDiff` == true) 
+        {
+            $currentOptions = "readDiff=1";
+        } 
+        else 
+        {
+            $currentOptions = "readDiff=0";
+        }
+        $currentOptions = $currentOptions + ";fs=";
+        $currentOptions = $currentOptions + `intFieldGrp -q -v1 optFrameRange`;
+
+        $currentOptions = $currentOptions + ";fe=";
+        $currentOptions = $currentOptions + `intFieldGrp -q -v2 optFrameRange`;
+
+        // Pass the current options string to the callback
+        eval($resultCallback+" \""+$currentOptions+"\"");
+        $result = 1;
+    } 
+    else 
+    {
+        $bResult = 0;
+    }
+    
+    return $bResult;
+}
+
 
 // *********************************
 global proc int gtoExportOptions( string $parent,
@@ -128,37 +302,13 @@ global proc int gtoExportOptions( string $parent,
     global int $GtoIOnurbsCollapse;
     global int $GtoIOgeneralCollapse;
     global int $GtoIOanimCollapse;
+    global int $GtoIOattribCollapse;
 
     int       $bResult;
     string    $currentOptions;
     string    $optionList[];
     string    $optionBreakDown[];
     int       $index;
-
-    // Figure out if we're importing or exporting if we can...
-    if( `window -ex "OptionBoxWindow"` )
-    {
-            string $windowTitle = `window -q -t "OptionBoxWindow"`;
-            string $titleWords[];
-            tokenize $windowTitle $titleWords;
-        if( $titleWords[0] == "Import" )
-        {
-            setParent $parent;
-            columnLayout -co left 80;
-                text -l "There are no import options for GTO files";
-            return 0;
-        }
-        if( $titleWords[1] == "All" )
-        {
-            setParent $parent;
-            confirmDialog -t "Error" 
-                          -m "Sorry, GtoIO does not (yet) support exporting the whole scene.  Use Export Selection instead." 
-                          -db "OK";
-            deleteUI BoxLayout;
-            error "Can't Export All, use Export Selection instead.";
-            return -1;
-        }
-    }
 
     if( $action == "post" )
     {
@@ -168,39 +318,54 @@ global proc int gtoExportOptions( string $parent,
         columnLayout -h 10;
 
         setParent $parent;
-        frameLayout -collapsable true -label "Polys and Subds" 
-                    -bv false -collapse $GtoIOpolyCollapse gtoIOPolyFrame;
-            columnLayout -co left 40;
+
+        frameLayout -collapsable true -label "General" -bv false
+                    -collapse $GtoIOgeneralCollapse gtoIOGeneralFrame;
+        columnLayout -co left 40;
+            rowLayout -nc 2;
                 checkBox
-                    -l "Output Polys as Subdivision Surfaces"
+                    -l "Recursive"
                     -al left
-                    optSubd;
-                checkBox
-                    -l "Output Normals for Polys"
-                    -al left
-                    -cc "gtoIO_normalsCallback"
-                    optNormals;
-                checkBox
-                    -l "Output ST information"
-                    -al left
-                    optST;
-                    
+                    -cc "gtoIO_recurseCallback"
+                    optRecurse;
+                intFieldGrp
+                    -l "Limit (0=infinite)"
+                    -cw 2 40
+                    optRecurseLimit;
+            setParent ..;
+
+            checkBox
+                -l "Export Hidden Objects"
+                -al left
+                optHidden;
+
+            checkBox
+                -l "Force (Don't verify before writing)"
+                -al left
+                optVerify;
+
+            checkBox
+                -l "Quiet (No errors/warnings)"
+                -al left
+                optQuiet;
+
+            radioButtonGrp 
+                -numberOfRadioButtons 2
+                -columnWidth 1 100
+                -columnAlign3 "left" "left" "left"
+                -label "File Format:" 
+                -labelArray2 "Binary" "Text"
+                optAscii;
+
         setParent $parent;
-        frameLayout -collapsable true -label "NURBS"  -bv false
-                    -collapse $GtoIOnurbsCollapse gtoIONurbsFrame;
-            columnLayout  -co left 40;
-                checkBox
-                    -l "Normalize NURBS parameterization"
-                    -al left
-                    optNormalize;
-                    
+
         setParent $parent;
         frameLayout -collapsable true -label "Animation" -bv false
                     -collapse $GtoIOanimCollapse gtoIOAnimFrame;
             columnLayout;
                 columnLayout -co left 40;
                     checkBox 
-                        -l "Animation"
+                        -l "Write per-frame GTOs"
                         -al left
                         -cc "gtoIO_animCallback"
                         optAnim;
@@ -244,31 +409,64 @@ global proc int gtoExportOptions( string $parent,
         
         setParent $parent;
 
-        frameLayout -collapsable true -label "General" -bv false
-                    -collapse $GtoIOgeneralCollapse gtoIOGeneralFrame;
-        columnLayout -co left 40;
-            rowLayout -nc 2;
+
+        frameLayout -collapsable true -label "Attributes" -bv false
+                    -collapse $GtoIOattribCollapse gtoIOAttribFrame;
+                    
+            columnLayout -co left 40;
+
                 checkBox
-                    -l "Recursive"
+                    -l "Export transform attributes"
                     -al left
-                    -cc "gtoIO_recurseCallback"
-                    optRecurse;
-                intFieldGrp
-                    -l "Limit (0=infinite)"
-                    -cw 2 40
-                    optRecurseLimit;
+                    -en true
+                    optXformAttributes;
+
+                checkBox
+                    -l "Export user-defined attributes"
+                    -al left
+                    -en true
+                    optUserAttributes;
+
+                checkBox
+                    -l "Export all attributes"
+                    -al left
+                    -en true
+                    -cc "gtoIO_AllAttribCallback"
+                    optMayaAttributes;
+
             setParent ..;
-            checkBox
-                -l "Export Hidden Objects"
-                -al left
-                optHidden;
-                
-            checkBox
-                -l "Force (Don't verify before writing)"
-                -al left
-                optVerify;
-                
         setParent $parent;
+
+
+        frameLayout -collapsable true -label "Polys and Subds" 
+                    -bv false -collapse $GtoIOpolyCollapse gtoIOPolyFrame;
+            columnLayout -co left 40;
+                checkBox
+                    -l "Output Polys as Subdivision Surfaces"
+                    -al left
+                    optSubd;
+                checkBox
+                    -l "Output Normals for Polys"
+                    -al left
+                    -cc "gtoIO_normalsCallback"
+                    optNormals;
+                checkBox
+                    -l "Output ST information"
+                    -al left
+                    optST;
+                checkBox
+                    -l "Output per-face material IDs"
+                    -al left
+                    optFaceMat;
+                    
+        setParent $parent;
+        frameLayout -collapsable true -label "NURBS"  -bv false
+                    -collapse $GtoIOnurbsCollapse gtoIONurbsFrame;
+            columnLayout  -co left 40;
+                checkBox
+                    -l "Normalize NURBS parameterization"
+                    -al left
+                    optNormalize;
                                 
         // Now set UI controls to current settings
         $currentOptions = $initialSettings;
@@ -318,6 +516,17 @@ global proc int gtoExportOptions( string $parent,
                     else
                     {
                         checkBox -e -v true optST;
+                    }
+                } 
+                else if ($optionBreakDown[0] == "faceMat")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optFaceMat;
+                    } 
+                    else
+                    {
+                        checkBox -e -v false optFaceMat;
                     }
                 } 
                 else if ($optionBreakDown[0] == "diffpositions") 
@@ -407,7 +616,7 @@ global proc int gtoExportOptions( string $parent,
                 }
                 else if ($optionBreakDown[0] == "verify")
                 {
-                    if ($optionBreakDown[1] == "1")
+                    if ($optionBreakDown[1] == "0")
                     {
                         checkBox -e -v true optVerify;
                     } 
@@ -416,17 +625,75 @@ global proc int gtoExportOptions( string $parent,
                         checkBox -e -v false optVerify;
                     }
                 }
+                else if ($optionBreakDown[0] == "userAttr")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optUserAttributes;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optUserAttributes;
+                    }
+                }
+                else if ($optionBreakDown[0] == "xformAttr")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optXformAttributes;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optXformAttributes;
+                    }
+                }
+                else if ($optionBreakDown[0] == "mayaAttr")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optMayaAttributes;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optMayaAttributes;
+                    }
+                    gtoIO_AllAttribCallback;
+                }
+                else if ($optionBreakDown[0] == "quiet")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        checkBox -e -v true optQuiet;
+                    } 
+                    else 
+                    {
+                        checkBox -e -v false optQuiet;
+                    }
+                }
+                else if ($optionBreakDown[0] == "ascii")
+                {
+                    if ($optionBreakDown[1] == "1")
+                    {
+                        radioButtonGrp -e -sl 2 optAscii;
+                    } 
+                    else 
+                    {
+                        radioButtonGrp -e -sl 1 optAscii;
+                    }
+                }
                 else if ($optionBreakDown[0] == "anim")
                 {
                     if ($optionBreakDown[1] == "1")
                     {
                         checkBox -e -v true optAnim;
+                        checkBox -e -en true optDifference;
                         intFieldGrp -edit -en true optFrameRange;
                         floatFieldGrp -edit -en true optShutter;
                     } 
                     else 
                     {
                         checkBox -e -v false optAnim;
+                        checkBox -e -en false optDifference;
                         intFieldGrp -edit -en false optFrameRange;
                         floatFieldGrp -edit -en false optShutter;
                     }
@@ -487,6 +754,15 @@ global proc int gtoExportOptions( string $parent,
         else 
         {
             $currentOptions = $currentOptions + ";st=0";
+        }
+
+        if (`checkBox -q -v optFaceMat` == true) 
+        {
+            $currentOptions = $currentOptions + ";faceMat=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";faceMat=0";
         }
 
         if (`checkBox -q -v optNormals` == true) 
@@ -554,11 +830,56 @@ global proc int gtoExportOptions( string $parent,
 
         if (`checkBox -q -v optVerify` == true) 
         {
-            $currentOptions = $currentOptions + ";verify=1";
+            $currentOptions = $currentOptions + ";verify=0";
         } 
         else 
         {
-            $currentOptions = $currentOptions + ";verify=0";
+            $currentOptions = $currentOptions + ";verify=1";
+        }
+
+        if (`checkBox -q -v optUserAttributes` == true) 
+        {
+            $currentOptions = $currentOptions + ";userAttr=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";userAttr=0";
+        }
+
+        if (`checkBox -q -v optMayaAttributes` == true) 
+        {
+            $currentOptions = $currentOptions + ";mayaAttr=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";mayaAttr=0";
+        }
+
+        if (`checkBox -q -v optXformAttributes` == true) 
+        {
+            $currentOptions = $currentOptions + ";xformAttr=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";xformAttr=0";
+        }
+
+        if (`checkBox -q -v optQuiet` == true) 
+        {
+            $currentOptions = $currentOptions + ";quiet=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";quiet=0";
+        }
+
+        if (`radioButtonGrp -q -sl optAscii` == 2) 
+        {
+            $currentOptions = $currentOptions + ";ascii=1";
+        } 
+        else 
+        {
+            $currentOptions = $currentOptions + ";ascii=0";
         }
 
         if (`checkBox -q -v optAnim` == true) 
@@ -569,6 +890,7 @@ global proc int gtoExportOptions( string $parent,
         {
             $currentOptions = $currentOptions + ";anim=0";
         }
+        
         $currentOptions = $currentOptions + ";fs=";
         $currentOptions = $currentOptions + `intFieldGrp -q -v1 optFrameRange`;
 

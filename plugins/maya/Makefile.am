@@ -12,7 +12,7 @@ meldir = $(gto_maya_location)/scripts/others
 
 if GTO_BUILD_MAYA
 
-dist_mel_SCRIPTS = gtoExportOptions.mel gtoExportSet.mel
+dist_mel_SCRIPTS = gtoExportOptions.mel
 
 plugin_PROGRAMS = GtoIO.so
 
@@ -26,7 +26,10 @@ GtoIO_so_SOURCES = GtoInDataBase.cpp \
                    GtoInTransform.cpp \
                    GtoIO.cpp \
                    GtoOut.cpp \
-                   version.cpp 
+                   version.cpp \
+                   GtoMayaAttribute.cpp \
+                   GtoAnimCurve.cpp \
+                   TwkMaya.cpp
 
 noinst_HEADERS = GtoInDataBase.h \
                  GtoInNURBS.h \
@@ -38,12 +41,16 @@ noinst_HEADERS = GtoInDataBase.h \
                  GtoInTransform.h \
                  GtoIO.h \
                  GtoOut.h \
-                 version.h 
+                 version.h \
+                 GtoMayaAttribute.h \
+                 GtoAnimCurve.h \
+                 TwkMaya.h
 
 GtoIO_so_LDFLAGS = -shared \
                    -L$(top_srcdir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
+                   -lImage \
                    -lOpenMaya \
                    -lOpenMayaAnim \
                    -lOpenMayaRender 

@@ -59,6 +59,8 @@ public:
 protected:
 };
 
+MString replaceFrameCookies( const MString &in, int frame );
+
 } // End namespace GtoIOPlugin
 
 #endif    // End #ifdef __GTOINCMD_H__

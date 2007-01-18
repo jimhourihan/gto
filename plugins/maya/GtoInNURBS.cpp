@@ -409,6 +409,7 @@ void NURBS::declareMaya()
     // Set misc stuff...
     setName();
     addToDefaultSG();
+    addTextureChannelAttributes();
 }
 
 } // End namespace GtoIOPlugin

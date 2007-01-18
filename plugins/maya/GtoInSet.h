@@ -45,6 +45,8 @@ public:
     void computeLocalTransforms();
 
     void declareMaya();
+
+    void declareMayaDiff();
     
     void reparentAll();
 

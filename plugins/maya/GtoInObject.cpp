@@ -24,6 +24,8 @@
 #include <maya/MSelectionList.h>
 #include <maya/MStringArray.h>
 #include <maya/MFnTransform.h>
+#include <maya/MPlug.h>
+#include <maya/MFnTypedAttribute.h>
 #include <maya/MTransformationMatrix.h>
 #include "GtoInObject.h"
 
@@ -57,9 +59,13 @@ Object::~Object()
 //******************************************************************************
 Request Object::component( const std::string &name ) const
 {
-    if ( name == GTO_COMPONENT_OBJECT )
+    if( name == GTO_COMPONENT_OBJECT )
     {
         return Request( true, ( void * )OBJECT_C );
+    }
+    else if( name == GTO_COMPONENT_CHANNELS )
+    {
+        return Request( true, ( void * )CHANNELS_C );
     }
 
     return Request( false );
@@ -69,7 +75,7 @@ Request Object::component( const std::string &name ) const
 Request Object::property( const std::string &name,
                           void *componentData ) const
 {
-    if ( (( int )componentData) == OBJECT_C )
+    if( (( int )componentData) == OBJECT_C )
     {
         if ( name == GTO_PROPERTY_GLOBAL_MATRIX )
         {
@@ -79,6 +85,10 @@ Request Object::property( const std::string &name,
         {
             return Request( true, (void *)OBJECT_PARENT_P );
         }
+    }
+    else if(( int )componentData == CHANNELS_C )
+    {
+        return Request( true );
     }
 
     return Request( false );
@@ -109,6 +119,10 @@ void *Object::data( const PropertyInfo &pinfo,
     {
         return &m_tmpIntData;
     }
+    else if( (int)componentData == CHANNELS_C )
+    {
+        return m_textureAssignmentIds;
+    }
 
     return NULL;
 }
@@ -129,6 +143,15 @@ void Object::dataRead( const PropertyInfo &pinfo,
              (int)propertyData == OBJECT_PARENT_P )
     {
         m_parent = strings[m_tmpIntData];
+    }
+    else if( (int)componentData == CHANNELS_C )
+    {
+        TextureChannel assignment;
+
+        assignment.mappingType = strings[m_textureAssignmentIds[0]];
+        assignment.texFilename = strings[m_textureAssignmentIds[1]];
+
+        m_textureMappings[strings[pinfo.name]] = assignment;
     }
 }
 
@@ -213,6 +236,44 @@ void Object::setName()
     if( objName != m_name )
     {
         m_wasRenamed = true;
+    }
+}
+
+// *****************************************************************************
+void Object::addTextureChannelAttributes()
+{
+    MStatus status;
+    MFnDependencyNode dn( m_mayaObject );
+    
+    TexChannelMap::const_iterator iter = m_textureMappings.begin();
+    for( ; iter != m_textureMappings.end(); ++iter )
+    {
+        const std::string &channelName = (*iter).first;
+        MString mappingType( (*iter).second.mappingType.c_str() );
+        MString texFilename( (*iter).second.texFilename.c_str() );
+        
+        std::string attrName = "texChan_" + channelName;
+        
+        MFnTypedAttribute tAttr;
+        tAttr.create( attrName.c_str(), channelName.c_str(), MFnData::kString,
+                     &status );
+        CHECK_MSTATUS( status );
+        CHECK_MSTATUS( tAttr.setStorable( true ) );
+        CHECK_MSTATUS( tAttr.setConnectable( true ) );
+        CHECK_MSTATUS( tAttr.setArray( true ) );
+        CHECK_MSTATUS( tAttr.setUsesArrayDataBuilder( true ) );
+        CHECK_MSTATUS( dn.addAttribute( tAttr.object() ) );
+        
+        MPlug channelPlug = dn.findPlug( tAttr.object(), &status );
+        CHECK_MSTATUS( status );
+
+        MPlug mappingPlug = channelPlug.elementByLogicalIndex( 0, &status );        
+        CHECK_MSTATUS( status );
+        MPlug filenamePlug = channelPlug.elementByLogicalIndex( 1, &status );        
+        CHECK_MSTATUS( status );
+        
+        CHECK_MSTATUS( mappingPlug.setValue( mappingType ) );
+        CHECK_MSTATUS( filenamePlug.setValue( texFilename ) );
     }
 }
 
