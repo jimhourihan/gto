@@ -1,6 +1,21 @@
-//******************************************************************************
-// Copyright (c) 2001-2002 Tweak Inc. All rights reserved.
-//******************************************************************************
+//
+// Copyright (C) 2004 Tweak Films
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
 
 #include <sstream>
 #include "gtoWriter.h"
@@ -171,10 +186,10 @@ PyObject *gtoWriter_open( PyObject *_self, PyObject *args )
 {
     PyInstanceObject *self;
     char *filename;
-    int compress = true;
+    Gto::Writer::FileType filemode = Gto::Writer::CompressedGTO;
 
     if( ! PyArg_ParseTuple( args, "Os|i:gtoWriter_open", &self, &filename,
-                                                         &compress ) )
+                                                         &filemode ) )
     {
         // Invalid parameters, let Python do a stack trace
         return NULL;
@@ -194,7 +209,7 @@ PyObject *gtoWriter_open( PyObject *_self, PyObject *args )
     PyDict_SetItemString( self->in_dict, "__writerEngine", (PyObject *)writer );
 
     // Ask the writer to open the given file
-    if( ! writer->m_writer->open( filename, compress ) )
+    if( ! writer->m_writer->open( filename, filemode ) )
     {
         PyErr_Format( gtoError(), "Unable to open specified file: %s",
                       filename );

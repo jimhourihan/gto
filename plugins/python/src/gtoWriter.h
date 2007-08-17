@@ -27,6 +27,14 @@
 
 namespace PyGto {
 
+static char writerDocString[] = 
+"\n"
+"The Writer class is designed as an API to a state machine. You indicate\n"
+"a conceptual hierarchy to the file and then all the data. The writer\n"
+"handles generating the string table, the header information, etc.\n"
+"\n";
+
+
 // *****************************************************************************
 // Function prototypes
 

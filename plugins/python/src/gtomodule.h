@@ -29,6 +29,7 @@ namespace PyGto {
 PyObject *gtoError();
 
 // *****************************************************************************
+// Returns the Python type name of an object as a string
 const char *PyTypeName( PyObject *object );
 
 }; // End namespace pyGto

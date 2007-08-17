@@ -185,9 +185,25 @@ extern "C" void initgto()
                           PyInt_FromLong( Gto::Reader::HeaderOnly ) );
     PyDict_SetItemString( readerClassObj->cl_dict, "RANDOMACCESS", 
                           PyInt_FromLong( Gto::Reader::RandomAccess ) );
-    
+    PyDict_SetItemString( readerClassObj->cl_dict, "BINARYONLY", 
+                          PyInt_FromLong( Gto::Reader::BinaryOnly ) );
+    PyDict_SetItemString( readerClassObj->cl_dict, "TEXTONLY", 
+                          PyInt_FromLong( Gto::Reader::TextOnly ) );
+
 
     // Create the Writer class
-    defineClass( moduleDict, "Writer", PyGto::gtoWriterMethods );
-}
+    PyObject *writerClass = defineClass( moduleDict, 
+                                         "Writer", 
+                                         PyGto::gtoWriterMethods,
+                                         PyGto::writerDocString );
+    PyClassObject *writerClassObj = (PyClassObject *)( writerClass );
 
+    // Add a couple of Writer-specific constants
+    PyDict_SetItemString( writerClassObj->cl_dict, "BINARYGTO", 
+                          PyInt_FromLong( Gto::Writer::BinaryGTO ) );
+    PyDict_SetItemString( writerClassObj->cl_dict, "COMPRESSEDGTO", 
+                          PyInt_FromLong( Gto::Writer::CompressedGTO ) );
+    PyDict_SetItemString( writerClassObj->cl_dict, "TEXTGTO", 
+                          PyInt_FromLong( Gto::Writer::TextGTO ) );
+
+}
