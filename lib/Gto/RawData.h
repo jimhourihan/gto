@@ -139,7 +139,7 @@ struct RawDataBase
 class RawDataBaseReader : public Reader
 {
 public:
-    RawDataBaseReader();
+    explicit RawDataBaseReader(unsigned int mode = None);
     virtual ~RawDataBaseReader();
 
     virtual bool        open(const char *filename);

@@ -79,7 +79,7 @@ Property::~Property()
 
 Component::~Component()
 {
-    for (int i=0; i < properties.size(); i++)
+    for (size_t i=0; i < properties.size(); i++)
     {
         delete properties[i];
     }
@@ -89,7 +89,7 @@ Component::~Component()
 
 Object::~Object()
 {
-    for (int i=0; i < components.size(); i++)
+    for (size_t i=0; i < components.size(); i++)
     {
         delete components[i];
     }
@@ -99,7 +99,7 @@ Object::~Object()
 
 RawDataBase::~RawDataBase()
 {
-    for (int i=0; i < objects.size(); i++)
+    for (size_t i=0; i < objects.size(); i++)
     {
         delete objects[i];
     }
@@ -107,7 +107,7 @@ RawDataBase::~RawDataBase()
 
 //----------------------------------------------------------------------
 
-RawDataBaseReader::RawDataBaseReader() : Reader( Gto::Reader::None )
+RawDataBaseReader::RawDataBaseReader(unsigned int mode) : Reader(mode)
 {
     m_dataBase = new RawDataBase;
 }
@@ -172,7 +172,7 @@ RawDataBaseReader::property(const string& name,
                             const string& interp,
                             const PropertyInfo& info)
 {
-    Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
+    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = new Property(name, interp, 
                                 (DataType)info.type, info.size, info.width);
@@ -183,8 +183,8 @@ RawDataBaseReader::property(const string& name,
 void*
 RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 {
-    Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
-    Component *c = reinterpret_cast<Component*>(info.component->componentData);
+    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
+    //Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
     if( bytes == 0 )
@@ -201,8 +201,8 @@ RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 void
 RawDataBaseReader::dataRead(const PropertyInfo& info)
 {
-    Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
-    Component *c = reinterpret_cast<Component*>(info.component->componentData);
+    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
+    //Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
     p->size = info.size;
@@ -213,7 +213,7 @@ RawDataBaseReader::dataRead(const PropertyInfo& info)
         size_t numItems = p->size * p->width;
         p->stringData = new string[numItems];
 
-        for (int i=0; i < numItems; i++)
+        for (size_t i=0; i < numItems; i++)
         {
             p->stringData[i] = stringTable()[ints[i]];
         }
@@ -275,7 +275,7 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
                   size_t numItems = property->size * property->width;
                   vector<int> data(numItems);
 
-                  for (int i=0; i < numItems; i++)
+                  for (size_t i=0; i < numItems; i++)
                   {
                       int stringId = m_writer.lookup(property->stringData[i]);
 
@@ -308,7 +308,7 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
         m_writer.beginComponent(component->name.c_str(),
                                 component->interp.c_str());
 
-        for (int i=0; i < props.size(); i++)
+        for (size_t i=0; i < props.size(); i++)
         {
             if (const Property *p = props[i])
             {
@@ -330,17 +330,16 @@ RawDataBaseWriter::write(const char *filename,
         return false;
     }
 
-    for (int i=0; i < db.strings.size(); i++)
+    for (size_t i=0; i < db.strings.size(); i++)
     {
         m_writer.intern(db.strings[i]);
     }
 
-    for (int i=0; i < db.objects.size(); i++)
+    for (size_t i=0; i < db.objects.size(); i++)
     {
         if (db.objects[i])
         {
             const Object &o = *db.objects[i];
-            unsigned int version = o.protocolVersion;
 
             m_writer.beginObject(o.name.c_str(),
                                  o.protocol.c_str(),
@@ -359,14 +358,14 @@ RawDataBaseWriter::write(const char *filename,
 
     m_writer.beginData();
 
-    for (int i=0; i < db.objects.size(); i++)
+    for (size_t i=0; i < db.objects.size(); i++)
     {
         if (db.objects[i])
         {
             const Object &o = *db.objects[i];
             const Components &components = o.components;
 
-            for (int q=0; q < components.size(); q++)
+            for (size_t q=0; q < components.size(); q++)
             {
                 writeComponent(false, components[q]);
             }

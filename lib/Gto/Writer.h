@@ -63,7 +63,7 @@ public:
     };
 
     Writer();
-    Writer(std::ostream&);
+    explicit Writer(std::ostream&);
     ~Writer();
 
     //
@@ -160,7 +160,9 @@ public:
                                     const char *propertyName=0,
                                     int size=0, 
                                     int width=0);
-    
+
+    void            emptyProperty() { propertyDataRaw((void*)0); }
+
     template<typename T>
     void            propertyData(const T *data, 
                                  const char *propertyName=0,

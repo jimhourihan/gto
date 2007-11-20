@@ -124,7 +124,8 @@ enum DataType
     Short,              // uint16
     Byte,               // uint8
 
-    NumberOfDataTypes
+    NumberOfDataTypes,
+    ErrorType
 };
 
 

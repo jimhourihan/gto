@@ -20,6 +20,7 @@
 
 #define YYPARSE_PARAM state
 #define YYLEX_PARAM state
+#define YYDEBUG 1
 #ifdef yyerror
 #undef yyerror
 #endif
@@ -43,6 +44,7 @@ void GTOParseWarning(void*, const char *,...);
 {
     int             _token;
     int             _int;
+    unsigned int    _uint;
     double          _double;
     Gto::TypeSpec   _type;
     Gto::Number     _number;
@@ -75,9 +77,9 @@ void GTOParseWarning(void*, const char *,...);
 %type <_double> float_num
 %type <_int>    int_num
 %type <_number> numeric_value
-%type <_int>    numeric_value_list;
-%type <_int>    atomic_value_list;
-%type <_int>    string_value_list;
+%type <_uint>    numeric_value_list;
+%type <_uint>    atomic_value_list;
+%type <_uint>    string_value_list;
 %type <_int>    string_value;
 %type <_token>  complex_element_list
 
@@ -379,6 +381,20 @@ numeric_value:
                             "point number (%f) instead", $1);
               YYERROR;
               break;
+
+          case Gto::Double:
+          case Gto::Half:
+          case Gto::Boolean:
+              GTOParseError(state, "numeric type '%s' is currently unsupported "
+                            "by the parser", typeName(t));
+              YYERROR;
+              break;
+
+          default:
+              GTOParseError(state, "unsupported type '%s'; got a floating "
+                            "point number (%f) instead", typeName(t), $1);
+              YYERROR;
+              break;
         }
     }
 
@@ -438,6 +454,20 @@ numeric_value:
                             "(%d) instead", $1);
               YYERROR;
               break;
+
+          case Gto::Double:
+          case Gto::Half:
+          case Gto::Boolean:
+              GTOParseError(state, "numeric type '%s' is currently unsupported "
+                            "by the parser", typeName(t));
+              YYERROR;
+              break;
+
+          default:
+              GTOParseError(state, "unsupported type '%s'; got an integer "
+                            "(%d) instead", typeName(t), $1);
+              YYERROR;
+              break;
         }
     }
 ;
@@ -466,7 +496,7 @@ void
 GTOParseError(void* state, const char *text, ...)
 {
     char temp[256];
-    GTOFlexLexer* lexer = reinterpret_cast<GTOFlexLexer*>(state);
+    //GTOFlexLexer* lexer = reinterpret_cast<GTOFlexLexer*>(state);
 
     va_list ap;
     va_start(ap,text);
@@ -480,7 +510,7 @@ void
 GTOParseWarning(void* state, const char *text, ...)
 {
     char temp[256];
-    GTOFlexLexer* lexer = (GTOFlexLexer*)state;
+    //GTOFlexLexer* lexer = (GTOFlexLexer*)state;
 
     va_list ap;
     va_start(ap,text);

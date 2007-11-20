@@ -125,7 +125,7 @@ public:
         TextOnly         = 1 << 3,
     };
 
-    Reader(unsigned int mode = None);
+    explicit Reader(unsigned int mode = None);
     virtual ~Reader();
 
     //
@@ -140,6 +140,7 @@ public:
     //  to modify the input type. The ormode is |'d with the open mode.
     //
 
+    virtual bool        open(void const *pData, size_t dataSize, const char *name);
     virtual bool        open(const char *filename);
     virtual bool        open(std::istream&, const char *name, 
                              unsigned int ormode = 0);
@@ -353,6 +354,9 @@ private:
     StringTable         m_strings;
     StringMap           m_stringMap;
     std::istream*       m_in;
+    char*               m_inRAM;
+    size_t              m_inRAMSize;
+    size_t              m_inRAMCurrentPos;
     void*               m_gzfile;
     int                 m_gzrval;
     std::string         m_inName;

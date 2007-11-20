@@ -26,9 +26,9 @@ namespace Gto {
 
 struct TypeSpec
 {
-    DataType    type;
-    int         width;
-    int         size;
+    DataType     type;
+    unsigned int width;
+    unsigned int size;
 };
 
 struct Number

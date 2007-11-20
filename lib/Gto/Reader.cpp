@@ -42,10 +42,13 @@ using namespace std;
 
 Reader::Reader(unsigned int mode) 
     : m_in(0), 
+      m_inRAM(0), 
+      m_inRAMSize(0), 
+      m_inRAMCurrentPos(0),
       m_gzfile(0), 
       m_gzrval(0), 
-      m_error(false), 
       m_needsClosing(false),
+      m_error(false), 
       m_mode(mode),
       m_linenum(0),
       m_charnum(0)
@@ -55,6 +58,39 @@ Reader::Reader(unsigned int mode)
 Reader::~Reader()
 {
     close();
+}
+
+bool
+Reader::open(void const *pData, size_t dataSize, const char *name)
+{
+    if (m_in) return false;
+    if (pData == NULL) return false;
+    if (dataSize <= 0) return false;
+    if (m_in || m_gzfile) close();
+
+    m_inRAM         = (char*)pData;
+    m_inRAMSize     = dataSize;
+    m_inRAMCurrentPos = 0;
+    m_needsClosing  = false;
+    m_inName        = name;
+    m_error         = false;
+
+    if (m_mode & TextOnly)
+    {
+        return readTextGTO();
+    }
+    else
+    {
+        readMagicNumber();
+
+        if (m_header.magic != Header::Magic ||
+            m_header.magic != Header::Cigam)
+        {
+            return false;
+        }
+
+        return readBinaryGTO();
+    }
 }
 
 bool
@@ -76,7 +112,7 @@ Reader::open(istream& i, const char *name, unsigned int ormode)
         readMagicNumber();
 
         if (m_header.magic != Header::Magic ||
-            m_header.magic == Header::Cigam)
+            m_header.magic != Header::Cigam)
         {
             return false;
         }
@@ -171,6 +207,9 @@ Reader::open(const char *filename)
 void
 Reader::close()
 {
+    m_inRAM = 0;
+    m_inRAMSize = 0;
+
     if (m_needsClosing) 
     {
         delete m_in;
@@ -241,7 +280,7 @@ swapWords(void *data, size_t size)
 
     bytes* ip = reinterpret_cast<bytes*>(data);
 
-    for (int i=0; i<size; i++)
+    for (size_t i=0; i<size; i++)
     {
         bytes temp = ip[i];
         ip[i].c[0] = temp.c[3];
@@ -258,7 +297,7 @@ swapShorts(void *data, size_t size)
 
     bytes* ip = reinterpret_cast<bytes*>(data);
 
-    for (int i=0; i<size; i++)
+    for (size_t i=0; i<size; i++)
     {
         bytes temp = ip[i];
         ip[i].c[0] = temp.c[1];
@@ -328,7 +367,7 @@ Reader::internString(const std::string& s)
 void
 Reader::readStringTable()
 {
-    for (int i=0; i < m_header.numStrings; i++)
+    for (uint32 i=0; i < m_header.numStrings; i++)
     {
         string s;
         char c;
@@ -347,7 +386,7 @@ Reader::readObjects()
 {
     int coffset = 0;
 
-    for (int i=0; i < m_header.numObjects; i++)
+    for (uint32 i=0; i < m_header.numObjects; i++)
     {
         ObjectInfo o;
 
@@ -402,7 +441,7 @@ Reader::readComponents()
     {
         const ObjectInfo &o = *i;
 
-        for (int q=0; q < o.numComponents; q++)
+        for (uint32 q=0; q < o.numComponents; q++)
         {
             ComponentInfo c;
 
@@ -457,7 +496,7 @@ Reader::readProperties()
     {
         const ComponentInfo &c = *i;
 
-        for (int q=0; q < c.numProperties; q++)
+        for (uint32 q=0; q < c.numProperties; q++)
         {
             PropertyInfo p;
             
@@ -517,7 +556,7 @@ Reader::accessObject(ObjectInfo& o)
 
     if (o.requested)
     {
-        for (int q=0; q < o.numComponents; q++)
+        for (uint32 q=0; q < o.numComponents; q++)
         {
             assert( (o.coffset+q) < m_components.size() );
             ComponentInfo& c = m_components[o.coffset + q];
@@ -528,7 +567,7 @@ Reader::accessObject(ObjectInfo& o)
 
             if (c.requested)
             {
-                for (int j=0; j < c.numProperties; j++)
+                for (uint32 j=0; j < c.numProperties; j++)
                 {
                     PropertyInfo& p = m_properties[c.poffset + j];
                     Request       r = property(stringFromId(p.name), 
@@ -628,7 +667,7 @@ Reader::readProperty(PropertyInfo& prop)
 
     if (prop.requested)
     {
-        if (buffer = (char*)data(prop, bytes))
+        if ((buffer = (char*)data(prop, bytes)))
         {
             read(buffer, bytes);
             readok = true;
@@ -682,7 +721,11 @@ Reader::readProperty(PropertyInfo& prop)
 bool
 Reader::notEOF()
 {
-    if (m_in) 
+    if (m_inRAM)
+    {
+        return (m_inRAMCurrentPos < m_inRAMSize);
+    }
+    else if (m_in) 
     {
         return (*m_in);
     }
@@ -699,7 +742,28 @@ Reader::notEOF()
 void
 Reader::read(char *buffer, size_t size)
 {
-    if (m_in)
+    if (m_inRAM)
+    {
+        bool past_eof = false;
+
+        if (m_inRAMCurrentPos + size > m_inRAMSize)
+        {
+            size = m_inRAMSize - m_inRAMCurrentPos;
+            past_eof = true;
+        }
+
+        for (size_t i=0; i<size; i++)
+        {
+            buffer[i] = m_inRAM[m_inRAMCurrentPos];
+            m_inRAMCurrentPos++;
+        }
+
+        if (past_eof)
+        {
+            fail( "in memory read fail - too many bytes requested" );
+        }
+    }
+    else if (m_in)
     {
         m_in->read(buffer,size);
 
@@ -717,14 +781,26 @@ Reader::read(char *buffer, size_t size)
 #ifdef GTO_SUPPORT_ZIP
     else if (m_gzfile)
     {
-        if (gzread(m_gzfile, buffer, size) != size)
+        char *buffer_pos = buffer;
+        size_t remaining = size;
+        while (true)
         {
-            int zError = 0;
-            std::cerr << "ERROR: Gto::Reader: Failed to read gto file: ";
-            std::cerr << gzerror( m_gzfile, &zError );
-            std::cerr << std::endl;
-            memset( buffer, 0, size );
-            fail( "gzread fail" );
+            int retval = gzread(m_gzfile, buffer_pos, remaining);
+            if (retval <= 0)
+            {
+                int zError = 0;
+                std::cerr << "ERROR: Gto::Reader: Failed to read gto file: ";
+                std::cerr << gzerror( m_gzfile, &zError );
+                std::cerr << std::endl;
+                memset( buffer, 0, size );
+                fail( "gzread fail" );
+            }
+            remaining  -= retval;
+            buffer_pos += retval;
+            if (remaining == 0)
+            {
+                break;
+            }
         }
     }
 #endif
@@ -733,7 +809,19 @@ Reader::read(char *buffer, size_t size)
 void
 Reader::get(char &c)
 {
-    if (m_in)
+    if (m_inRAM)
+    {
+        if (m_inRAMSize > m_inRAMCurrentPos)
+        {
+            c = m_inRAM[m_inRAMCurrentPos];
+            m_inRAMCurrentPos++;
+        }
+        else
+        {
+            c = 0;
+        }
+    }
+    else if (m_in)
     {
         m_in->get(c);
     }
@@ -768,7 +856,15 @@ const std::string& Reader::stringFromId(unsigned int i)
 
 void Reader::seekForward(size_t bytes)
 {
-    if (m_in)
+    if (m_inRAM)
+    {
+        m_inRAMCurrentPos += bytes;
+        if (m_inRAMCurrentPos > m_inRAMSize)
+        {
+            m_inRAMCurrentPos = m_inRAMSize;
+        }
+    }
+    else if (m_in)
     {
 #ifdef HAVE_FULL_IOSTREAMS
         m_in->seekg(bytes, ios_base::cur);
@@ -786,7 +882,15 @@ void Reader::seekForward(size_t bytes)
 
 void Reader::seekTo(size_t bytes)
 {
-    if (m_in)
+    if (m_inRAM)
+    {
+        if (bytes > m_inRAMSize)
+        {
+            bytes = m_inRAMSize;
+        }
+        m_inRAMCurrentPos = bytes;
+    }
+    else if (m_in)
     {
 #ifdef HAVE_FULL_IOSTREAMS
         m_in->seekg(bytes, ios_base::beg);
@@ -804,7 +908,11 @@ void Reader::seekTo(size_t bytes)
 
 int Reader::tell()
 {
-    if (m_in)
+    if (m_inRAM)
+    {
+        return m_inRAMCurrentPos;
+    }
+    else if (m_in)
     {
         return m_in->tellg();
     }

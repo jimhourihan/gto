@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdexcept>
 
 #define GTO_DEBUG 0
 
@@ -166,14 +167,24 @@ Writer::endData()
 void
 Writer::intern(const char* s)
 {
-    assert(!m_tableFinished);
+    if (m_tableFinished)
+    {
+        throw std::runtime_error("Gto::Writer::intern(): Unable to intern "
+                                 "strings after string table is finished");
+    }
+
     m_strings[s] = 0;
 }
 
 void
 Writer::intern(const string& s)
 {
-    assert(!m_tableFinished);
+    if (m_tableFinished)
+    {
+        throw std::runtime_error("Gto::Writer::intern(): Unable to intern "
+                                 "strings after string table is finished");
+    }
+
     m_strings[s] = 0;
 }
 
@@ -224,7 +235,7 @@ Writer::lookup(const string& s) const
 std::string
 Writer::lookup(int n) const
 {
-    if (n >= m_names.size()) return "*bad-lookup*";
+    if (n < 0 || (size_t)n >= m_names.size()) return "*bad-lookup*";
     return m_names[n];
 }
 
@@ -331,9 +342,9 @@ Writer::constructStringTable()
 {
     intern( "(Gto::Writer compiled " __DATE__ 
             " " __TIME__ 
-            ", $Id: Writer.cpp,v 1.4 2007/01/18 19:25:58 mike Exp $)" );
+            ", $Id: Writer.cpp,v 1.5 2007/11/20 19:01:36 src Exp $)" );
 
-    for (int i=0; i < m_names.size(); i++)
+    for (size_t i=0; i < m_names.size(); i++)
     {
         intern(m_names[i]);
     }
@@ -359,19 +370,19 @@ Writer::constructStringTable()
     //  Find all the name ids for the header structs
     //
 
-    for (int o=0, c=0, p=0, n=0; o < m_objects.size(); o++)
+    for (size_t o=0, c=0, p=0, n=0; o < m_objects.size(); o++)
     {
         ObjectHeader &oh = m_objects[o];
         oh.name = m_strings[m_names[n++]];
         oh.protocolName = m_strings[m_names[n++]];
 
-        for (int i=0; i < oh.numComponents; i++, c++)
+        for (size_t i=0; i < oh.numComponents; i++, c++)
         {
             ComponentHeader &ch = m_components[c];
             ch.name = m_strings[m_names[n++]];
             ch.interpretation = m_strings[m_names[n++]];
 
-            for (int q=0; q < ch.numProperties; q++, p++)
+            for (size_t q=0; q < ch.numProperties; q++, p++)
             {
                 PropertyHeader &ph = m_properties[p];
                 ph.name = m_strings[m_names[n++]];
@@ -400,7 +411,7 @@ static bool gto_isalnum(const string& str)
 {
     bool allnumbers = true;
 
-    for (int i=0, s=str.size(); i < s; i++)
+    for (size_t i=0, s=str.size(); i < s; i++)
     {
         int c = str[i];
 
@@ -447,7 +458,7 @@ Writer::writeQuotedString(const string& str)
     writeFormatted("\"");
     static const char delim = '"';
 
-    for (int i=0; i < str.size(); i++)
+    for (size_t i=0; i < str.size(); i++)
     {
 	char c = str[i];
 
@@ -560,10 +571,6 @@ Writer::flush()
 void
 Writer::writeHead()
 {
-    assert(m_objects.size() > 0);
-    assert(m_components.size() > 0);
-    assert(m_properties.size() > 0);
-
     Header header;
     header.magic         = GTO_MAGIC;
     header.numObjects    = m_objects.size();
@@ -580,19 +587,19 @@ Writer::writeHead()
         write(i->first);
     }
 
-    for (int i=0; i < m_objects.size(); i++)
+    for (size_t i=0; i < m_objects.size(); i++)
     {
         ObjectHeader &o = m_objects[i];
         write(&o, sizeof(ObjectHeader));
     }
 
-    for (int i=0; i < m_components.size(); i++)
+    for (size_t i=0; i < m_components.size(); i++)
     {
         ComponentHeader &c = m_components[i];
         write(&c, sizeof(ComponentHeader));
     }
 
-    for (int i=0; i < m_properties.size(); i++)
+    for (size_t i=0; i < m_properties.size(); i++)
     {
         PropertyHeader &p = m_properties[i];
         write(&p, sizeof(PropertyHeader));
@@ -616,7 +623,7 @@ Writer::propertySanityCheck(const char *propertyName, int size, int width)
         return false;
     }
 
-    if (size > 0 && size != m_properties[p].size)
+    if (size > 0 && (size_t) size != m_properties[p].size)
     {
         std::cerr << "ERROR: Gto::Writer: propertyData expected data of size "
                   << m_properties[p].size << " but got data of size "
@@ -626,7 +633,7 @@ Writer::propertySanityCheck(const char *propertyName, int size, int width)
         return false;
     }
 
-    if (width > 0 && width != m_properties[p].width)
+    if (width > 0 && (size_t) width != m_properties[p].width)
     {
         std::cerr << "ERROR: Gto::Writer: propertyData expected data of width "
                   << m_properties[p].width << " but got data of width "
@@ -645,11 +652,11 @@ Writer::propertyDataRaw(const void* data,
                         int size, 
                         int width)
 {
-    size_t p = m_currentProperty++;
-    const PropertyHeader& info = m_properties[p];
-    size_t n = info.size * info.width;
-    size_t ds = dataSize(info.type);
-    char* bdata = (char*)data;
+    size_t                p     = m_currentProperty++;
+    const PropertyHeader& info  = m_properties[p];
+    size_t                n     = info.size * info.width;
+    size_t                ds    = dataSize(info.type);
+    char*                 bdata = (char*)data;
 
     if (propertySanityCheck(propertyName, size, width))
     {
@@ -697,13 +704,12 @@ Writer::propertyDataRaw(const void* data,
                 writeMaybeQuotedString(lookup(info.interpretation));
             }
 
-            writeText(" =");
+            writeText(" = ");
 
-            if (n == 0) writeText(" []");
+            if (n == 0) writeText("[ ]\n");
+            if (n > 1) writeText("[");
 
-            if (n > 1) writeText(" [");
-
-            for (int i = 0; i < n; i++)
+            for (size_t i = 0; i < n; i++)
             {
                 if (info.width > 1)
                 {
@@ -736,8 +742,9 @@ Writer::propertyDataRaw(const void* data,
                 }
             }
 
-            if (info.width > 1) writeText(" ]");
+            if (n > 0 && info.width > 1) writeText(" ]");
             if (n > 1) writeText(" ]");
+
             writeText("\n");
         }
         else
@@ -749,3 +756,7 @@ Writer::propertyDataRaw(const void* data,
 
 
 } // Gto
+
+#ifdef _MSC_VER
+#undef snprintf
+#endif

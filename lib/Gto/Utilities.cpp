@@ -71,7 +71,7 @@ typeName(Gto::DataType t)
 bool 
 isNumber(Gto::DataType t)
 {
-    return t != String;
+    return t != String && t != ErrorType;
 }
 
 Number 
@@ -108,6 +108,8 @@ asNumber(void* data, Gto::DataType t)
           n._int = int(*reinterpret_cast<unsigned char*>(data));
           n.type = Int;
           break;
+      default:
+          n.type = ErrorType;
     }
 
     return n;
