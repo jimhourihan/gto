@@ -10,8 +10,8 @@
 @end tex
 
 @ifinfo
-This file documents version 4.0 of the "GTO" File Format, Protocols,
-and Utilities.
+This file documents release version 3.4 of the "GTO" File Format,
+Protocols, and Utilities.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -42,7 +42,7 @@ notice identical to this one.
 @c  start the copyright page.
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 2002-2006 Tweak Films. All rights reserved.
+Copyright @copyright{} 2002-2007 Tweak Films. All rights reserved.
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
 are preserved on all copies.
@@ -64,7 +64,7 @@ notice identical to this one.
 This document describes the GTO file format, protocols, and
 utilities. 
 
-Copyright @copyright{} 2002-2006 Tweak Films. All rights reserved.
+Copyright @copyright{} 2002-2007 Tweak Films. All rights reserved.
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
 are preserved on all copies.
@@ -74,11 +74,11 @@ manual under the conditions for verbatim copying, provided that the entire
 resulting derived work is distributed under the terms of a permission
 notice identical to this one.
 
-This document applies to version 4.0 of the file format.
+This document applies to release version 3.4 of the file format.
 @end ifnottex
 
 @menu
-* Copying::                 GTO licensing terms.
+* Copying::                 GTO licensing terms (with Exceptions).
 * Installation::            Compiling and Installing.
 * Overview::                Uses for the GTO format.
 * Binary Format::           Layout of Binary Files.
@@ -100,7 +100,7 @@ This document applies to version 4.0 of the file format.
 @c ----------------------------------------------------------------------
      
 @node Copying, Installation, Top, Top
-@unnumbered GNU LESSER GENERAL PUBLIC LICENSE
+@unnumbered GNU LESSER GENERAL PUBLIC LICENSE and GTO EXCEPTIONS
 @center Version 2.1, February 1999
 
 @display
@@ -115,6 +115,42 @@ as the successor of the GNU Library Public License, version 2, hence
 the version number 2.1.]
 
 @end display
+
+@heading Exceptions to the LGPL for GTO (Nov 2007)
+
+The GTO library and included programs are provided under the terms of
+the GNU Library General Public License (LGPL) as put forth below with
+the following exceptions (derived from the FLTK LGPL exceptions):
+
+@enumerate 
+@item Modifications to the GTO configure script, config header file, and makefiles by
+themselves to support a specific platform do not constitute a modified
+or derivative work.
+   
+The authors do request that such modifications be contributed to the GTO
+project.
+   
+@item Static linking of applications or shared libraries to the GTO
+library does not constitute a derivative work and does not require the
+author to provide source code for the application or library, use the
+shared GTO libraries, or link their applications or shared library
+against a user-supplied version of GTO.
+   
+If you link the application or shared library to a modified version of
+GTO , then the changes to GTO must be provided under the terms of the
+LGPL in sections 1, 2, and 4.
+   
+@item You do not have to provide a copy of the GTO license with programs that are linked
+to the GTO library, nor do you have to identify the GTO license in your
+program or documentation as required by section 6 of the LGPL.
+   
+However, programs must still identify their use of GTO. The following
+example statement can be included in user documentation to satisfy this
+requirement:
+   
+[program/shared library] is based in part on the work of the GTO
+project.
+@end enumerate
 
 @heading Preamble
 
@@ -575,8 +611,6 @@ DAMAGES.
 @center		     END OF TERMS AND CONDITIONS
 
 @c ----------------------------------------------------------------------
-
-@c ----------------------------------------------------------------------
 @node Installation, Overview, Copying, Top
 @chapter Installation
 
@@ -606,7 +640,7 @@ Operating system specific instructions
 
 * Linux::                  GNU/Linux
 * OSX::                    Mac OS X
-* Windows::                Microsoft Windows 2000/XP
+* Windows::                Microsoft Windows 2000/XP/Vista
 @end menu
 
 @c ----------------------------------------------------------------------
@@ -617,7 +651,7 @@ The Maya plugin almost certainly requires a specific compiler for
 GNU/Linux installation with Maya 4.x or 3.x. On versions of Red Hat
 Linux 7.x the default compiler should be used; this should be gcc
 2.96. On later versions of Red Hat, 8.x and 9.x, you will need to
-install the following:
+install the following prior to Maya 7:
 
 @example 
     compat-gcc-7.3-2.96.110.i386.rpm
@@ -640,7 +674,11 @@ If you are using Maya 5.x you will need to use gcc 3.1 or greater to
 compile the plugin. In that case no compatibility rpms are
 necessary. Alias recommends using gcc 3.2.
 
-For Maya 6.x and 7.x use gcc 3.3.2 or a newer 3.3.
+For Maya 6.x, 7.x use gcc 3.3.2 or a newer 3.3.
+
+For Maya 8.x use gcc 4.0.2. You may need to compile your own version of
+the compiler even if the same version is shipped with the OS. See the
+Autodesk documentation regarding Maya 8.x plugins.
 
 If you are not using the Maya plugin, or you want to use the GTO
 library, but using a different compiler, you may need to run the build
@@ -672,16 +710,22 @@ that it would not compile.
 For Maya 6.x and greater, you can use the installed version of gcc
 since Maya is now a Mach-O binary.
 
+For Maya 8.x on Intel and PPC with 10.4.X use the installed gcc 4
+compiler and follow the instructions in the Maya developers
+docs. Compiling for Maya 8.x is much easier on OS X than with previous
+versions. Check for precompiled plugins for OS X intel at the tweak
+website. 
+
 @c ----------------------------------------------------------------------
 @node Windows,  , OSX, Installation
-@section Microsoft Windows 2000/XP
+@section Microsoft Windows 2000/XP/Vista
 
 In theory, you can compile the library and binary tools using the
 Cygwin environment and gcc 3.x but we have not tested it.
 
-Maya on Windows requires the use of Visual C++. This compiler does not
-come close to complying with the ANSI C++ standard and requires many
-work arounds to compile the GTO library and Maya plugin. Because of
+Maya on Windows 2000 requires the use of Visual C++ 6.x. This compiler
+does not come close to complying with the ANSI C++ standard and requires
+many work arounds to compile the GTO library and Maya plugin. Because of
 this, the library and tools are currently unsupported on Windows.
 
 Your mileage may vary for other Windows compilers.
@@ -698,15 +742,15 @@ polygonal meshes, various types of subdivision surfaces, NURBS or UBS
 surfaces, coordinate systems, hierarchies of objects, material
 bindings, and even images.
 
-In our facility -- Tweak Films -- geometric data in GTO files is rendered
-directly by entropy (a prman compatible rib renderer) and used for
-modeling and 3D paint. We also use the GTO format in place of the
+In our facility -- Tweak Films -- geometric data in GTO files is
+rendered directly by entropy (a prman compatible rib renderer) and used
+for modeling and 3D paint. We also use the GTO format in place of the
 venerable and yet nasty PDB file format for particles.
 
-As of GTO version 4.0, the format is being used for data not related
-to geometric data (especially pixel data) and animation curve data
-is now part of the format spec -- so that data is no longer ``static''
-as it has been in the past.
+As of GTO version 3.2, the format is being used for data not related to
+geometric data (e.g., pixel data) and animation curve data is now part
+of the format spec -- so that data is no longer ``static'' as it has
+been in the past.
 
 From a historic point of view, the GTO file format is most closely
 related to the original inventor file format, the Stanford PLY format
@@ -715,8 +759,8 @@ are a limited number of simple GTO data types (float, int, string,
 boolean). Like the inventor file format, a GTO can hold an entire
 transformation hierarchy including geometric leaf nodes. Like the PLY
 format, the GTO format can contain an arbitrary amount of data per
-primitive. Most importantly however, the GTO file format is intended
-to be very OBJ-like; its relatively easy to read and write and easy to
+primitive. Most importantly however, the GTO file format is intended to
+be very OBJ-like; its relatively easy to read and write and easy to
 ignore data you don't want or know about.
 
 GTO files can be either binary or text files. Binary files are the 
@@ -2768,8 +2812,8 @@ is expected to return a non-null pointer if it wishes to later receive
 data for that object.
 
 @deftypefn {Constructor} {} Reader::Reader (unsigned int @var{mode})
-The constructor @var{mode} indicates how the reader will be
-used. Possible values for mode are:
+The constructor argument @var{mode} indicates how the reader will be
+used. This value is a bit vector of the following or'ed flags:
 
 @table @strong
 @item Reader::None
@@ -2778,11 +2822,20 @@ reader will attempt to read all the data in the file. This is the
 default value (or 0).
 
 @item Reader::HeaderOnly
-The reader will stop once it has read the header sections of the GTO file. 
+The reader will stop once it has read the header sections of the GTO
+file. This is an optimization that applies to binary files only. This
+option is ignored when reading a text file.
 
 @item Reader::RandomAccess
 The reader will read the header sections but not the data, however, it
-will initialize for use of the @code{Reader::accessObject()} function.
+will initialize for use of the @code{Reader::accessObject()}
+function. Only binary GTO files can be read using the radom access mode.
+
+@item Reader::BinaryOnly
+Only binary GTO files will be accepte by reader.
+
+@item Reader::TextOnly
+Only text GTO files will be accepte by reader.
 
 @end table
     
@@ -2808,8 +2861,14 @@ Close the file and clean up temporary data. If the stream constructor
 was used, the stream is @emph{not} closed.
 @end deftypefn
 
+@deftypefn {Method} std::string& Reader::fail (std::string @var{why})
+Sets the error condition on the Reader and sets the human readable
+reason to @var{why}.
+@end deftypefn
+
 @deftypefn {Method} std::string& Reader::why ()
-Returns a human readable description of why the last error occured.
+Returns a human readable description of why the last error occured. (Set
+by the @code{fail()} function).
 @end deftypefn
 
 @deftypefn {Method} {const std::string&} Reader::stringFromId (unsigned int)
@@ -2826,6 +2885,52 @@ Returns true if the file being read needed to be swapped. This occurs
 if the machine the file was written on is a different sex than the
 machine reading the file (for example a Mac PPC written file read on
 an x86 GNU/Linux box).
+@end deftypefn
+
+@deftypefn {Method} {unsigned int} Reader::readMode () const
+Returns the mode value passed into the Reader constructor.
+@end deftypefn
+
+@deftypefn {Method} {const std::string&} Reader::infileName () const
+Returns the name of the file or stream being read. This is the value
+passed in to the @code{Reader::open()} function.
+@end deftypefn
+
+@deftypefn {Method} {std::istream*} Reader::in () const
+Return the input stream created by or passed into @code{Reader::open()}. If the GTO
+file is compressed binary, this function will return NULL.
+@end deftypefn
+
+@deftypefn {Method} {int} Reader::linenum () const
+For text GTO files, the return value will be the current line being
+parsed. For binary GTO files, the return value is always 0.
+@end deftypefn
+
+@deftypefn {Method} {int} Reader::charnum () const
+For text GTO files, the return value will be the current char column (in
+the current line) being parsed. For binary GTO files, the return value
+is always 0.
+@end deftypefn
+
+@deftypefn {Method} {Header&} Reader::fileHeader () const
+Returns a reference to a Gto::Header structure corresponding to the file
+currently being read. This function is required by the text file
+parser. The function may disappear from future versions. See the
+@code{Reader::header()} function below for a better way to get header information.
+@end deftypefn
+
+The following functions are called by the base class.
+
+@deftypefn {Virtual} {void} Reader::header (const Header& @var{header})
+This function is called by the Reader base class right after the file
+header has been read (or created).  
+@end deftypefn
+
+@deftypefn {Virtual} {void} Reader::descriptionComplete ()
+This function is called after all file, object, component, and
+property structures have been read. For binary files, this is
+just before the data is read. For text files, this is after the
+entire file has been read.
 @end deftypefn
 
 The following functions return a @code{Reader::Request} object. This
@@ -2988,17 +3093,25 @@ output stream.
 @end deftypefn
 
 @deftypefn {Destructor} {} Writer::~Writer ()
-Closes file opened with the open() function if still open. The
+Closes file opened with the @code{open()} function if still open. The
 destructor will not close any passed in output stream.
 @end deftypefn
 
-@deftypefn {Method} bool Writer::open (const char* @var{filename}, bool @var{compress} = true)
-Open the file. The Writer will attempt to open file @var{filename}.
-If the file is not writable for whatever reason, the function will
-return false. If @var{compress} is true (the default value), the
-Writer class will output a compressed file. The file can be
-uncompressed manually using @command{gzip}. Compression is available
+@deftypefn {Method} bool Writer::open (const char* @var{filename}, FileType @var{mode} = CompressedGTO)
+Open the file. The Writer will attempt to open file @var{filename}.  If
+the file is not writable for whatever reason, the function will return
+false. If @var{mode} is @code{CompressedGTO} (the default value), the
+Writer class will output a binary compressed file. If the value is
+@code{BinaryGTO} the file will be binary uncompressed. If @var{mode} is
+@code{TextGTO} a text GTO file will be written. Compressed GTO files can
+be uncompressed manually using @command{gzip}. Compression is available
 only if the library is compiled with zlib support.
+@end deftypefn
+
+@deftypefn {Method} bool Writer::open (const char* @var{filename}, bool @var{compress} = true)
+This function exists for backwards compatibility. Use the other
+@code{open()} function instead. This function can open a file for binary
+output only (it cannot write a text GTO file).
 @end deftypefn
 
 @deftypefn {Method} void Writer::close ()
@@ -3008,7 +3121,7 @@ was used, the stream is @emph{not} closed.
 
 @deftypefn {Method} {void} Writer::beginObject (const char* @var{name}, const char* @var{protocol}, unsigned int @var{version}) const
 Declares an object. Its components and properties must be declared
-before endObject() is called. The @var{name} is the name of the object
+before @code{endObject()} is called. The @var{name} is the name of the object
 as it will appear in the gto file. The @var{protocol} is the protocol
 string indicating how the object data will be interpreted and the
 @var{version} number indicates the protocol version. The Writer class
@@ -3025,9 +3138,10 @@ should be output transposed or one property at a time (the default).
 
 @deftypefn {Method} {void} Writer::property (const char* @var{name}, Gto::DataType @var{type}, size_t @var{numElements}, size_t @var{partsPerElement}=1, {const char*} @var{interpString}=0)
 Declare a property. The @var{name} is the name of the property as it
-appears in the gto file. The @var{type} is one of Gto::Double,
-Gto::Float, Gto::Int, Gto::String, Gto::Byte, Gto::Half, or
-Gto::Short. @var{numElements} indicates the number of elements of size
+appears in the gto file. The @var{type} is one of @code{Gto::Double},
+@code{Gto::Float}, @code{Gto::Int}, @code{Gto::String},
+@code{Gto::Byte}, @code{Gto::Half}, or
+@code{Gto::Short}. @var{numElements} indicates the number of elements of size
 @var{partsPerElement} that will be in the property data. So for
 example, if the property is declared as a Gto::Float of
 with @var{partsPerElement} of 3 and there 10 of them, then the writer
@@ -3037,25 +3151,25 @@ interpretation string that can be stored with the property.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::endComponent ()
-Closes the declaration of a component started by beginComponent().
+Closes the declaration of a component started by @code{beginComponent()}.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::endObject ()
-Closes the declaration of an object started by beginObject().
+Closes the declaration of an object started by @code{beginObject()}.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::intern (const char* @var{string})
 Declares a string to the Writer for inclusion in the file string
-table. When writing properties of type Gto::String, its necessary to
-call this function before the beginData() is called. Each string in
+table. When writing properties of type @code{Gto::String}, its necessary to
+call this function before the @code{beginData()} is called. Each string in
 the property data must be interned. When outputing the property, the
-property will be an array of Gto::Int in which each int is the result
-of the lookup() function which retrieves a unique int corresponding to
+property will be an array of @code{Gto::Int} in which each int is the result
+of the @code{lookup()} function which retrieves a unique int corresponding to
 interned strings. 
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::intern (const std::string& @var{string})
-Same as above, but takes an std::string.
+Same as above, but takes an @code{std::string}.
 @end deftypefn
 
 @deftypefn {Method} {int} Writer::lookup (const char* @var{string})
@@ -3064,41 +3178,42 @@ Retrieve the identifier of the previously interned string
 @end deftypefn
 
 @deftypefn {Method} {int} Writer::lookup (const std::string& @var{string})
-Same as above, but takes an std::string&.
+Same as above, but takes an @code{std::string&}.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::beginData ()
-Begins data declaration to the Writer class. Only calls to lookup(),
-propertyData(), propertyDataInContainer(), and endData() are legal
-after beginData() is called.
+Begins data declaration to the Writer class. Only calls to
+@code{lookup()}, @code{propertyData()}, @code{propertyDataInContainer()}, and
+@code{endData()} are legal after @code{beginData()} is called.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::propertyData (const TYPE* @var{type})
-propertyData() is a template function which takes a pointer to
+@code{propertyData()} is a template function which takes a pointer to
 continuously stored data. The data must be the same as declared
-earlier by the property() function. Calls to propertyData() and
-propertyDataInContainer() must appear in the same order as the
-property() declarations calls.
+earlier by the @code{property()} function. Calls to
+@code{propertyData()} and
+@code{propertyDataInContainer()} must appear in the same order as the
+@code{property()} declarations calls.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::propertyDataInContainer (const TYPE& @var{container})
-propertyDataInContainer() is a template function which takes an
-stl-like container as an argument. The data must be the same as
-declared earlier by the property() function. Calls to propertyData()
-and propertyDataInContainer() must appear in the same order as the
-property() declarations calls. This function is a convenience
+@code{propertyDataInContainer()} is a template function which takes an stl-like
+container as an argument. The data must be the same as declared earlier
+by the @code{property()} function. Calls to @code{propertyData()} and
+@code{propertyDataInContainer()} must appear in the same order as the
+@code{property()} declarations calls. This function is a convenience
 function; it calls propertyData() to actually output the data. This
 function may make a copy of the data in the container.
 @end deftypefn
 
 @deftypefn {Method} {void} Writer::endData ()
-Closes the definition of data started by beginData() and finishes
+Closes the definition of data started by @code{beginData()} and finishes
 writing the gto file.
 @end deftypefn
 
 @deftypefn {Method} {const Writer::Properties&} Writer::properties () const
 Returns a vector of previously declared properties; these are the
-result of calls to the property() function.
+result of calls to the @code{property()} function.
 @end deftypefn
 
 @c -------------------------------------------------------------------------
@@ -3147,9 +3262,9 @@ itself to declare objects in the file. The derived class is handed
 data or asked to return whether or not it is interested in specific
 properties in the file.
 
-The biggest difference from the C++ Reader class is that the data() method of
+The biggest difference from the C++ Reader class is that the @code{data()} method of
 the C++ class, which returns allocated memory for the library to read data
-into, cannot be overloaded in Python.  Instead, the dataRead() method of the
+into, cannot be overloaded in Python.  Instead, the @code{dataRead()} method of the
 Python gto.Reader class is handed pre-allocated Python objects containing the
 data.
 
@@ -3168,6 +3283,12 @@ The reader will stop once it has read the header sections of the GTO file.
 @item gto.Reader.RANDOMACCESS
 The reader will read the header sections but not the data, however, it
 will initialize for use of the @code{gto.Reader.accessObject()} method.
+
+@item gto.Reader.BINARYONLY
+The reader will only accept binary GTO files.
+
+@item gto.Reader.TEXTONLY
+The reader will only accept text GTO files.
 @end table
 
 @end deftypefn
@@ -3262,12 +3383,11 @@ with the information from the given object.
 Creates a new writer instance, no arguments needed.
 @end deftypefn
 
-@deftypefn {Method} {} gto.Writer.open (@var{filename}, @var{compression})
+@deftypefn {Method} {} gto.Writer.open (@var{filename}, @var{mode})
 Open the file. The Writer will attempt to open file 
 @var{filename}.  If the file is not writable for whatever reason, the
-function will raise a Python exception.  The @var{compression} argument can 
-be @emph{True} (the default) or @emph{False}.
-
+function will raise a Python exception.  The @var{mode} argument can 
+be @code{BINARYGTO}, @code{COMPRESSEDGTO} (the default) or @code{TEXTGTO}.
 @end deftypefn
 
 @deftypefn {Method} {} gto.Writer.close ( )
@@ -3731,8 +3851,8 @@ GTO files generated by other applications.
 
 The internal perfomance of Maya has changed between the 4.x and 5.0
 versions. In Maya 5.0, the Maya API is @emph{extremely} slow when
-importing polygonal normals.  Alias is aware of the problem, but a fix 
-has yet to be identified, so importing of normals is disabled in Maya 5.0.
+importing polygonal normals. Importing of normals is disabled in Maya
+5.0.
 
 @c -------------------------------------------------------------------------
 
@@ -4044,21 +4164,51 @@ Attribute "user" "float refToWorld[16]" [ @var{the matrix values} ]
 
 @itemize @bullet
 
-@item Version 4.0
+@item Version 3.4
+
+@itemize @bullet
+
+@item
+The GTO license terms have been changed: the code is still covered by
+the LGPL, but with additional @strong{exceptions} similar to those used
+by the FLTK library. These exceptions make it easier to use GTO in
+commercial projects.
+
+@item
+The library no longer attempts to be source code compatible with older
+Microsoft compilers. Some functions may throw on error.
+
+@item
+Bug fixes to the C++ Gto::Writer class for output of text GTO files.
+
+@item
+Run-time error checking of the Gto::Writer API. The class will complain
+if the API is used in a undocumented manner. It may throw an
+exception. 
+
+@item
+The GTO source code distribution now comes with Maya and Houdini plugins
+for cached deforming geometry and particle export and display.
+
+@end itemize
+
+@item Version 3.2
 
 @itemize @bullet
 @item
 Human readable plain text version of GTO. Some readers may not function if 
 they assume that the property size is known when the property() virtual 
 function is called. The property size is only really known when the data()
-virtual function is called.
+virtual function is called. Only version 3.2 GTO readers can read the
+text version.
 
 @item
 Animation curves are now stored per-object using the animation
 protocol.
 
 @item
-New GTV file format is a GTO derived movie file format.
+Bug fixes to Gto::Reader class to allow reuse of existing class with a
+newly opened file.
 
 @end itemize
 
