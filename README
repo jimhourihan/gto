@@ -96,10 +96,9 @@ later in this document is different and more involved than the above example.)
 
 2. License Brief
 
-    Please read and understand the copy of the LGPL license that should have
-been provided in the file COPYING with the source code. If you use this
-library in a product you are bound by the license to provide this source
-code for the library with your product. 
+    The GTO library and included programs are provided under the terms of
+the GNU Library General Public License (aka LGPL, see COPYING.LESSER) with
+the exceptions for static linking (see LICENSE for details).
 
     If you extend, repair, or invent a new protocol for the Gto format and
 would like it incorporated in our tree drop us a line at gto@tweakfilms.com.

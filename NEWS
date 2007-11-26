@@ -1,3 +1,24 @@
+* Version 3.4
+
+    o The GTO license terms have been changed: the code is still covered by
+      the LGPL, but with additional *exceptions* similar to those used by
+      the FLTK library. These exceptions make it easier to use GTO in
+      commercial projects. See LICENSE or the GTO documentation for
+      details.
+
+    o The library no longer attempts to be source code compatible with
+      older Microsoft compilers. Some functions may throw on error.
+
+    o Bug fixes to the C++ Gto::Writer class for output of text GTO files.
+
+    o Run-time error checking of the Gto::Writer API. The class will
+      complain if the API is used in a undocumented manner. It may throw an
+      exception.
+
+    o The GTO source code distribution now comes with Maya and Houdini
+      plugins for cached deforming geometry and particle export and
+      display.
+
 * Version 3.2
 
       o Added RiGtoPlugin and RiGtoRibOut to the distribution.  RiGtoPlugin
