@@ -17,8 +17,6 @@
 #*******************************************************************************
 # Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
 #*******************************************************************************
-
-#AUTOMAKE_OPTIONS = 1.7.5
 SHELL = @SHELL@
 
 srcdir = @srcdir@
@@ -72,54 +70,67 @@ EXEEXT = @EXEEXT@
 OBJEXT = @OBJEXT@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 AMTAR = @AMTAR@
+AR = @AR@
 AS = @AS@
 AWK = @AWK@
 CC = @CC@
 CXX = @CXX@
+CXXCPP = @CXXCPP@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
 ECHO = @ECHO@
+EGREP = @EGREP@
+F77 = @F77@
+GCJ = @GCJ@
+GCJFLAGS = @GCJFLAGS@
+HTMLGEN = @HTMLGEN@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 OBJDUMP = @OBJDUMP@
 PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
+RC = @RC@
 STRIP = @STRIP@
 VERSION = @VERSION@
 am__include = @am__include@
 am__quote = @am__quote@
 gto_maya_location = @gto_maya_location@
+gto_rman_location = @gto_rman_location@
 install_sh = @install_sh@
+rman_libs = @rman_libs@
 
 SUBDIRS = lib bin doc plugins
 
-EXTRA_DIST = examples/plane.gto				\
-             examples/cube.gto				\
-             plugins/python/setup.py			\
-             plugins/python/src/gtoHeader.cpp		\
-             plugins/python/src/gtoHeader.h		\
-             plugins/python/src/gtomodule.cpp		\
-             plugins/python/src/gtomodule.h		\
-             plugins/python/src/gtoReader.cpp		\
-             plugins/python/src/gtoReader.h		\
-             plugins/python/src/gtoWriter.cpp		\
-             plugins/python/src/gtoWriter.h		\
-             plugins/python/examples/example.py		\
-             plugins/python/examples/example2.py	\
-	     plugins/maya/GtoInDataBase.h		\
-	     plugins/maya/GtoInNURBS.h			\
-	     plugins/maya/GtoInObject.h			\
-	     plugins/maya/GtoInParticle.h		\
-	     plugins/maya/GtoInPoly.h			\
-	     plugins/maya/GtoInReader.h			\
-	     plugins/maya/GtoInSet.h			\
-	     plugins/maya/GtoInTransform.h		\
-	     plugins/maya/GtoIO.h			\
-	     plugins/maya/GtoOut.h			\
-	     plugins/maya/version.h 			\
-	     plugins/maya/gtoExportOptions.mel		\
-	     plugins/maya/gtoExportSet.mel
+EXTRA_DIST = examples/plane.gto                         \
+             examples/cube.gto                          \
+             python/gtoContainer/gtoContainer.py        \
+             python/gtoContainer/example.py             \
+             python/gtoContainer/gtomerge.py            \
+             plugins/python/setup.py                    \
+             plugins/python/src/gtoHeader.cpp           \
+             plugins/python/src/gtoHeader.h             \
+             plugins/python/src/gtomodule.cpp           \
+             plugins/python/src/gtomodule.h             \
+             plugins/python/src/gtoReader.cpp           \
+             plugins/python/src/gtoReader.h             \
+             plugins/python/src/gtoWriter.cpp           \
+             plugins/python/src/gtoWriter.h             \
+             plugins/python/examples/example.py         \
+             plugins/python/examples/example2.py        \
+             plugins/maya/GtoInDataBase.h               \
+             plugins/maya/GtoInNURBS.h                  \
+             plugins/maya/GtoInObject.h                 \
+             plugins/maya/GtoInParticle.h               \
+             plugins/maya/GtoInPoly.h                   \
+             plugins/maya/GtoInReader.h                 \
+             plugins/maya/GtoInSet.h                    \
+             plugins/maya/GtoInTransform.h              \
+             plugins/maya/GtoIO.h                       \
+             plugins/maya/GtoOut.h                      \
+             plugins/maya/version.h                     \
+             plugins/maya/gtoExportOptions.mel          \
+             plugins/maya/gtoExportSet.mel
 
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -278,7 +289,7 @@ distcleancheck_listfiles = find . -type f -print
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
 	mkdir $(distdir)
-	$(mkinstalldirs) $(distdir)/config $(distdir)/examples $(distdir)/plugins/maya $(distdir)/plugins/python $(distdir)/plugins/python/examples $(distdir)/plugins/python/src
+	$(mkinstalldirs) $(distdir)/config $(distdir)/examples $(distdir)/plugins/maya $(distdir)/plugins/python $(distdir)/plugins/python/examples $(distdir)/plugins/python/src $(distdir)/python/gtoContainer
 	@list='$(DISTFILES)'; for file in $$list; do \
 	  if test -f $$file || test -d $$file; then d=.; else d=$(srcdir); fi; \
 	  dir=`echo "$$file" | sed -e 's,/[^/]*$$,,'`; \
