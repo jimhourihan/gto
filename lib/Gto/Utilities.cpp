@@ -22,8 +22,7 @@
 #ifdef GTO_SUPPORT_ZIP
 #include <zlib.h>
 #endif
-/* AJG - this should already be here? */
-#ifdef HAVE_HALF
+#ifdef GTO_SUPPORT_HALF
 #include <half.h>
 #endif
 
@@ -35,7 +34,11 @@ static unsigned int Csizes[] =
     Int,        sizeof(int32),
     Float,      sizeof(float32),
     Double,     sizeof(float64),
+#ifdef GTO_SUPPORT_HALF
+    Half,       sizeof(half),
+#else
     Half,       sizeof(float32) / 2,
+#endif
     String,     sizeof(uint32),
     Boolean,    sizeof(uint8), 
     Short,      sizeof(uint16),
@@ -54,18 +57,17 @@ typeName(Gto::DataType t)
     switch (t)
     {
       case Float:   return "float";
-      case Boolean:   return "bool";
-      case Double:   return "double";
-      case Int:   return "int";
+      case Boolean: return "bool";
+      case Double:  return "double";
+      case Int:     return "int";
       case Short:   return "short";
-      case Byte:   return "byte";
-      case String:   return "string";
-      case Half:   return "half";
+      case Byte:    return "byte";
+      case String:  return "string";
+      case Half:    return "half";
       default:
-			assert(false);
-			/* AJG - needed a return value */
-			return "";
-	}
+          abort();
+          return "";
+    }
 }
 
 bool 
@@ -90,7 +92,7 @@ asNumber(void* data, Gto::DataType t)
           n._double = *reinterpret_cast<double*>(data);
           n.type = Float;
           break;
-#ifdef HAVE_HALF
+#ifdef GTO_SUPPORT_HALF
       case Half: 
           n._double = double(*reinterpret_cast<half*>(data));
           n.type = Float;

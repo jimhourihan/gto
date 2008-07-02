@@ -114,7 +114,7 @@ Or just drop us a line telling us you're using it.
        suspect that it could be made to work on OSX if we had the right 
        compiler...
 
-    2. Building the Maya 4.x plugin on Linux requires gcc 2.96, Maya 5.x
+    2. Building the Maya 4.x plugins on Linux requires gcc 2.96, Maya 5.x
        requires gcc 3.2 or higher.
     
     3. The Python module is known to work with Python 2.2.x on Linux and OSX.
@@ -133,3 +133,5 @@ Or just drop us a line telling us you're using it.
        with Entropy, and has been compiled (but not really tested) for 
        prman 11.1 on RedHat 7
 
+    6. The houdini ggto geo converter may require houdini 9 or better and
+       the SDK

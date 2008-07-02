@@ -1,0 +1,88 @@
+//******************************************************************************
+// Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
+//******************************************************************************
+
+global proc GtoParticleExportUI()
+{
+    select -hi;
+    string $sel[] = `selectedNodes`;
+    string $GPEparticleBuckets[];
+    int $numBuckets = 0;
+    for( $object in $sel )
+    {
+        if( nodeType( $object ) == "particle" )
+        {
+            $GPEparticleBuckets[$numBuckets] = $object;
+            $numBuckets += 1;
+        }
+        else
+        {
+            select -d $object;
+        }
+    }
+
+    if( size( $GPEparticleBuckets ) <= 0 )
+    {
+        confirmDialog -message "Error, you must select at least one particle bucket.";
+        return;
+    }
+
+    string $nodePath[];
+    $a = tokenize( $sel[0], "|", $nodePath );
+    string $nodeName =  $nodePath[$a-1];
+
+    if( ! `attributeQuery -node $nodeName -exists GPExportAttributes` )
+    {
+        addAttr -ln GPExportAttributes -dt "string" $nodeName;
+    }
+    string $GPExportAttributesAttr = $nodeName + ".GPExportAttributes";
+    string $GPExportAttributes = `getAttr $GPExportAttributesAttr`;
+
+    string $filePrefix = `file -q -rpr`;
+    int $startFrm = int(`playbackOptions -q -min`);
+    int $endFrm = int(`playbackOptions -q -max`);
+    string $projDir = `getenv "SHOT"`;
+    if( $projDir == "" )
+    {
+        $projDir = `pwd`;
+    }
+    string $filePattern = $projDir + "/gto/" + $filePrefix + "/" + $filePrefix + "_particles.#.gto";
+
+    string $msgprompt = "Export selected particle object(s) as '" + $filePattern + "' for frames " + $startFrm + " to " + $endFrm + "?";
+
+    $response = `confirmDialog -message $msgprompt -button "OK" -button "Cancel" -defaultButton "OK" -cancelButton "Cancel" -dismissString "Cancel"`;
+
+    if( $response == "OK" )
+    {
+        int $animStart = int(`playbackOptions -q -ast`);
+        currentTime -e $animStart;
+        string $op = $projDir + "/gto/" + $filePrefix;
+        if( ! `filetest -d $op` )
+        {
+            string $cmd = "mkdir " + $op;
+            system($cmd);
+        }
+
+        string $result = `promptDialog
+                    -title "Extra particle attributes"
+                    -message "Enter extra particle attributes to export, separated by spaces (id, position, and velocity are always exported):"
+                    -button "OK" -button "Cancel"
+                    -text $GPExportAttributes
+                    -defaultButton "OK" -cancelButton "Cancel"
+                    -dismissString "Cancel"`;
+
+        if( $result == "OK" )
+        {
+            $GPExportAttributes = `promptDialog -q`;
+            setAttr ($nodeName+".GPExportAttributes") -type "string" $GPExportAttributes;
+
+            string $command = "GtoParticleExport -atr position velocity id ";
+            $command += $GPExportAttributes;
+            $command += " -f \"" + $filePattern + "\"";
+            $command += " -mnf " + $startFrm;
+            $command += " -mxf " + $endFrm;
+
+            evalEcho( $command );
+        }
+    }
+}

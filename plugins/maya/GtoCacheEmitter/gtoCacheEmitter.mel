@@ -1,0 +1,76 @@
+
+global proc string gtoCacheEmitter(string $files)
+{
+    string $sel[] = `ls -dag -ap -sl -l -type particle`;
+    string $objs[];
+
+    if (size($sel) != 0)
+    {
+        $objs[1] = $sel[0];
+        string $parents[] = `listRelatives -p $objs[1]`;
+
+        $objs[0] = $parents[0];
+    }
+    else
+    {
+        $objs = `particle -name gtoParticles`;
+    }
+
+    string $name   = `createNode "GtoCacheEmitter" -name gtoCacheEmitter`;
+    string $gto    = $name + ".GtoBasePath";
+    string $mode   = $objs[1] + ".lifespanMode";
+
+    string $gtoinfo = "gtoinfo -d " 
+                    + $files
+                    + ".[0-9-][0-9][0-9][0-9].gto | awk '{ print $1, $2 }'";
+
+    string $buffer[];
+    string $rval = system($gtoinfo);
+    tokenize($rval, " \n[]", $buffer);
+
+    select $objs[1];
+
+    for ($i = 0; $i < size($buffer); $i+=3)
+    {
+        print($buffer[$i] + ", " + $buffer[$i+1] + ", " + $buffer[$i+2] + "\n");
+        string $type  = $buffer[$i];
+        int $width    = $buffer[$i+1];
+        string $lattr = $buffer[$i+2];
+
+        string $attrFields[];
+        tokenize($lattr, ".", $attrFields);
+
+        string $attrName = $attrFields[2];
+        string $compName = $attrFields[1];
+
+        if ($compName == "points")
+        {
+            if (!attributeExists($attrName, $objs[1]))
+            {
+                if ($type == "float")
+                {
+                    if ($width == 1)
+                    {
+                        addAttr -ln $attrName -dt "doubleArray";
+                    }
+                    else if ($width == 3)
+                    {
+                        addAttr -ln $attrName -dt "vectorArray";
+                    }
+                }
+
+                print("Added " + $attrName + " " + $type + "[" + $width + "]\n");
+            }
+        }
+    }
+    
+    connectDynamic -em $name $objs[1];
+    setAttr $gto -type "string" $files;
+    setAttr $mode 3;
+
+    string $out    = $objs[1] + ".visibility";
+    string $in     = $name + ".ownerParticles";
+    connectAttr $out $in;
+
+    return $name;
+}

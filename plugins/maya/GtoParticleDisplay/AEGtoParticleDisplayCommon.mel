@@ -1,0 +1,258 @@
+//******************************************************************************
+// Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
+//******************************************************************************
+
+// *****************************************************************************
+global proc int AEGPDassignMapBaseCB( string $fileAttribute,
+                                      string $filename,
+                                      string $fileType )
+{
+    //
+    // Description:
+    //  This procedure is called when the user changes the file name in
+    //  the edit box in the file attribute editor (whether by manually
+    //  typing it in, or by using the file browser to choose a new file).
+    //
+
+    string $tokenArray[];
+    int $numTokens = tokenize($filename, ".", $tokenArray);
+
+    string $path = "";
+    int $i;
+    for( $i = 0; $i < $numTokens-2; ++$i )
+    {
+        $path += $tokenArray[$i] + ".";
+    }
+    $path = substring($path,1,size($path)-1);
+    setAttr $fileAttribute -type "string" $path;
+
+    string $dir = dirname( $filename ) + "/";
+    string $filespec = basename( $path, "" ) + "*";
+
+    int $fs = 10000000;
+    int $fe = -10000000;
+
+    string $files[] = `getFileList -fld $dir -fs $filespec`;
+
+    for( $fname in $files )
+    {
+        string $fStr = match( "\\.([0-9])+\\.", $fname );
+        $fStr = substring( $fStr, 2, size($fStr)-1 );
+        int $f = int($fStr);
+
+        if( $f < $fs )
+        {
+            $fs = $f;
+        }
+        if( $f > $fe )
+        {
+            $fe = $f;
+        }
+    }
+
+    tokenize( $fileAttribute, ".", $tokenArray );
+    string $node = $tokenArray[0];
+    
+    setAttr ($node+".startFrame") $fs;
+    setAttr ($node+".endFrame") $fe;
+
+    string $currentDir = `workspace -q -dir`;
+    retainWorkingDirectory ($currentDir);
+
+    return true;
+}
+
+
+// *****************************************************************************
+global proc AEGPDMapBaseReplace (string $fileAttribute)
+{
+    connectControl -fileName mapBaseField $fileAttribute;
+
+    string $command = "AEGPDassignMapBaseCB "+" "+$fileAttribute;
+
+    button -e -c ("AEGPDMapBaseBrowser \"" + $command + "\"" ) browser;
+}
+
+// *****************************************************************************
+global proc AEGPDMapBaseBrowser( string $cmd )
+{
+    string  $workspace = `workspace -q -fn`;
+    setWorkingDirectory $workspace "image" "sourceImages";
+
+    fileBrowser ($cmd, "Open", "image", 0);
+}
+
+
+// *****************************************************************************
+global proc AEGPDMapBaseNew (string $fileAttribute)
+{
+    setUITemplate -pst attributeEditorTemplate;
+    rowLayout -nc 3 mapBaseLayout;
+            text -l "GTO Filename Base";
+            textField mapBaseField;
+                    symbolButton -image "navButtonBrowse.xpm" browser;
+    setParent ..;
+    setUITemplate -ppt;
+
+    AEGPDMapBaseReplace $fileAttribute;
+}
+
+// *****************************************************************************
+global proc AEGPDvelAttrSet( string $nodeAttr )
+{
+    string $attr = `optionMenu -q -v velocityAttrMenu`;
+    setAttr $nodeAttr -type "string" $attr;
+}
+
+// *****************************************************************************
+global proc AEGPDvelAttrNew( string $nodeAttr )
+{
+    setUITemplate -pst attributeEditorTemplate;
+    rowLayout -nc 2;
+        text -l "Velocity Attribute";
+        optionMenu -cc ("AEGPDvelAttrSet "+$nodeAttr) velocityAttrMenu;
+    setParent ..;
+    setUITemplate -ppt;
+
+    AEGPDvelAttrNewReplace $nodeAttr;
+}
+
+// *****************************************************************************
+global proc AEGPDvelAttrNewReplace( string $nodeAttr )
+{
+    string $items[] = `optionMenu -q -itemListLong velocityAttrMenu`;
+    for( $i in $items )
+    {
+        deleteUI $i;
+    }
+
+    string $node = `match "^[^\.]*" $nodeAttr`;
+    string $velAttrs = `getAttr ($node+".velNames")`;
+    string $velAttr = `getAttr $nodeAttr`;
+
+    string $options[];
+    tokenize( $velAttrs, ":", $options );
+    
+    for( $o in $options )
+    {
+        menuItem -l $o 
+                 -p velocityAttrMenu;
+        if( $o == $velAttr )
+        {
+            optionMenu -e -v $velAttr velocityAttrMenu;
+        }
+    }
+    print $nodeAttr;
+}
+
+// *****************************************************************************
+global proc AEGPDobjAttrSet( string $nodeAttr )
+{
+    string $attr = `optionMenu -q -v objAttrMenu`;
+    setAttr $nodeAttr -type "string" $attr;
+}
+
+// *****************************************************************************
+global proc AEGPDobjAttrNew( string $nodeAttr )
+{
+    setUITemplate -pst attributeEditorTemplate;
+    rowLayout -nc 2;
+        text -l "Particle Object";
+        optionMenu -cc ("AEGPDobjAttrSet "+$nodeAttr) objAttrMenu;
+    setParent ..;
+    setUITemplate -ppt;
+
+    AEGPDobjAttrNewReplace $nodeAttr;
+}
+
+// *****************************************************************************
+global proc AEGPDobjAttrNewReplace( string $nodeAttr )
+{
+    string $items[] = `optionMenu -q -itemListLong objAttrMenu`;
+    for( $i in $items )
+    {
+        deleteUI $i;
+    }
+
+    string $node = `match "^[^\.]*" $nodeAttr`;
+    string $objAttrs = `getAttr ($node+".objNames")`;
+    string $objAttr = `getAttr $nodeAttr`;
+
+    string $options[];
+    tokenize( $objAttrs, ":", $options );
+    
+    for( $o in $options )
+    {
+        menuItem -l $o 
+                 -p objAttrMenu;
+        if( $o == $objAttr )
+        {
+            optionMenu -e -v $objAttr objAttrMenu;
+        }
+    }
+}
+
+// *****************************************************************************
+global proc AEGtoParticleDisplayCommon ( string $nodeName )
+{
+    editorTemplate -callCustom "AEGPDMapBaseNew"
+                               "AEGPDMapBaseReplace"
+                               "gtoBase";
+
+    editorTemplate -addControl "startFrame";
+    editorTemplate -addControl "endFrame";
+    editorTemplate -addControl "frameOffset";
+    editorTemplate -addControl "frame";
+    editorTemplate -label "Display Particles" -addControl "displayParts";
+    editorTemplate -label "Show Particle Id" -addControl "displayId";
+    editorTemplate -addControl "skipProb";
+    editorTemplate -addControl "displayPointSize";
+    editorTemplate -addControl "displayVelScale";
+
+
+    editorTemplate -callCustom "AEGPDobjAttrNew"
+                               "AEGPDobjAttrNewReplace"
+                               "gtoParticleObject";
+    editorTemplate -callCustom "AEGPDvelAttrNew"
+                               "AEGPDvelAttrNewReplace"
+                               "displayVelAttr";
+
+    editorTemplate -addControl "particleCount";
+    editorTemplate -dimControl $nodeName "particleCount" true;
+
+    editorTemplate -suppress "gtoBase";
+    editorTemplate -suppress "gtoParticleObject";
+    editorTemplate -suppress "displayVelAttr";
+    editorTemplate -suppress "objNames";
+    editorTemplate -suppress "velNames";
+    editorTemplate -suppress "localPosition";
+
+    editorTemplate -beginNoOptimize;
+    editorTemplate -suppress "compInstObjGroups";
+    editorTemplate -suppress "ignoreSelfShadowing";
+    editorTemplate -suppress "castsShadows";
+    editorTemplate -suppress "receiveShadows";
+    editorTemplate -suppress "motionBlur";
+    editorTemplate -suppress "primaryVisibility";
+    editorTemplate -suppress "visibleInReflections";
+    editorTemplate -suppress "visibleInRefractions";
+    editorTemplate -suppress "doubleSided";
+    editorTemplate -suppress "opposite";
+    editorTemplate -suppress "geometryAntialiasingOverride";
+    editorTemplate -suppress "antialiasingLevel";
+    editorTemplate -suppress "shadingSamplesOverride";
+    editorTemplate -suppress "shadingSamples";
+    editorTemplate -suppress "maxShadingSamples";
+    editorTemplate -suppress "volumeSamplesOverride";
+    editorTemplate -suppress "volumeSamples";
+    editorTemplate -suppress "depthJitter";
+    editorTemplate -suppress "maxVisibilitySamplesOverride";
+    editorTemplate -suppress "maxVisibilitySamples";
+    editorTemplate -suppress "boundingBoxScale";
+    editorTemplate -suppress "featureDisplacement";
+    editorTemplate -suppress "initialSampleRate";
+    editorTemplate -suppress "extraSampleRate";
+    editorTemplate -suppress "textureThreshold";
+    editorTemplate -suppress "normalThreshold";
+    editorTemplate -endNoOptimize;
+}

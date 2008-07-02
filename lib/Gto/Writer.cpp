@@ -50,7 +50,11 @@ Writer::Writer()
       m_error(false),
       m_tableFinished(false),
       m_currentProperty(0),
-      m_type(CompressedGTO)
+      m_type(CompressedGTO),
+      m_endDataCalled(false),
+      m_beginDataCalled(false),
+      m_objectActive(false),
+      m_componentActive(false)
 {
     init(0);
 }
@@ -62,7 +66,11 @@ Writer::Writer(ostream &o)
       m_error(false), 
       m_tableFinished(false),
       m_currentProperty(0),
-      m_type(CompressedGTO)
+      m_type(CompressedGTO),
+      m_endDataCalled(false),
+      m_beginDataCalled(false),
+      m_objectActive(false),
+      m_componentActive(false)
 {
     init(&o);
 }
@@ -92,7 +100,14 @@ Writer::open(const char* filename, FileType type)
 
     if (type == BinaryGTO || type == TextGTO)
     {
-        m_out = new ofstream(filename, ios::out|ios::binary);
+        if (type == BinaryGTO)
+        {
+            m_out = new ofstream(filename, ios::out|ios::binary);
+        }
+        else
+        {
+            m_out = new ofstream(filename, ios::out);
+        }
 
         if (!(*m_out))
         {
@@ -123,6 +138,19 @@ Writer::open(const char* filename, FileType type)
 void
 Writer::close()
 {
+    if (m_beginDataCalled && !m_endDataCalled) 
+    {
+        //
+        //  Should this be an error? We can gracefully finish like
+        //  this, but its not how you're supposed to use the class.
+        //
+
+        cout << "WARNING: Gto::Writer::close() -- you forgot to call endData()"
+             << endl;
+
+        endData();
+    }
+
     if (m_out && m_needsClosing)
     {
         delete m_out;
@@ -153,6 +181,8 @@ Writer::beginData()
     {
         writeHead();
     }
+
+    m_beginDataCalled = true;
 }
 
 void
@@ -162,6 +192,8 @@ Writer::endData()
     {
         writeText("    }\n}\n");
     }
+
+    m_endDataCalled = true;
 }
 
 void
@@ -244,6 +276,18 @@ Writer::beginObject(const char* name,
                     const char *protocol, 
                     unsigned int version)
 {
+    if (m_objectActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::beginObject() -- "
+                                 "you forgot to call endObject()");
+    }
+
+    if (m_componentActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::beginObject() -- "
+                                 "beginComponent() still active");
+    }
+
     m_names.push_back(name);
     m_names.push_back(protocol);
 
@@ -255,11 +299,24 @@ Writer::beginObject(const char* name,
     header.protocolVersion = version;
 
     m_objects.push_back(header);
+    m_objectActive = true;
 }
 
 void
 Writer::beginComponent(const char* name, unsigned int flags)
 {
+    if (!m_objectActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::beginComponent() -- "
+                                 "you forgot to call beginObject()");
+    }
+
+    if (m_componentActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::beginComponent() -- "
+                                 "you forgot to call endComponent()");
+    }
+
     m_names.push_back(name);
     m_objects.back().numComponents++;
     ComponentHeader header;
@@ -274,6 +331,7 @@ Writer::beginComponent(const char* name, unsigned int flags)
     header.interpretation = m_names.size() - 1;
 
     m_components.push_back(header);
+    m_componentActive = true;
 }
 
 void
@@ -281,6 +339,18 @@ Writer::beginComponent(const char* name,
                        const char* interp,
                        unsigned int flags)
 {
+    if (!m_objectActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::beginComponent() -- "
+                                 "you forgot to call beginObject()");
+    }
+
+    if (m_componentActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::beginComponent() -- "
+                                 "you forgot to call endComponent()");
+    }
+
     m_names.push_back(name);
     m_objects.back().numComponents++;
     ComponentHeader header;
@@ -296,16 +366,19 @@ Writer::beginComponent(const char* name,
     header.interpretation = m_names.size() - 1;
 
     m_components.push_back(header);
+    m_componentActive = true;
 }
 
 void
 Writer::endComponent()
 {
+    m_componentActive = false;
 }
 
 void
 Writer::endObject()
 {
+    m_objectActive = false;
 }
 
 void
@@ -315,6 +388,12 @@ Writer::property(const char* name,
                  size_t partsPerElement,
                  const char *interp)
 {
+    if (!m_objectActive || !m_componentActive)
+    {
+        throw std::runtime_error("ERROR: Gto::Writer::property() -- "
+                                 "no active component or object");
+    }
+
     m_names.push_back(name);
     m_components.back().numProperties++;
 
@@ -331,9 +410,13 @@ Writer::property(const char* name,
     header.interpretation = m_names.size() - 1;
 
     m_properties.push_back(header);
-    PropertyPath ppath(m_objects.size() - 1,
-                       m_components.size() - 1);
-    m_propertyMap[m_properties.size() - 1] = ppath;
+
+    if (m_type == TextGTO)
+    {
+        PropertyPath ppath(m_objects.size() - 1,
+                           m_components.size() - 1);
+        m_propertyMap[m_properties.size() - 1] = ppath;
+    }
 }
 
 
@@ -342,7 +425,7 @@ Writer::constructStringTable()
 {
     intern( "(Gto::Writer compiled " __DATE__ 
             " " __TIME__ 
-            ", $Id: Writer.cpp,v 1.5 2007/11/20 19:01:36 src Exp $)" );
+            ", $Id: Writer.cpp,v 1.37 2008/04/11 23:25:24 src Exp $)" );
 
     for (size_t i=0; i < m_names.size(); i++)
     {
@@ -522,8 +605,8 @@ Writer::writeFormatted(const char* format, ...)
     va_list ap;
     va_start(ap, format);
     char* m;
-	/* AJG - windows vsnprintf hacko */
-	m = (char*)(malloc(1024*10*sizeof(char)));
+    /* AJG - windows vsnprintf hacko */
+    m = (char*)(malloc(1024*10*sizeof(char)));
     // vasprintf(&m, format, ap);
     vsprintf(m, format, ap);
     write(m, strlen(m));
@@ -652,6 +735,8 @@ Writer::propertyDataRaw(const void* data,
                         int size, 
                         int width)
 {
+    if (!m_beginDataCalled) beginData();
+
     size_t                p     = m_currentProperty++;
     const PropertyHeader& info  = m_properties[p];
     size_t                n     = info.size * info.width;
@@ -704,10 +789,10 @@ Writer::propertyDataRaw(const void* data,
                 writeMaybeQuotedString(lookup(info.interpretation));
             }
 
-            writeText(" = ");
+            writeText(" =");
 
-            if (n == 0) writeText("[ ]\n");
-            if (n > 1) writeText("[");
+            if (n == 0) writeText(" [ ]");
+            if (n > 1) writeText(" [");
 
             for (size_t i = 0; i < n; i++)
             {

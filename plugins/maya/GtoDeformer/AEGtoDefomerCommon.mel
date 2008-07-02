@@ -1,0 +1,224 @@
+//******************************************************************************
+// Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
+//******************************************************************************
+
+// *****************************************************************************
+global proc int AEGACassignMapBaseCB( string $fileAttribute,
+                                      string $filename,
+                                      string $fileType )
+{
+    //
+    // Description:
+    //  This procedure is called when the user changes the file name in
+    //  the edit box in the file attribute editor (whether by manually
+    //  typing it in, or by using the file browser to choose a new file).
+    //
+
+    string $tokenArray[];
+    int $numTokens = tokenize($filename, ".", $tokenArray);
+
+    string $path = "";
+    int $i;
+    for( $i = 0; $i < $numTokens-2; ++$i )
+    {
+        $path += $tokenArray[$i] + ".";
+    }
+    $path = substring($path,1,size($path)-1);
+    setAttr $fileAttribute -type "string" $path;
+
+    string $dir = dirname( $filename ) + "/";
+    string $filespec = basename( $path, "" ) + "*";
+
+    int $fs = 10000000;
+    int $fe = -10000000;
+
+    string $files[] = `getFileList -fld $dir -fs $filespec`;
+
+    for( $fname in $files )
+    {
+        string $fStr = match( "\\.([0-9])+\\.", $fname );
+        $fStr = substring( $fStr, 2, size($fStr)-1 );
+        int $f = int($fStr);
+
+        if( $f < $fs )
+        {
+            $fs = $f;
+        }
+        if( $f > $fe )
+        {
+            $fe = $f;
+        }
+    }
+
+    tokenize( $fileAttribute, ".", $tokenArray );
+    string $node = $tokenArray[0];
+    
+    setAttr ($node+".gtoStartFrame") $fs;
+    setAttr ($node+".gtoEndFrame") $fe;
+
+    print $fs ;
+    print $fe ;
+
+    string $currentDir = `workspace -q -dir`;
+    retainWorkingDirectory ($currentDir);
+
+    return true;
+}
+
+
+// *****************************************************************************
+global proc AEGACMapBaseReplace (string $fileAttribute)
+{
+    connectControl -fileName mapBaseField $fileAttribute;
+
+    string $command = "AEGACassignMapBaseCB "+" "+$fileAttribute;
+
+    button -e -c ("AEGACMapBaseBrowser \"" + $command + "\"" ) browser;
+}
+
+// *****************************************************************************
+global proc AEGACMapBaseBrowser( string $cmd )
+{
+    string  $workspace = `workspace -q -fn`;
+    setWorkingDirectory $workspace "image" "sourceImages";
+
+    fileBrowser ($cmd, "Open", "image", 0);
+}
+
+
+// *****************************************************************************
+global proc AEGACMapBaseNew (string $fileAttribute)
+{
+    setUITemplate -pst attributeEditorTemplate;
+    rowLayout -nc 3 mapBaseLayout;
+            text -l "GTO Filename Base";
+            textField mapBaseField;
+                    symbolButton -image "navButtonBrowse.xpm" browser;
+    setParent ..;
+    setUITemplate -ppt;
+
+    AEGACMapBaseReplace $fileAttribute;
+}
+
+// *****************************************************************************
+global proc AEGACvelAttrSet( string $nodeAttr )
+{
+    string $attr = `optionMenu -q -v velocityAttrMenu`;
+    setAttr $nodeAttr -type "string" $attr;
+}
+
+// *****************************************************************************
+global proc AEGACvelAttrNew( string $nodeAttr )
+{
+    setUITemplate -pst attributeEditorTemplate;
+    rowLayout -nc 2;
+        text -l "Velocity Attribute";
+        optionMenu -cc ("AEGACvelAttrSet "+$nodeAttr) velocityAttrMenu;
+    setParent ..;
+    setUITemplate -ppt;
+
+    AEGACvelAttrNewReplace $nodeAttr;
+}
+
+// *****************************************************************************
+global proc AEGACvelAttrNewReplace( string $nodeAttr )
+{
+    string $items[] = `optionMenu -q -itemListLong velocityAttrMenu`;
+    for( $i in $items )
+    {
+        deleteUI $i;
+    }
+
+    string $node = `match "^[^\.]*" $nodeAttr`;
+    string $velAttrs = `getAttr ($node+".velNames")`;
+    string $velAttr = `getAttr $nodeAttr`;
+
+    string $options[];
+    tokenize( $velAttrs, ":", $options );
+    
+    for( $o in $options )
+    {
+        menuItem -l $o 
+                 -p velocityAttrMenu;
+        if( $o == $velAttr )
+        {
+            optionMenu -e -v $velAttr velocityAttrMenu;
+        }
+    }
+    print $nodeAttr;
+}
+
+// *****************************************************************************
+global proc AEGACobjAttrSet( string $nodeAttr )
+{
+    string $attr = `optionMenu -q -v objAttrMenu`;
+    setAttr $nodeAttr -type "string" $attr;
+}
+
+// *****************************************************************************
+global proc AEGACobjAttrNew( string $nodeAttr )
+{
+    setUITemplate -pst attributeEditorTemplate;
+    rowLayout -nc 2;
+        text -l "Particle Object";
+        optionMenu -cc ("AEGACobjAttrSet "+$nodeAttr) objAttrMenu;
+    setParent ..;
+    setUITemplate -ppt;
+
+    AEGACobjAttrNewReplace $nodeAttr;
+}
+
+// *****************************************************************************
+global proc AEGACobjAttrNewReplace( string $nodeAttr )
+{
+    string $items[] = `optionMenu -q -itemListLong objAttrMenu`;
+    for( $i in $items )
+    {
+        deleteUI $i;
+    }
+
+    string $node = `match "^[^\.]*" $nodeAttr`;
+    string $objAttrs = `getAttr ($node+".objNames")`;
+    string $objAttr = `getAttr $nodeAttr`;
+
+    string $options[];
+    tokenize( $objAttrs, ":", $options );
+    
+    for( $o in $options )
+    {
+        menuItem -l $o 
+                 -p objAttrMenu;
+        if( $o == $objAttr )
+        {
+            optionMenu -e -v $objAttr objAttrMenu;
+        }
+    }
+}
+
+// *****************************************************************************
+global proc AEGtoDeformerCommon ( string $nodeName )
+{
+    // Addition
+    editorTemplate -callCustom "AEGACMapBaseNew"
+                               "AEGACMapBaseReplace"
+                               "gtoBase";
+
+    editorTemplate -addControl "gtoStartFrame";
+    editorTemplate -addControl "gtoEndFrame";
+
+    editorTemplate -addControl "time";
+
+    editorTemplate -addControl "useCache";
+    editorTemplate -addControl "silent";
+
+    // Suppression
+    editorTemplate -suppress "gtoBase";
+    
+    editorTemplate -suppress "gtoStartFrame";
+    editorTemplate -suppress "gtoEndFrame";
+    
+    editorTemplate -suppress "time";
+
+    editorTemplate -suppress "useCache";
+    editorTemplate -suppress "silent";
+}

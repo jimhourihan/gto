@@ -1,0 +1,31 @@
+
+global proc applyGtoDeformer()
+{
+    //
+    // Select only the shape object
+    //
+    $selected = `ls -sl`;
+    $selectedChildren = `listRelatives -s`;
+    
+    if (size($selectedChildren) > 0)
+    {
+        $selected = $selectedChildren;
+    }
+    
+    if (size($selected) <= 0)
+    {
+        error("NO SHAPE SELECTED!\n");
+    }
+
+    //
+    // Apply the deformer, hook up the time, show attribute editor
+    //    
+    
+    $result = `deformer -type GtoDeformer`;
+
+    $gtoDeformerTime = $result[0] + ".time";
+    connectAttr time1.outTime $gtoDeformerTime;
+    
+    select $result[1];
+    ShowAttributeEditorOrChannelBox;
+}

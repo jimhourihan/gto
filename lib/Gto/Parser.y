@@ -34,6 +34,10 @@
 #include "Utilities.h"
 #include <stdarg.h>
 
+#ifdef GTO_SUPPORT_HALF
+#include <half.h>
+#endif
+
 int  yylex(void*, void*);
 void GTOParseError(void*, const char *,...);
 void GTOParseWarning(void*, const char *,...);
@@ -77,9 +81,9 @@ void GTOParseWarning(void*, const char *,...);
 %type <_double> float_num
 %type <_int>    int_num
 %type <_number> numeric_value
-%type <_uint>    numeric_value_list;
-%type <_uint>    atomic_value_list;
-%type <_uint>    string_value_list;
+%type <_uint>   numeric_value_list;
+%type <_uint>   atomic_value_list;
+%type <_uint>   string_value_list;
 %type <_int>    string_value;
 %type <_token>  complex_element_list
 
@@ -350,6 +354,25 @@ numeric_value:
               READER->addToPropertyBuffer(float($1));
               break;
 
+          case Gto::Double:
+              $$.type = Gto::Double;
+              $$._double = $1;
+              READER->addToPropertyBuffer(double($1));
+              break;
+
+#ifdef GTO_SUPPORT_HALF
+          case Gto::Half:
+              $$.type = Gto::Half;
+              $$._double = $1;
+              READER->addToPropertyBuffer(half($1));
+              break;
+#else
+          case Gto::Half:
+              GTOParseError(state, "numeric type '%s' is currently unsupported "
+                            "by the parser", typeName(t));
+              YYERROR;
+#endif
+
           case Gto::Short:
               if ($1 != short($1))
               {
@@ -379,14 +402,6 @@ numeric_value:
           case Gto::String:
               GTOParseError(state, "string expected; got a floating "
                             "point number (%f) instead", $1);
-              YYERROR;
-              break;
-
-          case Gto::Double:
-          case Gto::Half:
-          case Gto::Boolean:
-              GTOParseError(state, "numeric type '%s' is currently unsupported "
-                            "by the parser", typeName(t));
               YYERROR;
               break;
 
@@ -423,6 +438,34 @@ numeric_value:
               READER->addToPropertyBuffer(float($1));
               break;
 
+          case Gto::Double:
+              if ($1 != double($1))
+              {
+                  GTOParseWarning(state, "integer cannot be represented "
+                                  "as double (%d => %f)",
+                                  $1, double($1));
+              }
+              
+              $$.type = Gto::Double;
+              $$._double = $1;
+              READER->addToPropertyBuffer(double($1));
+              break;
+
+#ifdef GTO_SUPPORT_HALF
+          case Gto::Half:
+              if ($1 != half($1))
+              {
+                  GTOParseWarning(state, "integer cannot be represented "
+                                  "as half (%d => %f)",
+                                  $1, float($1));
+              }
+              
+              $$.type = Gto::Half;
+              $$._double = $1;
+              READER->addToPropertyBuffer(half($1));
+              break;
+#endif
+
           case Gto::Short:
               if ($1 != short($1))
               {
@@ -455,8 +498,6 @@ numeric_value:
               YYERROR;
               break;
 
-          case Gto::Double:
-          case Gto::Half:
           case Gto::Boolean:
               GTOParseError(state, "numeric type '%s' is currently unsupported "
                             "by the parser", typeName(t));

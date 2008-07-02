@@ -305,8 +305,8 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
 
     if (props.size())
     {
-        m_writer.beginComponent(component->name.c_str(),
-                                component->interp.c_str());
+        if (header) m_writer.beginComponent(component->name.c_str(),
+                                            component->interp.c_str());
 
         for (size_t i=0; i < props.size(); i++)
         {
@@ -316,7 +316,7 @@ RawDataBaseWriter::writeComponent(bool header, const Component *component)
             }
         }
 
-        m_writer.endComponent();
+        if (header) m_writer.endComponent();
     }
 }
 

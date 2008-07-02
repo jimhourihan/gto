@@ -1,0 +1,18 @@
+//******************************************************************************
+// Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
+//******************************************************************************
+
+global proc AEGtoParticleDisplayTemplate( string $nodeName )
+{
+    editorTemplate -beginScrollLayout;
+
+        editorTemplate -beginLayout "Gto Particle Display Attributes" 
+                       -collapse 0;
+            AEGtoParticleDisplayCommon $nodeName;
+        editorTemplate -endLayout;
+
+        AEGtoParticleDisplayInclude $nodeName;
+
+    editorTemplate -addExtraControls;
+    editorTemplate -endScrollLayout;
+}

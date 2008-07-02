@@ -213,12 +213,16 @@ private:
     PropertyMap     m_propertyMap;
     StringVector    m_names;
     StringMap       m_strings;
-    bool            m_needsClosing;
-    bool            m_error;
-    bool            m_tableFinished;
     std::string     m_outName;
     size_t          m_currentProperty;
     FileType        m_type;
+    bool            m_needsClosing      : 1;
+    bool            m_error             : 1;
+    bool            m_tableFinished     : 1;
+    bool            m_endDataCalled     : 1;
+    bool            m_beginDataCalled   : 1;
+    bool            m_objectActive      : 1;
+    bool            m_componentActive   : 1;
 };
 
 template<typename T>

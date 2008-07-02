@@ -783,7 +783,8 @@ Reader::read(char *buffer, size_t size)
     {
         char *buffer_pos = buffer;
         size_t remaining = size;
-        while (true)
+        //while (true)
+        while (remaining != 0)
         {
             int retval = gzread(m_gzfile, buffer_pos, remaining);
             if (retval <= 0)
@@ -794,6 +795,7 @@ Reader::read(char *buffer, size_t size)
                 std::cerr << std::endl;
                 memset( buffer, 0, size );
                 fail( "gzread fail" );
+                break;
             }
             remaining  -= retval;
             buffer_pos += retval;

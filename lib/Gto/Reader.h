@@ -27,6 +27,12 @@
 #include <vector>
 #include <list>
 
+#if defined(None) && defined(X_H)
+// WARNING: You included X.h which defines None
+// so we're going to undef it here
+#undef None
+#endif
+
 class GTOFlexLexer;
 
 namespace Gto {
