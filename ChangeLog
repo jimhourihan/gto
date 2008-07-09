@@ -1,4 +1,4 @@
-2004-06-21  Mike Root  <mike@tweakfilms.com>
+2004-06-21  Mike Root  
 
 	* Added RiGtoPlugin and RiGtoRibOut to the distribution.  See NEWS
 	and the full documentation for details.
@@ -8,7 +8,7 @@
 
 	* Added the ability to export NURBS Curves in GtoIO (import coming soon)
 
-2004-06-04  Mike Root  <mike@tweakfilms.com>
+2004-06-04  Mike Root  
 
 	* Added random object access capabilities to Python gto module
 
@@ -21,12 +21,12 @@
 
 	* Updated inherited constructor call in Gto::RawDataBaseReader
 
-2004-05-24  Mike Root  <mike@tweakfilms.com>
+2004-05-24  Mike Root  
 
 	* Added a fail() method to Reader, to allow external code to stop the
 	reader if there is an error unrelated to the gto file itself.
 
-2004-05-21  Jim Hourihan  <jimh@tweakfilms.com>
+2004-05-21  Jim Hourihan  
 
 	* gto.texi: version 3
 
@@ -47,7 +47,7 @@
 	* Header.h: new structs for property, component headers. Version 2
 	structs are renamed.
 
-2003-09-11  Jim Hourihan  <jimh@tweakfilms.com>
+2003-09-11  Jim Hourihan  
 
 	* RawData.h (class RawDataBaseReader): converted for use with new
 	Reader API.
@@ -58,29 +58,29 @@
 	(accessObject): new function allows random object access once the
 	headers have been read.
 
-2003-09-01  Jim Hourihan  <jimh@tweakfilms.com>
+2003-09-01  Jim Hourihan  
 
 	* Reader.h (class Reader): added m_why to indicate why an error
 	occured. 
 
-2003-08-28  Jim Hourihan  <jimh@tweakfilms.com>
+2003-08-28  Jim Hourihan  
 
 	* EXTProtocols.h (GTO_EXT_PROTOCOL_EXPR_FIELD): added
 
-2003-07-24  Jim Hourihan  <jimh@tweakfilms.com>
+2003-07-24  Jim Hourihan  
 
 	* gto.texi: made new version of spec. Includes addition of
 	connection protocol and deprecation of protocols which it
 	subsumes. Also added section on naming.
 
-2003-07-09  Jim Hourihan  <jimh@tweakfilms.com>
+2003-07-09  Jim Hourihan  
 
 	* EXTProtocols.h (GTO_EXT_PROTOCOL_CAMERA): added
 	(GTO_EXT_COMPONENT_CAMERA): added
 	(GTO_EXT_PROPERTY_FRUSTUM): added
 	(GTO_EXT_PROPERTY_ASPECT): addded
 
-2003-05-06  Mike Root  <mike@tweakfilms.com>
+2003-05-06  Mike Root  
 
 	* Writer.cpp: Changed writer->propertyData method to optionally
 	verify that property name, size, and width match what was declared
@@ -92,25 +92,25 @@
 	* Writer.cpp: Made a couple of other error messages a little more
 	verbose.
 
-2003-04-25  Jim Hourihan  <jimh@tweakfilms.com>
+2003-04-25  Jim Hourihan  
 
 	* Writer.cpp (constructStringTable): interns stamp to indicate
 	date and time of writer code creation as well as cvs id.
 
-2003-04-20  Jim Hourihan  <jimh@tweakfilms.com>
+2003-04-20  Jim Hourihan  
 
 	* gto.texi (Sorted Shells): added docs for "sorted" protocol
 
 	* Protocols.h (GTO_PROPERTY_ELEMENTS): added sorted protocol and
 	properties. 
 
-2003-04-05  Jim Hourihan  <jimh@tweakfilms.com>
+2003-04-05  Jim Hourihan  
 
 	* RawData.cpp (writeProperty): made special case for strings
 	(Property): strings case
 	(propSet): strings case
 
-2003-04-03  Jim Hourihan  <jimh@tweakfilms.com>
+2003-04-03  Jim Hourihan  
 
 	* Reader.cpp (read): gcc 3.1 iostreams suck on OS X. Remove the
 	error test since the test itself fails.
@@ -125,37 +125,37 @@
 	* RawData.h (struct RawDataBase): added string table to raw data
 	base. 
 
-2003-04-02  Jim Hourihan  <jimh@tweakfilms.com>
+2003-04-02  Jim Hourihan  
 
 	* Protocols.h (GTO_REJECT): added
 	(GTO_ACCEPT): added
 	(GTO_PROPERTY_GLOBAL_MATRIX): fixed incorrect comment
 
-2003-04-01  Mike Root  <mike@tweakfilms.com>
+2003-04-01  Mike Root  
 
 	* Reader/Writer: Added some error and sanity checking.
 
-2003-03-21  Jim Hourihan  <jimh@tweakfilms.com>
+2003-03-21  Jim Hourihan  
 
 	* gto.texi (Polygonal Protocol): bug in documentation. smoothing
 	component should have a "method" property not a "smoothing"
 	property.
 
-2003-03-18  Jim Hourihan  <jimh@tweakfilms.com>
+2003-03-18  Jim Hourihan  
 
 	* RawData.h: added RawData classes
 
-2003-03-17  Jim Hourihan  <jimh@tweakfilms.com>
+2003-03-17  Jim Hourihan  
 
 	* All: changed copyright notice to LGPL 
 
-2003-01-31  Jim Hourihan  <jimh@tweakfilms.com>
+2003-01-31  Jim Hourihan  
 
 	* Protocols.h: added object protocol
 
 	* Reader.cpp (Reader): added construction argument.
 
-2003-01-22  Jim Hourihan  <jimh@tweakfilms.com>
+2003-01-22  Jim Hourihan  
 
 	* Writer.cpp (property): no longer uses DataScheme (beginObject):
 	required to pass in protocol version
