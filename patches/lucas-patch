@@ -1,0 +1,634 @@
+diff -ru gto-3.4.0/bin/gtoinfo/main.cpp gto-3.4.0-ilm/bin/gtoinfo/main.cpp
+--- gto-3.4.0/bin/gtoinfo/main.cpp    2008-06-23 09:07:13.551766000 -0700
++++ gto-3.4.0-ilm/bin/gtoinfo/main.cpp    2007-11-05 15:59:04.866740000 -0800
+@@ -32,6 +32,7 @@
+ bool outputHeader   = true;
+ bool formatData     = false;
+ bool readAll        = false;
++bool readAsLEC      = false;
+ bool numericStrings = false;
+ bool filtered       = false;
+ bool outputInterp   = false;
+@@ -75,7 +76,7 @@
+                                  const Gto::Reader::PropertyInfo &header);
+
+     virtual void*       data(const PropertyInfo&, size_t bytes);
+-    virtual void        dataRead(const PropertyInfo&);
++    virtual void        dataRead(const PropertyInfo&,char *buffer);
+
+     virtual void        data(const PropertyInfo&,
+                              const float*, size_t numItems);
+@@ -316,7 +317,7 @@
+ }
+
+ void
+-Reader::dataRead(const PropertyInfo& info)
++Reader::dataRead(const PropertyInfo& info,char *)
+ {
+     void* buffer = (void*)&m_buffer.front();
+
+@@ -683,6 +684,7 @@
+          << "-a/--all                       dump data and header\n"
+          << "-d/--dump                      dump data (no header)\n"
+          << "-l/--line                      dump data/strings one per line\n"
++         << "-L/--LEC                       force read GTO file as LEC format\n"
+          << "-h/--header                    header only (default)\n"
+          << "-s/--strings                   output strings table\n"
+          << "-n/--numeric-strings           output string properties as string numbers\n"
+@@ -743,6 +745,11 @@
+             {
+                 formatData   = true;
+             }
++            else if (!strcmp(arg, "-L") ||
++                     !strcmp(arg, "--LEC"))
++            {
++                readAsLEC    = true;
++            }
+             else if (!strcmp(arg, "-n") ||
+                      !strcmp(arg, "--numeric-strings"))
+             {
+@@ -783,6 +790,8 @@
+
+     if (filterExpr != "") mode = Gto::Reader::RandomAccess;
+
++    if (readAsLEC) mode |= Gto::Reader::ReadAsLEC;
++
+     Reader reader(mode);
+
+     if ( !reader.open(inFile) )
+diff -ru gto-3.4.0/lib/Gto/Header.h gto-3.4.0-ilm/lib/Gto/Header.h
+--- gto-3.4.0/lib/Gto/Header.h    2008-06-23 09:07:35.517105000 -0700
++++ gto-3.4.0-ilm/lib/Gto/Header.h    2007-11-05 15:59:05.314773000 -0800
+@@ -33,6 +33,8 @@
+
+ #define GTO_MAGIC       0x29f
+ #define GTO_MAGICl      0x9f020000
++#define GTO_MAGIC_LEC   0x39f
++#define GTO_MAGIC_LECl  0x9f030000
+ #define GTO_MAGIC_TEXT  0x47544f61
+ #define GTO_MAGIC_TEXTl 0x614f5447
+ #define GTO_VERSION     3
+@@ -54,6 +56,8 @@
+     static const unsigned int CigamText = GTO_MAGIC_TEXTl;
+     static const unsigned int Magic     = GTO_MAGIC;
+     static const unsigned int Cigam     = GTO_MAGICl;
++    static const unsigned int MagicLEC  = GTO_MAGIC_LEC;
++    static const unsigned int CigamLEC  = GTO_MAGIC_LECl;
+
+     uint32        magic;
+     uint32        numStrings;
+@@ -75,6 +79,14 @@
+     uint32        pad;
+ };
+
++struct ObjectHeaderLEC
++{
++    uint16        name;             // string
++    uint16        protocolName;     // string
++    uint8         protocolVersion;
++    uint16        numComponents;
++};
++
+ struct ObjectHeader_v2
+ {
+     uint32        name;             // string
+@@ -102,6 +114,13 @@
+     uint32        pad;
+ };
+
++struct ComponentHeaderLEC
++{
++    uint16        name;             // string
++    uint8         numProperties;
++    uint8         flags;
++};
++
+ struct ComponentHeader_v2
+ {
+     uint32        name;             // string
+@@ -139,6 +158,14 @@
+     uint32        pad;
+ };
+
++struct PropertyHeaderLEC
++{
++    uint16        name;             // string
++    uint32        size;
++    uint8         type;
++    uint8         width;
++};
++
+ struct PropertyHeader_v2
+ {
+     uint32        name;
+diff -ru gto-3.4.0/lib/Gto/RawData.cpp gto-3.4.0-ilm/lib/Gto/RawData.cpp
+--- gto-3.4.0/lib/Gto/RawData.cpp    2008-06-23 09:09:24.555781000 -0700
++++ gto-3.4.0-ilm/lib/Gto/RawData.cpp    2007-11-05 15:59:05.433782000 -0800
+@@ -199,7 +199,7 @@
+ }
+
+ void
+-RawDataBaseReader::dataRead(const PropertyInfo& info)
++RawDataBaseReader::dataRead(const PropertyInfo& info,char *buffer)
+ {
+     //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
+     //Component *c = reinterpret_cast<Component*>(info.component->componentData);
+diff -ru gto-3.4.0/lib/Gto/RawData.h gto-3.4.0-ilm/lib/Gto/RawData.h
+--- gto-3.4.0/lib/Gto/RawData.h    2008-06-23 09:09:24.560778000 -0700
++++ gto-3.4.0-ilm/lib/Gto/RawData.h    2007-11-05 15:59:05.448785000 -0800
+@@ -162,7 +162,7 @@
+                                  const PropertyInfo &header);
+
+     virtual void*       data(const PropertyInfo&, size_t bytes);
+-    virtual void        dataRead(const PropertyInfo&);
++    virtual void        dataRead(const PropertyInfo&,char *buffer);
+
+ protected:
+     RawDataBase*        m_dataBase;
+@@ -180,7 +180,7 @@
+ class RawDataBaseWriter
+ {
+ public:
+-    RawDataBaseWriter() : m_writer() {}
++    RawDataBaseWriter(unsigned int mode = Writer::None) : m_writer(mode) {}
+
+     bool            write(const char *filename, const RawDataBase&,
+                           Writer::FileType type=Writer::CompressedGTO);
+diff -ru gto-3.4.0/lib/Gto/Reader.cpp gto-3.4.0-ilm/lib/Gto/Reader.cpp
+--- gto-3.4.0/lib/Gto/Reader.cpp    2008-06-23 09:17:16.898688000 -0700
++++ gto-3.4.0-ilm/lib/Gto/Reader.cpp    2008-05-13 18:21:35.571434000 -0700
+@@ -84,7 +84,9 @@
+         readMagicNumber();
+
+         if (m_header.magic != Header::Magic ||
+-            m_header.magic != Header::Cigam)
++            m_header.magic != Header::Cigam ||
++            m_header.magic != Header::MagicLEC ||
++            m_header.magic != Header::CigamLEC)
+         {
+             return false;
+         }
+@@ -112,7 +114,9 @@
+         readMagicNumber();
+
+         if (m_header.magic != Header::Magic ||
+-            m_header.magic != Header::Cigam)
++            m_header.magic != Header::Cigam ||
++            m_header.magic != Header::MagicLEC ||
++            m_header.magic != Header::CigamLEC)
+         {
+             return false;
+         }
+@@ -252,7 +256,7 @@
+ Reader::Request Reader::component(const string&, const ComponentInfo &) { return Request(true); }
+ Reader::Request Reader::property(const string&, const PropertyInfo &) { return Request(true); }
+ void* Reader::data(const PropertyInfo&, size_t) { return 0; }
+-void Reader::dataRead(const PropertyInfo&) {}
++void Reader::dataRead(const PropertyInfo&,char *buffer) {}
+ void Reader::descriptionComplete() {}
+
+ Reader::Request
+@@ -321,12 +325,12 @@
+     if (m_error) return;
+     m_swapped = false;
+
+-    if (m_header.magic == Header::Cigam)
++    if (m_header.magic == Header::Cigam || m_header.magic == Header::CigamLEC)
+     {
+         m_swapped = true;
+         swapWords(&m_header, sizeof(m_header) / sizeof(int));
+     }
+-    else if (m_header.magic != Header::Magic)
++    else if (m_header.magic != Header::Magic && m_header.magic != Header::MagicLEC)
+     {
+         ostringstream str;
+         str << "bad magic number (" << hex << m_header.magic << ")";
+@@ -343,6 +347,12 @@
+         return;
+     }
+
++    // add option to force reading gto files as LEC
++    if (m_mode & ReadAsLEC)
++    {
++        m_header.magic = Header::MagicLEC;
++    }
++
+     header(m_header);
+ }
+
+@@ -390,19 +400,41 @@
+     {
+         ObjectInfo o;
+
+-        if (m_header.version == 2)
++        if (m_header.magic == Header::MagicLEC)
+         {
+-            read((char*)&o, sizeof(ObjectHeader_v2));
++            ObjectHeaderLEC ol;
++            read((char*)&ol, sizeof(ObjectHeaderLEC));
++
++            if (m_error) return;
++
++            if (m_swapped) {
++                swapShorts(&ol.name, 1);
++                swapShorts(&ol.protocolName, 1);
++                swapShorts(&ol.numComponents, 1);
++            }
++
++            o.name = ol.name;
++            o.protocolName = ol.protocolName;
++            o.protocolVersion = ol.protocolVersion;
++            o.numComponents = ol.numComponents;
+             o.pad = 0;
+         }
+         else
+         {
+-            read((char*)&o, sizeof(ObjectHeader));
+-        }
++            if (m_header.version == 2)
++            {
++                read((char*)&o, sizeof(ObjectHeader_v2));
++                o.pad = 0;
++            }
++            else
++            {
++                read((char*)&o, sizeof(ObjectHeader));
++            }
+
+-        if (m_error) return;
++            if (m_error) return;
+
+-        if (m_swapped) swapWords(&o, sizeof(ObjectHeader) / sizeof(int));
++            if (m_swapped) swapWords(&o, sizeof(ObjectHeader) / sizeof(int));
++        }
+
+         stringFromId(o.name);
+         stringFromId(o.protocolName);
+@@ -445,20 +477,41 @@
+         {
+             ComponentInfo c;
+
+-            if (m_header.version == 2)
++            if (m_header.magic == Header::MagicLEC)
+             {
+-                read((char*)&c, sizeof(ComponentHeader_v2));
+-                c.pad = 0;
++                ComponentHeaderLEC cl;
++                read((char*)&cl, sizeof(ComponentHeaderLEC));
++
++                if (m_error) return;
++
++                if (m_swapped)
++                {
++                    swapShorts(&cl.name, 1);
++                }
++
++                c.name = cl.name;
++                c.numProperties = cl.numProperties;
++                c.flags = cl.flags;
+                 c.interpretation = 0;
++                c.pad = 0;
+             }
+             else
+             {
+-                read((char*)&c, sizeof(ComponentHeader));
+-            }
++                if (m_header.version == 2)
++                {
++                    read((char*)&c, sizeof(ComponentHeader_v2));
++                    c.pad = 0;
++                    c.interpretation = 0;
++                }
++                else
++                {
++                    read((char*)&c, sizeof(ComponentHeader));
++                }
+
+-            if (m_error) return;
++                if (m_error) return;
+
+-            if (m_swapped) swapWords(&c, sizeof(ComponentHeader) / sizeof(int));
++                if (m_swapped) swapWords(&c, sizeof(ComponentHeader) / sizeof(int));
++            }
+
+             c.object = &o;
+             c.poffset = poffset;
+@@ -500,22 +553,45 @@
+         {
+             PropertyInfo p;
+
+-            if (m_header.version == 2)
++            if (m_header.magic == Header::MagicLEC)
+             {
+-                read((char*)&p, sizeof(PropertyHeader_v2));
+-                p.pad = 0;
++                PropertyHeaderLEC pl;
++                read((char*)&pl, sizeof(PropertyHeaderLEC));
++
++                if (m_error) return;
++
++                if (m_swapped)
++                {
++                    swapShorts(&pl.name, 1);
++                    swapWords(&pl.size, 1);
++                }
++
++                p.name = pl.name;
++                p.size = pl.size;
++                p.type = pl.type;
++                p.width = pl.width;
+                 p.interpretation = 0;
++                p.pad = 0;
+             }
+             else
+             {
+-                read((char*)&p, sizeof(PropertyHeader));
+-            }
++                if (m_header.version == 2)
++                {
++                    read((char*)&p, sizeof(PropertyHeader_v2));
++                    p.pad = 0;
++                    p.interpretation = 0;
++                }
++                else
++                {
++                    read((char*)&p, sizeof(PropertyHeader));
++                }
+
+-            if (m_error) return;
++                if (m_error) return;
+
+-            if (m_swapped)
+-            {
+-                swapWords(&p, sizeof(PropertyHeader) / sizeof(int));
++                if (m_swapped)
++                {
++                    swapWords(&p, sizeof(PropertyHeader) / sizeof(int));
++                }
+             }
+
+             p.component = &c;
+@@ -728,7 +804,7 @@
+             }
+         }
+
+-        dataRead(prop);
++        dataRead(prop,buffer);
+     }
+
+
+@@ -1165,7 +1241,7 @@
+         if (void* buffer = data(info, m_buffer.size()))
+         {
+             memcpy(buffer, &m_buffer.front(), m_buffer.size());
+-            dataRead(info);
++            dataRead(info,(char *)buffer);
+         }
+     }
+
+diff -ru gto-3.4.0/lib/Gto/Reader.h gto-3.4.0-ilm/lib/Gto/Reader.h
+--- gto-3.4.0/lib/Gto/Reader.h    2008-06-23 09:17:46.258481000 -0700
++++ gto-3.4.0-ilm/lib/Gto/Reader.h    2008-05-16 15:03:07.437316000 -0700
+@@ -127,6 +127,7 @@
+         RandomAccess     = 1 << 1,
+         BinaryOnly       = 1 << 2,
+         TextOnly         = 1 << 3,
++        ReadAsLEC        = 1 << 4,
+     };
+
+     explicit Reader(unsigned int mode = None);
+@@ -275,7 +276,7 @@
+     //  succesfully read (so after the data() function is called)
+     //
+
+-    virtual void        dataRead(const PropertyInfo&);
++    virtual void        dataRead(const PropertyInfo&,char *buffer);
+
+     //------------------------------------------------------------
+     //
+diff -ru gto-3.4.0/lib/Gto/Utilities.cpp gto-3.4.0-ilm/lib/Gto/Utilities.cpp
+--- gto-3.4.0/lib/Gto/Utilities.cpp    2008-06-23 09:13:29.202759000 -0700
++++ gto-3.4.0-ilm/lib/Gto/Utilities.cpp    2007-11-05 15:59:05.482789000 -0800
+@@ -117,12 +117,12 @@
+
+ bool isGTOFile(const char* infile)
+ {
+-    Header header;
++    uint32 magic;
+
+ #ifdef GTO_SUPPORT_ZIP
+     if (gzFile file = gzopen(infile, "rb"))
+     {
+-        if (gzread(file, &header, sizeof(header)) != sizeof(Header))
++        if (gzread(file, &magic, sizeof(uint32)) != sizeof(uint32))
+         {
+             gzclose(file);
+             return false;
+@@ -131,14 +131,16 @@
+ #else
+     ifstream file(infile);
+     if (!file) return false;
+-    if (file.readsome((char*)&header, sizeof(Header)) != sizeof(Header)) return false;
++    if (file.readsome((char*)&magic, sizeof(uint32)) != sizeof(uint32)) return false;
+     if (file.fail()) return false;
+ #endif
+
+-    return  header.magic == GTO_MAGIC ||
+-            header.magic == GTO_MAGICl ||
+-            header.magic == GTO_MAGIC_TEXT ||
+-            header.magic == GTO_MAGIC_TEXTl;
++    return  magic == GTO_MAGIC ||
++            magic == GTO_MAGICl ||
++            magic == GTO_MAGIC_LEC ||
++            magic == GTO_MAGIC_LECl ||
++            magic == GTO_MAGIC_TEXT ||
++            magic == GTO_MAGIC_TEXTl;
+ }
+
+ } // Gto
+diff -ru gto-3.4.0/lib/Gto/Writer.cpp gto-3.4.0-ilm/lib/Gto/Writer.cpp
+--- gto-3.4.0/lib/Gto/Writer.cpp    2008-06-23 09:20:12.412421000 -0700
++++ gto-3.4.0-ilm/lib/Gto/Writer.cpp    2008-06-23 08:53:04.789802000 -0700
+@@ -42,26 +42,28 @@
+ using namespace std;
+
+
+-Writer::Writer()
++Writer::Writer(unsigned int mode)
+     : m_out(0),
+       m_gzfile(0),
+       m_needsClosing(false),
+       m_error(false),
+       m_tableFinished(false),
+       m_currentProperty(0),
+-      m_type(CompressedGTO)
++      m_type(CompressedGTO),
++      m_mode(mode)
+ {
+     init(0);
+ }
+
+-Writer::Writer(ostream &o)
++Writer::Writer(ostream &o, unsigned int mode)
+     : m_out(0),
+       m_gzfile(0),
+       m_needsClosing(false),
+       m_error(false),
+       m_tableFinished(false),
+       m_currentProperty(0),
+-      m_type(CompressedGTO)
++      m_type(CompressedGTO),
++      m_mode(mode)
+ {
+     init(&o);
+ }
+@@ -608,6 +610,7 @@
+ {
+     Header header;
+     header.magic         = GTO_MAGIC;
++    if (m_mode & WriteAsLEC) header.magic = GTO_MAGIC_LEC;
+     header.numObjects    = m_objects.size();
+     header.numStrings    = m_strings.size();
+     header.version       = GTO_VERSION;
+@@ -625,19 +628,98 @@
+     for (size_t i=0; i < m_objects.size(); i++)
+     {
+         ObjectHeader &o = m_objects[i];
+-        write(&o, sizeof(ObjectHeader));
++
++        if (m_mode & WriteAsLEC)
++        {
++            if (o.name            > std::numeric_limits<uint16>::max() ||
++                o.protocolName    > std::numeric_limits<uint16>::max() ||
++                o.protocolVersion > std::numeric_limits<uint8>::max() ||
++                o.numComponents   > std::numeric_limits<uint16>::max())
++            {
++                throw std::runtime_error("Gto::Writer::writeHead(): object "
++                                         "header values are out of range for "
++                                         "writing as LEC format.");
++            }
++
++            ObjectHeaderLEC ol;
++
++            ol.name            = o.name;
++            ol.protocolName    = o.protocolName;
++            ol.protocolVersion = o.protocolVersion;
++            ol.numComponents   = o.numComponents;
++
++            write(&ol, sizeof(ObjectHeaderLEC));
++        }
++        else
++        {
++            write(&o, sizeof(ObjectHeader));
++        }
+     }
+
+     for (size_t i=0; i < m_components.size(); i++)
+     {
+         ComponentHeader &c = m_components[i];
+-        write(&c, sizeof(ComponentHeader));
++
++        if (m_mode & WriteAsLEC)
++        {
++            if (c.name          > std::numeric_limits<uint16>::max() ||
++                c.numProperties > std::numeric_limits<uint8>::max() ||
++                c.flags         > std::numeric_limits<uint8>::max())
++            {
++                throw std::runtime_error("Gto::Writer::writeHead(): component "
++                                         "header values are out of range for "
++                                         "writing as LEC format.");
++            }
++
++            if (c.interpretation != 0)
++            {
++                throw std::runtime_error("Gto::Writer::writeHead(): component "
++                                         "interpretation not allowed when "
++                                         "writing as LEC format.");
++            }
++
++            ComponentHeaderLEC cl;
++
++            cl.name          = c.name;
++            cl.numProperties = c.numProperties;
++            cl.flags         = c.flags;
++
++            write(&cl, sizeof(ComponentHeaderLEC));
++        }
++        else
++        {
++            write(&c, sizeof(ComponentHeader));
++        }
+     }
+
+     for (size_t i=0; i < m_properties.size(); i++)
+     {
+         PropertyHeader &p = m_properties[i];
+-        write(&p, sizeof(PropertyHeader));
++
++        if (m_mode & WriteAsLEC)
++        {
++            if (p.name  > std::numeric_limits<uint16>::max() ||
++                p.type  > std::numeric_limits<uint8>::max() ||
++                p.width > std::numeric_limits<uint8>::max())
++            {
++                throw std::runtime_error("Gto::Writer::writeHead(): property "
++                                         "header values are out of range for "
++                                         "writing as LEC format.");
++            }
++
++            PropertyHeaderLEC pl;
++
++            pl.name  = p.name;
++            pl.size  = p.size;
++            pl.type  = p.type;
++            pl.width = p.width;
++
++            write(&pl, sizeof(PropertyHeaderLEC));
++        }
++        else
++        {
++            write(&p, sizeof(PropertyHeader));
++        }
+     }
+
+     flush();
+diff -ru gto-3.4.0/lib/Gto/Writer.h gto-3.4.0-ilm/lib/Gto/Writer.h
+--- gto-3.4.0/lib/Gto/Writer.h    2008-06-23 09:21:06.187709000 -0700
++++ gto-3.4.0-ilm/lib/Gto/Writer.h    2008-06-23 08:53:05.024808000 -0700
+@@ -62,8 +62,14 @@
+         TextGTO
+     };
+
+-    Writer();
+-    explicit Writer(std::ostream&);
++    enum WriteMode
++    {
++        None = 0,
++        WriteAsLEC = 1 << 0,
++    };
++
++    explicit Writer(unsigned int mode = None);
++    Writer(std::ostream&,unsigned int mode = None);
+     ~Writer();
+
+     //
+@@ -192,6 +198,7 @@
+
+     void            endData();
+
++
+     //
+     //  Previously declared property data
+     //
+@@ -228,6 +235,7 @@
+     std::string     m_outName;
+     size_t          m_currentProperty;
+     FileType        m_type;
++    unsigned int    m_mode;
+ };
+
+ template<typename T>
+
+
+
+

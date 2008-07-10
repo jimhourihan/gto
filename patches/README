@@ -1,0 +1,7 @@
+These are unapplied patches. 
+
+The lucas-patch can be applied on top of the ILM patches at git object
+f53fbb07f69a217a38da38250b5fadf81063eea7. The patch creates a new variant
+of GTO with a smaller header and some other changes to optimize its
+size. Its unclear if applying this patch could be useful to anyone outside
+its original context.
