@@ -129,8 +129,7 @@ EXTRA_DIST = examples/plane.gto                         \
              plugins/maya/GtoIO.h                       \
              plugins/maya/GtoOut.h                      \
              plugins/maya/version.h                     \
-             plugins/maya/gtoExportOptions.mel          \
-             plugins/maya/gtoExportSet.mel
+             plugins/maya/gtoExportOptions.mel
 
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -143,10 +142,10 @@ RECURSIVE_TARGETS = info-recursive dvi-recursive install-info-recursive \
 	install-exec-recursive installdirs-recursive install-recursive \
 	uninstall-recursive check-recursive installcheck-recursive
 DIST_COMMON = README AUTHORS COPYING ChangeLog INSTALL Makefile.am \
-	Makefile.in NEWS aclocal.m4 config/config.guess \
-	config/config.sub config/depcomp config/install-sh \
-	config/ltmain.sh config/missing config/mkinstalldirs \
-	config/texinfo.tex configure configure.in
+	Makefile.in NEWS aclocal.m4 config.guess config.sub \
+	config/config.guess config/config.sub config/depcomp \
+	config/install-sh config/ltmain.sh config/missing \
+	config/mkinstalldirs config/texinfo.tex configure configure.in
 DIST_SUBDIRS = $(SUBDIRS)
 all: all-recursive
 

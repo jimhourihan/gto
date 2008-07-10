@@ -8,6 +8,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 bin_PROGRAMS = gto2obj
 
 gto2obj_SOURCES = main.cpp
-gto2obj_LDADD = $(top_srcdir)/lib/Gto/libGto.la \
-                $(top_srcdir)/lib/WFObj/libWFObj.la \
+gto2obj_LDADD = $(top_builddir)/lib/Gto/libGto.la \
+                $(top_builddir)/lib/WFObj/libWFObj.la \
                 @LIBS@ 

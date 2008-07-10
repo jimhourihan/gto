@@ -8,4 +8,4 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 bin_PROGRAMS = gtomerge
 
 gtomerge_SOURCES = main.cpp
-gtomerge_LDADD = $(top_srcdir)/lib/Gto/libGto.la @LIBS@
+gtomerge_LDADD = $(top_builddir)/lib/Gto/libGto.la @LIBS@

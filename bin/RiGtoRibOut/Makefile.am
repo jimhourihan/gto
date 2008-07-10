@@ -10,9 +10,9 @@ if GTO_BUILD_RMAN
 bin_PROGRAMS = RiGtoRibOut
 
 RiGtoRibOut_SOURCES = main.cpp
-RiGtoRibOut_LDADD = $(top_srcdir)/lib/RiGto/libRiGto.la \
-                    $(top_srcdir)/lib/RiGtoStub/libRiGtoStub.la \
-                    $(top_srcdir)/lib/Gto/libGto.la \
+RiGtoRibOut_LDADD = $(top_builddir)/lib/RiGto/libRiGto.la \
+                    $(top_builddir)/lib/RiGtoStub/libRiGtoStub.la \
+                    $(top_builddir)/lib/Gto/libGto.la \
                     $(rman_libs) \
                      @LIBS@ 
 

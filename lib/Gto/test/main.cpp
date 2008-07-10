@@ -58,6 +58,7 @@ int main(int, char**)
     struct stat s;
     write("test.gto");
     read("test.gto");
+    unlink("test.gto");
 
     if (stat("big_endian.gto",&s) != -1) read("big_endian.gto");
     if (stat("little_endian.gto",&s) != -1) read("little_endian.gto");

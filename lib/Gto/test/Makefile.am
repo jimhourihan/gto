@@ -3,12 +3,11 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-EXTRA_PROGRAMS = test
-
 AM_CPPFLAGS = -I$(top_srcdir)/lib
-LIBS = -L$(top_srcdir)/lib/Gto
+LIBS = -L$(top_builddir)/lib/Gto
 
-TESTS = test
+check_PROGRAMS = test
+TESTS = $(check_PROGRAMS)
 
 test_SOURCES = main.cpp
 test_LDADD = -lGto @LIBS@

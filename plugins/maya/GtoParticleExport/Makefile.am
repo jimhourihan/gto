@@ -22,7 +22,7 @@ ParticleBucket.cpp
 noinst_HEADERS = GtoParticleExport.h ParticleAttribute.h ParticleBucket.h
 
 GtoParticleExport_so_LDFLAGS = -shared \
-                   -L$(top_srcdir)/lib/Gto \
+                   -L$(top_builddir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
                    -lImage \

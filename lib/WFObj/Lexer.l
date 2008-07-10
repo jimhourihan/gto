@@ -26,13 +26,17 @@
 
 /* Redefine input and output so it can come from an iostream somewhere */
 #define YY_INPUT(b,r,ms) (r = WFObjInput(b,ms))
-#define YY_ALWAYS_INTERACTIVE 1
+//#define YY_ALWAYS_INTERACTIVE 1
+#define YY_NO_UNPUT 1
 #define yylval wfobjlval
 #define yydebug wfobjdebug
 #define yyparse wfobjparse
 #define yyLineNum wfobjLineNum
 #define yyReader wfobjReader
 #define yyInputStream wfobjInputStream
+
+#define YY_NO_UNISTD_H
+extern int isatty (int );
 
 using namespace std;
 
@@ -46,8 +50,11 @@ int			WFObjInput(char *buffer, int max_size);
 void			WFObjParse(istream &i);
 %}
 
+%option always-interactive
+%option prefix="wfobj"
+
 WhiteSpace		[[:blank:]]+
-FloatPart               [0-9]+\.[0-9]*
+FloatPart               [0-9]+\.?[0-9]*
 FloatExp                [eE][-+]?[0-9]+
 IntNum			-?[0-9]+
 Name			[a-zA-Z0-9_.]+
@@ -79,9 +86,9 @@ Name			[a-zA-Z0-9_.]+
 "{%%debug%%}"		{ yydebug=1; }
 
 {WhiteSpace}    {}
+-?{IntNum}		    { yylval._int   = strtol(yytext,0,0); return INTEGER; }
 -?{FloatPart}{FloatExp}?    { yylval._float = atof(yytext);return SCALAR; }
 -?{IntNum}{FloatExp}	    { yylval._float = atof(yytext);return SCALAR; }
--?{IntNum}		    { yylval._int   = strtol(yytext,0,0); return INTEGER; }
 {Name}			    { yylval._name = yytext; return NAME; }
 "\\"			    { BEGIN(continuation); }
 "\n"			    { return ENDLINE; }

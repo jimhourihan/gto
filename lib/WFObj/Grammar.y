@@ -24,6 +24,7 @@
 
 #define yyLineNum wfobjLineNum
 #define yyReader wfobjReader
+#define YYDEBUG 1
 
 extern int yylex();
 extern int yyLineNum;
@@ -77,12 +78,14 @@ static int  vertex(int);
 static int  element(int);
 static void clear_element();
 static int  index(int,int,int,int);
-static void clear_all();
 static void active_object(const char*);
 static int  on_off_only(const char*);
 void yyerror(const char*);
 
 %}
+
+//%defines
+//%name-prefix="wfobj"
 
 %union
 {
@@ -313,26 +316,6 @@ name_list:
 
 %%
 
-void
-clear_all()
-{
-    state.groups.clear();
-    state.active_groups.clear();
-    state.vertex_index.clear();
-    state.normal_index.clear();
-    state.texture_index.clear();
-
-    state.active_object   = "";
-    state.mtllib 	  = "";
-    state.mtl 		  = "";
-    state.map 		  = "";
-    state.shadow_obj 	  = "";
-    state.trace_obj 	  = "";
-    state.smoothing_group = 0;
-    state.cinterp 	  = 0;
-    state.dinterp 	  = 0;
-    state.bevel 	  = 0;
-}
 
 void
 group_statement()
@@ -389,9 +372,7 @@ add_group(const char *name)
 	yyReader->newGroup(n);
     }
 
-    bool found = false;
-
-    for (int i=0; i<state.active_groups.size(); i++)
+    for (size_t i=0; i<state.active_groups.size(); i++)
     {
 	if (state.active_groups[i] == name) return;
     }

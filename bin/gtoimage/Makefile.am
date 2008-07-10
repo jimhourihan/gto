@@ -10,6 +10,6 @@ if GTO_BUILD_GTOIMAGE
 bin_PROGRAMS = gtoimage
 
 gtoimage_SOURCES = main.cpp
-gtoimage_LDADD = $(top_srcdir)/lib/Gto/libGto.la -ltiff @LIBS@ 
+gtoimage_LDADD = $(top_builddir)/lib/Gto/libGto.la -ltiff @LIBS@ 
 
 endif

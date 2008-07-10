@@ -21,7 +21,7 @@ ggto_so_SOURCES = ggto.cpp \
 noinst_HEADERS = ggto.h  GtoPointReader.h
 
 ggto_so_LDFLAGS = -shared \
-                   -L$(top_srcdir)/lib/Gto \
+                   -L$(top_builddir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
                    -lImage \

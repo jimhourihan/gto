@@ -60,6 +60,8 @@ public:
     {
         void*               objectData; // whatever was returned from object()
 
+        int componentOffset() const { return coffset; }
+
     private:
         int                 coffset;
         bool                requested;
@@ -70,6 +72,8 @@ public:
     {
         void*               componentData; // return value of component()
         const ObjectInfo*   object;
+
+        int propertyOffset() const { return poffset; }
 
     private:
         int                 poffset;
@@ -204,7 +208,10 @@ public:
     bool                accessObject(ObjectInfo&);
 
     Components&         components() { return m_components; }
+    bool                accessComponent(ComponentInfo&);
+
     Properties&         properties() { return m_properties; }
+    bool                accessProperty(PropertyInfo&);
 
     //
     //  These are used to declare a component or property. The

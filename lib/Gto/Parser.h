@@ -2,6 +2,7 @@ typedef union
 {
     int             _token;
     int             _int;
+    unsigned int    _uint;
     double          _double;
     Gto::TypeSpec   _type;
     Gto::Number     _number;

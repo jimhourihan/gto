@@ -3,11 +3,11 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
+if GTO_BUILD_RMAN
+
 AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(gto_rman_location)/include
 
 plugindir = $(gto_rman_location)/bin/plug-ins
-
-if GTO_BUILD_RMAN
 
 plugin_PROGRAMS = RiGtoPlugin.so
 

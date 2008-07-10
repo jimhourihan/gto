@@ -236,8 +236,6 @@ int main(int argc, char *argv[])
 {
     char* inFile     = 0;
     char* outFile    = 0;
-    char* outObj     = 0;
-    int   replace    = 0;
     int   nocompress = 0;
     int   text       = 0;
     

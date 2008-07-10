@@ -544,6 +544,44 @@ Reader::readProperties()
 }
 
 bool
+Reader::accessProperty(PropertyInfo& p)
+{
+    Request r = property(stringFromId(p.name), stringFromId(p.interpretation), p);
+
+    p.requested     = r.m_want;
+    p.propertyData  = r.m_data;
+
+    if (p.requested)
+    {
+        seekTo(p.offset);
+        readProperty(p);
+    }
+
+    return true;
+}
+
+bool
+Reader::accessComponent(ComponentInfo& c)
+{
+    const std::string &nme = stringFromId(c.name);
+    Request            r   = component(nme, c);
+    c.requested            = r.m_want;
+    c.componentData        = r.m_data;
+
+    if (c.requested)
+    {
+        for (uint32 j=0; j < c.numProperties; j++)
+        {
+            PropertyInfo& p = m_properties[c.poffset + j];
+            bool success = accessProperty(p);
+            if (!success) return false;
+        }
+    }
+
+    return true;
+}
+
+bool
 Reader::accessObject(ObjectInfo& o)
 {
     Request r = object(stringFromId(o.name), 
@@ -559,30 +597,10 @@ Reader::accessObject(ObjectInfo& o)
         for (uint32 q=0; q < o.numComponents; q++)
         {
             assert( (o.coffset+q) < m_components.size() );
+
             ComponentInfo& c = m_components[o.coffset + q];
-            const std::string &nme = stringFromId(c.name);
-            Request        r = component(nme, c);
-            c.requested      = r.m_want;
-            c.componentData  = r.m_data;
-
-            if (c.requested)
-            {
-                for (uint32 j=0; j < c.numProperties; j++)
-                {
-                    PropertyInfo& p = m_properties[c.poffset + j];
-                    Request       r = property(stringFromId(p.name), 
-                                               stringFromId(p.interpretation),
-                                               p);
-                    p.requested     = r.m_want;
-                    p.propertyData  = r.m_data;
-
-                    if (p.requested)
-                    {
-                        seekTo(p.offset);
-                        readProperty(p);
-                    }
-                }
-            }
+            bool success = accessComponent(c);
+            if (!success) return false;
         }
     }
 
@@ -799,10 +817,6 @@ Reader::read(char *buffer, size_t size)
             }
             remaining  -= retval;
             buffer_pos += retval;
-            if (remaining == 0)
-            {
-                break;
-            }
         }
     }
 #endif

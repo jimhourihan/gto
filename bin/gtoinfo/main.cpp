@@ -196,7 +196,7 @@ Reader::outputStringTable()
 {
     const StringTable &strings = stringTable();
 
-    for (int i=0; i < strings.size(); i++)
+    for (size_t i=0; i < strings.size(); i++)
     {
         if (i && !formatData) cout << ", ";
         cout << i << ": \"" << strings[i] << "\"";
@@ -362,7 +362,7 @@ void Reader::data(const PropertyInfo& info, const float* data, size_t numItems)
         cout << "[";
     }
 
-    for (int i=0; i < numItems; i++)
+    for (size_t i=0; i < numItems; i++)
     {
         if (formatData) cout << "    ";
 
@@ -405,7 +405,7 @@ void Reader::data(const PropertyInfo& info, const double* data, size_t numItems)
         cout << "[";
     }
 
-    for (int i=0; i < numItems; i++)
+    for (size_t i=0; i < numItems; i++)
     {
         if (formatData) cout << "    ";
 
@@ -451,7 +451,7 @@ void Reader::data(const PropertyInfo& info, const int* data, size_t numItems)
             cout << "[";
         }
 
-        for (int i=0; i < numItems; i++)
+        for (size_t i=0; i < numItems; i++)
         {
             if (formatData) cout << "    ";
 
@@ -490,7 +490,7 @@ void Reader::data(const PropertyInfo& info, const int* data, size_t numItems)
             cout << "[";
         }
 
-        for (int i=0; i < numItems; i++)
+        for (size_t i=0; i < numItems; i++)
         {
             if (formatData) cout << "    ";
 
@@ -556,7 +556,7 @@ void Reader::data(const PropertyInfo& info,
         }
 
 
-        for (int i=0; i < numItems; i++)
+        for (size_t i=0; i < numItems; i++)
         {
             if (formatData) cout << "    ";
 
@@ -606,7 +606,7 @@ void Reader::data(const PropertyInfo& info,
             cout << "[";
         }
 
-        for (int i=0; i < numItems; i++)
+        for (size_t i=0; i < numItems; i++)
         {
             if (formatData) cout << "    ";
 
@@ -643,7 +643,7 @@ void filterData(const std::string& filterExpr, Reader& reader)
     Gto::Reader::Properties& properties = reader.properties();
     Gto::Reader::Objects& objects = reader.objects();
 
-    for (int i=0; i < properties.size(); i++)
+    for (size_t i=0; i < properties.size(); i++)
     {
         Gto::Reader::PropertyInfo&  p = properties[i];
         const Gto::Reader::ComponentInfo* c = p.component;
@@ -663,7 +663,7 @@ void filterData(const std::string& filterExpr, Reader& reader)
         }
     }
 
-    for (int i=0; i < objects.size(); i++)
+    for (size_t i=0; i < objects.size(); i++)
     {
         Gto::Reader::ObjectInfo* p = &objects[i];
 

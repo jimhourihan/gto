@@ -10,7 +10,12 @@
 #include <vector>
 #include <fnmatch.h>
 #include <sys/types.h>
+
+#ifdef WIN32
+#include <pcreposix.h>
+#else
 #include <regex.h>
+#endif
 
 using namespace Gto;
 using namespace std;
@@ -41,15 +46,15 @@ struct Empty_p
 
 void gather(RawDataBase* db, FullProperties& all)
 {
-    for (int i=0; i < db->objects.size(); i++)
+    for (size_t i=0; i < db->objects.size(); i++)
     {
         Object* o = db->objects[i];
 
-        for (int j=0; j < o->components.size(); j++)
+        for (size_t j=0; j < o->components.size(); j++)
         {
             Component* c = o->components[j];
 
-            for (int q=0; q < c->properties.size(); q++)
+            for (size_t q=0; q < c->properties.size(); q++)
             {
                 Property* p = c->properties[q];
         
@@ -75,7 +80,7 @@ void filter(RawDataBase* db,
             const char *include, 
             const char *exclude)
 {
-    for (int i=0; i < properties.size(); i++)
+    for (size_t i=0; i < properties.size(); i++)
     {
         const FullProperty &fp = properties[i];
         bool imatch = false;

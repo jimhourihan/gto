@@ -26,6 +26,7 @@ using namespace Gto;
 
 extern int	GTOdebug;
 #define LVAL reinterpret_cast<YYSTYPE*>(_yystype)
+#define YY_NO_UNISTD_H
 
 %}
 
@@ -53,17 +54,17 @@ OctalEsc		\\[0-3][0-7][0-7]
 {WhiteSpace}            { reader->m_charnum += yyleng; }
 {NewLine}               { reader->m_linenum++; reader->m_charnum=0; }
 
-"GTOa"			{ reader->m_charnum+=yyleng; return GTOID; }
-"as"			{ reader->m_charnum+=yyleng; return AS; }
-"float"			{ reader->m_charnum+=yyleng; return FLOATTYPE; }
-"double"		{ reader->m_charnum+=yyleng; return DOUBLETYPE; }
-"int"			{ reader->m_charnum+=yyleng; return INTTYPE; }
-"bool"			{ reader->m_charnum+=yyleng; return BOOLTYPE; }
-"half"                  { reader->m_charnum+=yyleng; return HALFTYPE; }
-"byte"                  { reader->m_charnum+=yyleng; return BYTETYPE; }
-"short"                 { reader->m_charnum+=yyleng; return SHORTTYPE; }
-"string"                { reader->m_charnum+=yyleng; return STRINGTYPE; }
-"..."                   { reader->m_charnum+=yyleng; return ELLIPSIS; }
+"GTOa"			{ reader->m_charnum+=yyleng; return GTO_GTOID; }
+"as"			{ reader->m_charnum+=yyleng; return GTO_AS; }
+"float"			{ reader->m_charnum+=yyleng; return GTO_FLOATTYPE; }
+"double"		{ reader->m_charnum+=yyleng; return GTO_DOUBLETYPE; }
+"int"			{ reader->m_charnum+=yyleng; return GTO_INTTYPE; }
+"bool"			{ reader->m_charnum+=yyleng; return GTO_BOOLTYPE; }
+"half"                  { reader->m_charnum+=yyleng; return GTO_HALFTYPE; }
+"byte"                  { reader->m_charnum+=yyleng; return GTO_BYTETYPE; }
+"short"                 { reader->m_charnum+=yyleng; return GTO_SHORTTYPE; }
+"string"                { reader->m_charnum+=yyleng; return GTO_STRINGTYPE; }
+"..."                   { reader->m_charnum+=yyleng; return GTO_ELLIPSIS; }
 
 #.*{NewLine}		{ reader->m_linenum++; reader->m_charnum=0; }
 "\""			{ reader->m_charnum++; yyNewString(); BEGIN STRING; }
@@ -95,7 +96,7 @@ OctalEsc		\\[0-3][0-7][0-7]
                           BEGIN 0;
 
                           LVAL->_int = yyReturnString();
-                          return STRINGCONST; 
+                          return GTO_STRINGCONST; 
 			}
 
 <STRING>.		{ reader->m_charnum++; yyAddToString(*yytext);}
@@ -104,14 +105,14 @@ OctalEsc		\\[0-3][0-7][0-7]
 {HexNum}		{
 			    LVAL->_int = strtol(yytext,0,0);
 			    reader->m_charnum += yyleng;
-			    return INTCONST;
+			    return GTO_INTCONST;
 			}
 
 {FloatNumA} |
 {FloatNumB}             {
 			    LVAL->_double = atof(yytext);
 			    reader->m_charnum += yyleng;
-			    return FLOATCONST;
+			    return GTO_FLOATCONST;
 			}
 
 
@@ -128,20 +129,20 @@ OctalEsc		\\[0-3][0-7][0-7]
                             }
 
                             reader->m_charnum += yyleng;
-                            return INTCONST;
+                            return GTO_INTCONST;
                         }
 
 {CUnicodeEsc}           { 
                             reader->m_charnum += yyleng; 
                             unsigned int u = strtol(yytext+3,(char**)0,16);
                             LVAL->_int = u;
-                            return INTCONST;
+                            return GTO_INTCONST;
                         }
 
 \'.\'                   { 
                             reader->m_charnum += yyleng; 
                             LVAL->_int = int(yytext[1]);
-                            return INTCONST;
+                            return GTO_INTCONST;
                         }
 
 "{%%debug%%}"           {
@@ -153,7 +154,7 @@ OctalEsc		\\[0-3][0-7][0-7]
 {Identifier}		{
 			    reader->m_charnum += yyleng;
 			    LVAL->_int = reader->internString(yytext);
-                            return STRINGCONST;
+                            return GTO_STRINGCONST;
 			}
 
 <<EOF>>			{

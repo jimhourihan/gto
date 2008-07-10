@@ -24,7 +24,6 @@
 #include "Writer.h"
 #include "Utilities.h"
 #include <fstream>
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdexcept>
@@ -170,8 +169,14 @@ Writer::close()
 void
 Writer::beginData()
 {
+    beginData(0,0);
+}
+
+void
+Writer::beginData(const std::string *orderedStrings, int num)
+{
     m_currentProperty = 0;
-    constructStringTable();
+    constructStringTable(orderedStrings, num);
 
     if (m_type == TextGTO)
     {
@@ -205,7 +210,7 @@ Writer::intern(const char* s)
                                  "strings after string table is finished");
     }
 
-    m_strings[s] = 0;
+    m_strings[s] = -1;
 }
 
 void
@@ -217,7 +222,7 @@ Writer::intern(const string& s)
                                  "strings after string table is finished");
     }
 
-    m_strings[s] = 0;
+    m_strings[s] = -1;
 }
 
 int
@@ -421,8 +426,21 @@ Writer::property(const char* name,
 
 
 void
-Writer::constructStringTable()
+Writer::constructStringTable(const std::string *orderedStrings, int num)
 {
+    if (num < 0) 
+    {
+        throw std::runtime_error("Gto::Writer::constructStringTable(): "
+                                 "ordered string list length was negative");
+    }
+    
+    if (num > 0 && orderedStrings == 0) 
+    {
+        throw std::runtime_error("Gto::Writer::constructStringTable(): "
+                                 "ordered string list length was positive "
+                                 "but string list was null");
+    }
+    
     intern( "(Gto::Writer compiled " __DATE__ 
             " " __TIME__ 
             ", $Id: Writer.cpp,v 1.37 2008/04/11 23:25:24 src Exp $)" );
@@ -441,12 +459,33 @@ Writer::constructStringTable()
     int count = 0;
     size_t bytes = 0;
 
+    //
+    // populate the first entries with the given ordered strings
+    //
+
+    for (int i=0; i < num; ++i)
+    {
+        intern(orderedStrings[i]);
+    }
+
+    for (; count < num; ++count)
+    {
+        const std::string &s = orderedStrings[count];
+        if (m_strings[s] != -1)
+        {
+            throw std::runtime_error("Gto::Writer::constructStringTable(): "
+                                     "duplicate string present in ordered "
+                                     "string list");
+        }
+        m_strings[s] = count;
+    }
+
     for (StringMap::iterator i = m_strings.begin();
          i != m_strings.end(); 
          ++i)
     {
-        (*i).second = count++;
-        bytes += ((*i).first.size()+1) * sizeof(char);
+        if (i->second == -1) i->second = count++;
+        bytes += (i->first.size()+1) * sizeof(char);
     }
 
     //
@@ -663,11 +702,11 @@ Writer::writeHead()
 
     write(&header, sizeof(Header));
 
-    for (StringMap::iterator i = m_strings.begin();
-         i != m_strings.end(); 
+    for (StringVector::iterator i = m_names.begin();
+         i != m_names.end();
          ++i)
     {
-        write(i->first);
+        write(*i);
     }
 
     for (size_t i=0; i < m_objects.size(); i++)

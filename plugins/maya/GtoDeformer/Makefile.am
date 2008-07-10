@@ -25,7 +25,7 @@ GtoDeformer_so_SOURCES = GtoDeformer.cpp \
 noinst_HEADERS = GtoDeformer.h  GtoPointReader.h
 
 GtoDeformer_so_LDFLAGS = -shared \
-                   -L$(top_srcdir)/lib/Gto \
+                   -L$(top_builddir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
                    -lImage \

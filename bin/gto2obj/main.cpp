@@ -234,11 +234,11 @@ writeObj(ostream& out, Object* o)
     Property* stIndices = 0;
     Property* globalMat = 0;
 
-    for (int i = 0; i < o->components.size(); i++)
+    for (size_t i = 0; i < o->components.size(); i++)
     {
         Component* c = o->components[i];
 
-        for (int j = 0; j < c->properties.size(); j++)
+        for (size_t j = 0; j < c->properties.size(); j++)
         {
             Property* p = c->properties[j];
 
@@ -296,7 +296,7 @@ writeObj(ostream& out, Object* o)
         exit(-1);
     }
 
-    for (int i=0; i < verts->size * verts->width; i+=3)
+    for (size_t i=0; i < verts->size * verts->width; i+=3)
     {
         float x = verts->floatData[i];
         float y = verts->floatData[i+1];
@@ -315,7 +315,7 @@ writeObj(ostream& out, Object* o)
 
     if (normals)
     {
-        for (int i=0; i < normals->size * normals->width; i+=3)
+        for (size_t i=0; i < normals->size * normals->width; i+=3)
         {
             out << "vn " << normals->floatData[i]
                 << " " << normals->floatData[i+1]
@@ -326,7 +326,7 @@ writeObj(ostream& out, Object* o)
 
     if (sts)
     {
-        for (int i=0; i < sts->size * sts->width; i+=2)
+        for (size_t i=0; i < sts->size * sts->width; i+=2)
         {
             out << "vt " << sts->floatData[i]
                 << " " << sts->floatData[i+1]
@@ -334,7 +334,7 @@ writeObj(ostream& out, Object* o)
         }
     }
 
-    for (int i=0, base=0; i < sizes->size; i++)
+    for (size_t i=0, base=0; i < sizes->size; i++)
     {
         //  should really check to make sure this data is not bogus
         uint16 s = sizes->uint16Data[i];
@@ -346,7 +346,7 @@ writeObj(ostream& out, Object* o)
         {
             out << "f";
 
-            for (int j=0; j < s; j++, base++)
+            for (size_t j=0; j < s; j++, base++)
             {
                 out << " " << (vIndices->int32Data[base] + 1);
 
@@ -382,7 +382,7 @@ writeObjDB(const char* filename, const char* obj, RawDataBase* db)
 
     Object* outObj = 0;
 
-    for (int i=0; i < db->objects.size(); i++)
+    for (size_t i=0; i < db->objects.size(); i++)
     {
         Object* o = db->objects[i];
 
@@ -464,7 +464,6 @@ int main(int argc, char *argv[])
     char* outFile    = 0;
     char* protocol   = GTO_PROTOCOL_POLYGON;
     char* outObj     = 0;
-    int   replace    = 0;
     int   nocompress = 0;
     int   text       = 0;
 

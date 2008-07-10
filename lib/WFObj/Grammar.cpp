@@ -62,6 +62,7 @@
 
 #define yyLineNum wfobjLineNum
 #define yyReader wfobjReader
+#define YYDEBUG 1
 
 extern int yylex();
 extern int yyLineNum;
@@ -115,13 +116,12 @@ static int  vertex(int);
 static int  element(int);
 static void clear_element();
 static int  index(int,int,int,int);
-static void clear_all();
 static void active_object(const char*);
 static int  on_off_only(const char*);
 void yyerror(const char*);
 
 
-#line 87 "Grammar.y"
+#line 90 "Grammar.y"
 typedef union
 {
     int		_token;
@@ -210,11 +210,11 @@ static const short yyrhs[] = {    28,
 
 #if YYDEBUG != 0
 static const short yyrline[] = { 0,
-   136,   138,   141,   143,   144,   147,   150,   154,   155,   159,
-   160,   164,   165,   169,   170,   174,   175,   179,   180,   184,
-   189,   194,   199,   205,   211,   217,   223,   229,   235,   241,
-   247,   254,   256,   259,   266,   272,   278,   285,   287,   290,
-   292,   295,   299,   301,   304,   306,   309,   311
+   139,   141,   144,   146,   147,   150,   153,   157,   158,   162,
+   163,   167,   168,   172,   173,   177,   178,   182,   183,   187,
+   192,   197,   202,   208,   214,   220,   226,   232,   238,   244,
+   250,   257,   259,   262,   269,   275,   281,   288,   290,   293,
+   295,   298,   302,   304,   307,   309,   312,   314
 };
 #endif
 
@@ -847,222 +847,222 @@ yyreduce:
   switch (yyn) {
 
 case 3:
-#line 142 "Grammar.y"
+#line 145 "Grammar.y"
 { yyLineNum++; ;
     break;}
 case 4:
-#line 143 "Grammar.y"
+#line 146 "Grammar.y"
 { yyLineNum++; ;
     break;}
 case 5:
-#line 144 "Grammar.y"
+#line 147 "Grammar.y"
 { yyLineNum++; ;
     break;}
 case 6:
-#line 149 "Grammar.y"
+#line 152 "Grammar.y"
 { clear_vertex(); ;
     break;}
 case 7:
-#line 150 "Grammar.y"
+#line 153 "Grammar.y"
 { 
 	    if (vertex(VERTEX)) YYERROR;
 	;
     break;}
 case 8:
-#line 154 "Grammar.y"
+#line 157 "Grammar.y"
 { clear_vertex(); ;
     break;}
 case 9:
-#line 155 "Grammar.y"
+#line 158 "Grammar.y"
 { 
 	    if (vertex(VNORMAL)) YYERROR;
 	;
     break;}
 case 10:
-#line 159 "Grammar.y"
+#line 162 "Grammar.y"
 { clear_vertex(); ;
     break;}
 case 11:
-#line 160 "Grammar.y"
+#line 163 "Grammar.y"
 { 
 	    if (vertex(VTEXTURE)) YYERROR;
 	;
     break;}
 case 12:
-#line 164 "Grammar.y"
+#line 167 "Grammar.y"
 { clear_element(); ;
     break;}
 case 13:
-#line 165 "Grammar.y"
+#line 168 "Grammar.y"
 { 
 	    if (element(FACE)) YYERROR;
 	;
     break;}
 case 14:
-#line 169 "Grammar.y"
+#line 172 "Grammar.y"
 { clear_element(); ;
     break;}
 case 15:
-#line 170 "Grammar.y"
+#line 173 "Grammar.y"
 { 
 	    if (element(LINE)) YYERROR;
 	;
     break;}
 case 16:
-#line 174 "Grammar.y"
+#line 177 "Grammar.y"
 { clear_element(); ;
     break;}
 case 17:
-#line 175 "Grammar.y"
+#line 178 "Grammar.y"
 { 
 	    if (element(POINT)) YYERROR;
 	;
     break;}
 case 18:
-#line 179 "Grammar.y"
+#line 182 "Grammar.y"
 { clear_groups(); ;
     break;}
 case 19:
-#line 180 "Grammar.y"
+#line 183 "Grammar.y"
 { 
 	    group_statement(); 
 	;
     break;}
 case 20:
-#line 185 "Grammar.y"
+#line 188 "Grammar.y"
 { 
 	    smoothing_group(yyvsp[0]._int); 
 	;
     break;}
 case 21:
-#line 190 "Grammar.y"
+#line 193 "Grammar.y"
 { 
 	    if (smoothing_group_off(yyvsp[0]._name)) YYERROR;
 	;
     break;}
 case 22:
-#line 195 "Grammar.y"
+#line 198 "Grammar.y"
 {
 	    active_object(yyvsp[0]._name);
 	;
     break;}
 case 23:
-#line 200 "Grammar.y"
+#line 203 "Grammar.y"
 {
 	    if ((state.bevel = on_off_only(yyvsp[0]._name)) == -1) YYERROR;
 	    else yyReader->bevel(state.bevel);
 	;
     break;}
 case 24:
-#line 206 "Grammar.y"
+#line 209 "Grammar.y"
 {
 	    if ((state.cinterp = on_off_only(yyvsp[0]._name)) == -1) YYERROR;
 	    else yyReader->cinterp(state.cinterp);
 	;
     break;}
 case 25:
-#line 212 "Grammar.y"
+#line 215 "Grammar.y"
 {
 	    if ((state.dinterp = on_off_only(yyvsp[0]._name)) == -1) YYERROR;
 	    else yyReader->dinterp(state.dinterp);
 	;
     break;}
 case 26:
-#line 218 "Grammar.y"
+#line 221 "Grammar.y"
 {
 	    state.mtl = yyvsp[0]._name;
 	    yyReader->usemtl(state.mtl);
 	;
     break;}
 case 27:
-#line 224 "Grammar.y"
+#line 227 "Grammar.y"
 {
 	    state.map = yyvsp[0]._name;
 	    yyReader->usemap(state.map);
 	;
     break;}
 case 28:
-#line 230 "Grammar.y"
+#line 233 "Grammar.y"
 {
 	    state.mtllib = yyvsp[0]._name;
 	    yyReader->mtllib(state.mtllib);
 	;
     break;}
 case 29:
-#line 236 "Grammar.y"
+#line 239 "Grammar.y"
 {
 	    state.shadow_obj = yyvsp[0]._name;
 	    yyReader->shadow_obj(state.shadow_obj);
 	;
     break;}
 case 30:
-#line 242 "Grammar.y"
+#line 245 "Grammar.y"
 {
 	    state.trace_obj = yyvsp[0]._name;
 	    yyReader->trace_obj(state.trace_obj);
 	;
     break;}
 case 31:
-#line 248 "Grammar.y"
+#line 251 "Grammar.y"
 {
 	    state.lod = yyvsp[0]._int;
 	    yyReader->lod(state.lod);
 	;
     break;}
 case 34:
-#line 261 "Grammar.y"
+#line 264 "Grammar.y"
 { 
 	    yyval._flags=1; 
 	    if (index(1,yyvsp[0]._int,0,0)) YYERROR;
 	;
     break;}
 case 35:
-#line 267 "Grammar.y"
+#line 270 "Grammar.y"
 { 
 	    yyval._flags=3; 
 	    if (index(3,yyvsp[-2]._int,yyvsp[0]._int,0)) YYERROR;
 	;
     break;}
 case 36:
-#line 273 "Grammar.y"
+#line 276 "Grammar.y"
 { 
 	    yyval._flags=5;
 	    if (index(5,yyvsp[-3]._int,0,yyvsp[0]._int)) YYERROR;
 	;
     break;}
 case 37:
-#line 279 "Grammar.y"
+#line 282 "Grammar.y"
 { 
 	    yyval._flags=7; 
 	    if (index(7,yyvsp[-4]._int,yyvsp[-2]._int,yyvsp[0]._int)) YYERROR;
 	;
     break;}
 case 38:
-#line 286 "Grammar.y"
+#line 289 "Grammar.y"
 { add_to_vertex(yyvsp[0]._float); ;
     break;}
 case 39:
-#line 287 "Grammar.y"
+#line 290 "Grammar.y"
 { add_to_vertex(yyvsp[0]._float); ;
     break;}
 case 41:
-#line 292 "Grammar.y"
+#line 295 "Grammar.y"
 { yyval._float = float(yyvsp[0]._int); ;
     break;}
 case 43:
-#line 300 "Grammar.y"
+#line 303 "Grammar.y"
 { yyval._int = -1; ;
     break;}
 case 45:
-#line 305 "Grammar.y"
+#line 308 "Grammar.y"
 { add_group(""); ;
     break;}
 case 46:
-#line 306 "Grammar.y"
+#line 309 "Grammar.y"
 { add_group(yyvsp[0]._name); ;
     break;}
 case 48:
-#line 311 "Grammar.y"
+#line 314 "Grammar.y"
 { add_group(yyvsp[0]._name); ;
     break;}
 }
@@ -1287,29 +1287,9 @@ yyerrhandle:
     }
   return 1;
 }
-#line 314 "Grammar.y"
+#line 317 "Grammar.y"
 
 
-void
-clear_all()
-{
-    state.groups.clear();
-    state.active_groups.clear();
-    state.vertex_index.clear();
-    state.normal_index.clear();
-    state.texture_index.clear();
-
-    state.active_object   = "";
-    state.mtllib 	  = "";
-    state.mtl 		  = "";
-    state.map 		  = "";
-    state.shadow_obj 	  = "";
-    state.trace_obj 	  = "";
-    state.smoothing_group = 0;
-    state.cinterp 	  = 0;
-    state.dinterp 	  = 0;
-    state.bevel 	  = 0;
-}
 
 void
 group_statement()
@@ -1366,9 +1346,7 @@ add_group(const char *name)
 	yyReader->newGroup(n);
     }
 
-    bool found = false;
-
-    for (int i=0; i<state.active_groups.size(); i++)
+    for (size_t i=0; i<state.active_groups.size(); i++)
     {
 	if (state.active_groups[i] == name) return;
     }

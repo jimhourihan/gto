@@ -44,6 +44,9 @@ void GTOParseWarning(void*, const char *,...);
 
 %}
 
+//%defines
+//%name-prefix="GTO"
+
 %union
 {
     int             _token;
@@ -60,20 +63,20 @@ void GTOParseWarning(void*, const char *,...);
 
 %pure_parser
 
-%token <_int>       STRINGCONST
-%token <_int>       INTCONST
-%token <_double>    FLOATCONST
-%token <_int>       GTOID
-%token <_token>     AS
-%token <_token>     INTTYPE
-%token <_token>     FLOATTYPE
-%token <_token>     DOUBLETYPE
-%token <_token>     STRINGTYPE
-%token <_token>     HALFTYPE
-%token <_token>     BOOLTYPE
-%token <_token>     SHORTTYPE
-%token <_token>     BYTETYPE
-%token <_token>     ELLIPSIS
+%token <_int>       GTO_STRINGCONST
+%token <_int>       GTO_INTCONST
+%token <_double>    GTO_FLOATCONST
+%token <_int>       GTO_GTOID
+%token <_token>     GTO_AS
+%token <_token>     GTO_INTTYPE
+%token <_token>     GTO_FLOATTYPE
+%token <_token>     GTO_DOUBLETYPE
+%token <_token>     GTO_STRINGTYPE
+%token <_token>     GTO_HALFTYPE
+%token <_token>     GTO_BOOLTYPE
+%token <_token>     GTO_SHORTTYPE
+%token <_token>     GTO_BYTETYPE
+%token <_token>     GTO_ELLIPSIS
 
 %type <_type>   type
 %type <_type>   basic_type
@@ -92,7 +95,7 @@ void GTOParseWarning(void*, const char *,...);
 %%
 
 file:
-    GTOID 
+    GTO_GTOID 
     {
         READER->beginHeader(GTO_VERSION);
     }
@@ -101,7 +104,7 @@ file:
         READER->endFile(); 
     }
 
-    | GTOID '(' INTCONST ')' 
+    | GTO_GTOID '(' GTO_INTCONST ')' 
     {
         READER->beginHeader($3);
     }
@@ -117,19 +120,19 @@ object_list:
 ;
 
 object:
-    STRINGCONST '{' 
+    GTO_STRINGCONST '{' 
     {
         READER->beginObject($1, READER->internString("object"));
     }
     component_list '}'
 
-    | STRINGCONST ':' STRINGCONST '{' 
+    | GTO_STRINGCONST ':' GTO_STRINGCONST '{' 
     {
         READER->beginObject($1, $3);
     }
     component_list '}'
 
-    | STRINGCONST ':' STRINGCONST '(' INTCONST ')' '{' 
+    | GTO_STRINGCONST ':' GTO_STRINGCONST '(' GTO_INTCONST ')' '{' 
     {
         READER->beginObject($1, $3, $5);
     }
@@ -147,14 +150,14 @@ interp_string_opt:
         $$ = READER->internString("");
     }
 
-    | AS STRINGCONST
+    | GTO_AS GTO_STRINGCONST
     {
         $$ = $2;
     }
 ;
 
 component:
-    STRINGCONST interp_string_opt '{' 
+    GTO_STRINGCONST interp_string_opt '{' 
     {
         READER->beginComponent($1, $2);
     }
@@ -167,7 +170,7 @@ property_list:
 ;
 
 property:
-    type STRINGCONST interp_string_opt '=' 
+    type GTO_STRINGCONST interp_string_opt '=' 
     {
         READER->beginProperty($2, $3, $1.width, $1.size, $1.type);
     }
@@ -194,7 +197,7 @@ property:
         }
     }
 
-    | type STRINGCONST interp_string_opt '=' 
+    | type GTO_STRINGCONST interp_string_opt '=' 
     {
         READER->beginProperty($2, $3, $1.width, $1.size, $1.type);
     }
@@ -204,7 +207,7 @@ property:
 
         if ($1.size != 0 && nelements != $1.size)
         {
-            if ($7 == ELLIPSIS)
+            if ($7 == GTO_ELLIPSIS)
             {
                 READER->fillToSize($1.size);
                 READER->endProperty();
@@ -218,7 +221,7 @@ property:
                 YYERROR;
             }
         }
-        else if ($1.size == 0 && $7 == ELLIPSIS)
+        else if ($1.size == 0 && $7 == GTO_ELLIPSIS)
         {
             GTOParseError(state,
               "use of ... requires fixed property size but none was provided");
@@ -239,14 +242,14 @@ type:
         $$.size  = 0;
     }
 
-    | basic_type '[' INTCONST ']'
+    | basic_type '[' GTO_INTCONST ']'
     {
         $$.type  = $1.type;
         $$.width = $3;
         $$.size  = 0;
     }
 
-    | basic_type '[' INTCONST ']' '[' INTCONST ']'
+    | basic_type '[' GTO_INTCONST ']' '[' GTO_INTCONST ']'
     {
         $$.type  = $1.type;
         $$.width = $3;
@@ -255,20 +258,20 @@ type:
 ;
 
 basic_type:
-    FLOATTYPE       { $$.type = Gto::Float; }
-    | INTTYPE       { $$.type = Gto::Int; }
-    | STRINGTYPE    { $$.type = Gto::String; }
-    | SHORTTYPE     { $$.type = Gto::Short; }
-    | BYTETYPE      { $$.type = Gto::Byte; }
-    | HALFTYPE      { $$.type = Gto::Half; }
-    | BOOLTYPE      { $$.type = Gto::Boolean; }
-    | DOUBLETYPE    { $$.type = Gto::Double; }
+    GTO_FLOATTYPE       { $$.type = Gto::Float; }
+    | GTO_INTTYPE       { $$.type = Gto::Int; }
+    | GTO_STRINGTYPE    { $$.type = Gto::String; }
+    | GTO_SHORTTYPE     { $$.type = Gto::Short; }
+    | GTO_BYTETYPE      { $$.type = Gto::Byte; }
+    | GTO_HALFTYPE      { $$.type = Gto::Half; }
+    | GTO_BOOLTYPE      { $$.type = Gto::Boolean; }
+    | GTO_DOUBLETYPE    { $$.type = Gto::Double; }
 ;
 
 complex_element_list:
     /* empty */ { $$ = 0; }
     | element_list { $$ = 0; }
-    | element_list ELLIPSIS { $$ = ELLIPSIS; }
+    | element_list GTO_ELLIPSIS { $$ = GTO_ELLIPSIS; }
 ;
 
 element_list:
@@ -305,7 +308,7 @@ string_value_list:
 ;
 
 string_value:
-    STRINGCONST
+    GTO_STRINGCONST
     {
         if (READER->currentType().type != Gto::String)
         {
@@ -514,13 +517,13 @@ numeric_value:
 ;
 
 float_num:
-    FLOATCONST { $$ = $1; }
-    | '-' FLOATCONST { $$ = -$2; }
+    GTO_FLOATCONST { $$ = $1; }
+    | '-' GTO_FLOATCONST { $$ = -$2; }
 ;
 
 int_num:
-    INTCONST { $$ = $1; }
-    | '-' INTCONST { $$ = -$2; }
+    GTO_INTCONST { $$ = $1; }
+    | '-' GTO_INTCONST { $$ = -$2; }
 ;
 
 

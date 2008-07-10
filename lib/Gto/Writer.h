@@ -33,7 +33,7 @@ namespace Gto {
 //
 //  class Gto::Writer
 //
-//  Typically, you'll make a write on the stack and call its
+//  Typically, you'll make a Writer on the stack and call its
 //  functions. This class is not intended to be inherited from.
 //
 
@@ -148,6 +148,15 @@ public:
     void            beginData();
 
     //
+    // If you want to specify the order for some of the interned
+    // strings in order to prevent having to rewrite your string
+    // attributes, you can give them to beginData and they will become
+    // the first entries in the string table in the given order
+    //
+
+    void            beginData(const std::string *orderedStrings, int num);
+
+    //
     //  data -- these must be called in the same order as the
     //  declaration section above. One of the propertyData..()
     //  functions should be called once for each property declared.
@@ -191,7 +200,7 @@ public:
 
 private:
     void            init(std::ostream*);
-    void            constructStringTable();
+    void            constructStringTable(const std::string*, int);
     void            writeHead();
 
     void            write(const void*, size_t);

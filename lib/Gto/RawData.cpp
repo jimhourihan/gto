@@ -347,7 +347,7 @@ RawDataBaseWriter::write(const char *filename,
 
             const Components &components = o.components;
 
-            for (int q=0; q < components.size(); q++)
+            for (size_t q=0; q < components.size(); q++)
             {
                 writeComponent(true, components[q]);
             }

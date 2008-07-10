@@ -49,6 +49,7 @@
 
 #define YYPARSE_PARAM state
 #define YYLEX_PARAM state
+#define YYDEBUG 1
 #ifdef yyerror
 #undef yyerror
 #endif
@@ -62,16 +63,21 @@
 #include "Utilities.h"
 #include <stdarg.h>
 
+#ifdef GTO_SUPPORT_HALF
+#include <half.h>
+#endif
+
 int  yylex(void*, void*);
 void GTOParseError(void*, const char *,...);
 void GTOParseWarning(void*, const char *,...);
 
 
-#line 42 "Parser.y"
+#line 50 "Parser.y"
 typedef union
 {
     int             _token;
     int             _int;
+    unsigned int    _uint;
     double          _double;
     Gto::TypeSpec   _type;
     Gto::Number     _number;
@@ -160,12 +166,12 @@ static const short yyrhs[] = {    -1,
 
 #if YYDEBUG != 0
 static const short yyrline[] = { 0,
-    88,    94,    98,   103,   108,   110,   113,   118,   120,   124,
-   126,   130,   133,   135,   138,   144,   150,   155,   158,   160,
-   163,   169,   191,   195,   228,   236,   243,   251,   253,   254,
-   255,   256,   257,   258,   259,   262,   264,   265,   268,   270,
-   273,   275,   286,   288,   291,   293,   296,   298,   301,   320,
-   322,   325,   385,   445,   447,   450,   452
+    97,   103,   107,   112,   117,   119,   122,   127,   129,   133,
+   135,   139,   142,   144,   147,   153,   159,   164,   167,   169,
+   172,   178,   200,   204,   237,   245,   252,   260,   262,   263,
+   264,   265,   266,   267,   268,   271,   273,   274,   277,   279,
+   282,   284,   295,   297,   300,   302,   305,   307,   310,   329,
+   331,   334,   419,   519,   521,   524,   526
 };
 #endif
 
@@ -814,73 +820,73 @@ yyreduce:
   switch (yyn) {
 
 case 1:
-#line 90 "Parser.y"
+#line 99 "Parser.y"
 {
         READER->beginHeader(GTO_VERSION);
     ;
     break;}
 case 2:
-#line 94 "Parser.y"
-{ 
-        READER->endFile(); 
-    ;
-    break;}
-case 3:
-#line 99 "Parser.y"
-{
-        READER->beginHeader(yyvsp[-1]._int);
-    ;
-    break;}
-case 4:
 #line 103 "Parser.y"
 { 
         READER->endFile(); 
     ;
     break;}
+case 3:
+#line 108 "Parser.y"
+{
+        READER->beginHeader(yyvsp[-1]._int);
+    ;
+    break;}
+case 4:
+#line 112 "Parser.y"
+{ 
+        READER->endFile(); 
+    ;
+    break;}
 case 7:
-#line 115 "Parser.y"
+#line 124 "Parser.y"
 {
         READER->beginObject(yyvsp[-1]._int, READER->internString("object"));
     ;
     break;}
 case 9:
-#line 121 "Parser.y"
+#line 130 "Parser.y"
 {
         READER->beginObject(yyvsp[-3]._int, yyvsp[-1]._int);
     ;
     break;}
 case 11:
-#line 127 "Parser.y"
+#line 136 "Parser.y"
 {
         READER->beginObject(yyvsp[-6]._int, yyvsp[-4]._int, yyvsp[-2]._int);
     ;
     break;}
 case 15:
-#line 140 "Parser.y"
+#line 149 "Parser.y"
 {
         yyval._int = READER->internString("");
     ;
     break;}
 case 16:
-#line 145 "Parser.y"
+#line 154 "Parser.y"
 {
         yyval._int = yyvsp[0]._int;
     ;
     break;}
 case 17:
-#line 152 "Parser.y"
+#line 161 "Parser.y"
 {
         READER->beginComponent(yyvsp[-2]._int, yyvsp[-1]._int);
     ;
     break;}
 case 21:
-#line 165 "Parser.y"
+#line 174 "Parser.y"
 {
         READER->beginProperty(yyvsp[-2]._int, yyvsp[-1]._int, yyvsp[-3]._type.width, yyvsp[-3]._type.size, yyvsp[-3]._type.type);
     ;
     break;}
 case 22:
-#line 169 "Parser.y"
+#line 178 "Parser.y"
 {
         if (READER->currentType().width != 1)
         {
@@ -904,13 +910,13 @@ case 22:
     ;
     break;}
 case 23:
-#line 192 "Parser.y"
+#line 201 "Parser.y"
 {
         READER->beginProperty(yyvsp[-2]._int, yyvsp[-1]._int, yyvsp[-3]._type.width, yyvsp[-3]._type.size, yyvsp[-3]._type.type);
     ;
     break;}
 case 24:
-#line 196 "Parser.y"
+#line 205 "Parser.y"
 {
         size_t nelements = READER->numElementsInBuffer();
 
@@ -943,7 +949,7 @@ case 24:
     ;
     break;}
 case 25:
-#line 230 "Parser.y"
+#line 239 "Parser.y"
 {
         yyval._type.type  = yyvsp[0]._type.type;
         yyval._type.width = 1;
@@ -951,7 +957,7 @@ case 25:
     ;
     break;}
 case 26:
-#line 237 "Parser.y"
+#line 246 "Parser.y"
 {
         yyval._type.type  = yyvsp[-3]._type.type;
         yyval._type.width = yyvsp[-1]._int;
@@ -959,7 +965,7 @@ case 26:
     ;
     break;}
 case 27:
-#line 244 "Parser.y"
+#line 253 "Parser.y"
 {
         yyval._type.type  = yyvsp[-6]._type.type;
         yyval._type.width = yyvsp[-4]._int;
@@ -967,78 +973,78 @@ case 27:
     ;
     break;}
 case 28:
-#line 252 "Parser.y"
+#line 261 "Parser.y"
 { yyval._type.type = Gto::Float; ;
     break;}
 case 29:
-#line 253 "Parser.y"
+#line 262 "Parser.y"
 { yyval._type.type = Gto::Int; ;
     break;}
 case 30:
-#line 254 "Parser.y"
+#line 263 "Parser.y"
 { yyval._type.type = Gto::String; ;
     break;}
 case 31:
-#line 255 "Parser.y"
+#line 264 "Parser.y"
 { yyval._type.type = Gto::Short; ;
     break;}
 case 32:
-#line 256 "Parser.y"
+#line 265 "Parser.y"
 { yyval._type.type = Gto::Byte; ;
     break;}
 case 33:
-#line 257 "Parser.y"
+#line 266 "Parser.y"
 { yyval._type.type = Gto::Half; ;
     break;}
 case 34:
-#line 258 "Parser.y"
+#line 267 "Parser.y"
 { yyval._type.type = Gto::Boolean; ;
     break;}
 case 35:
-#line 259 "Parser.y"
+#line 268 "Parser.y"
 { yyval._type.type = Gto::Double; ;
     break;}
 case 36:
-#line 263 "Parser.y"
+#line 272 "Parser.y"
 { yyval._token = 0; ;
     break;}
 case 37:
-#line 264 "Parser.y"
+#line 273 "Parser.y"
 { yyval._token = 0; ;
     break;}
 case 38:
-#line 265 "Parser.y"
+#line 274 "Parser.y"
 { yyval._token = ELLIPSIS; ;
     break;}
 case 42:
-#line 276 "Parser.y"
+#line 285 "Parser.y"
 {
-        if (yyvsp[-1]._int != READER->currentType().width)
+        if (yyvsp[-1]._uint != READER->currentType().width)
         {
             GTOParseError(state, "expected data width of %d, found %d",
-                          READER->currentType().width, yyvsp[-1]._int);
+                          READER->currentType().width, yyvsp[-1]._uint);
             YYERROR;
         }
     ;
     break;}
 case 45:
-#line 292 "Parser.y"
+#line 301 "Parser.y"
 { ;
     break;}
 case 46:
-#line 293 "Parser.y"
+#line 302 "Parser.y"
 { ;
     break;}
 case 47:
-#line 297 "Parser.y"
-{ yyval._int = 1; ;
+#line 306 "Parser.y"
+{ yyval._uint = 1; ;
     break;}
 case 48:
-#line 298 "Parser.y"
-{ yyval._int = yyvsp[-1]._int + 1; ;
+#line 307 "Parser.y"
+{ yyval._uint = yyvsp[-1]._uint + 1; ;
     break;}
 case 49:
-#line 303 "Parser.y"
+#line 312 "Parser.y"
 {
         if (READER->currentType().type != Gto::String)
         {
@@ -1056,15 +1062,15 @@ case 49:
     ;
     break;}
 case 50:
-#line 321 "Parser.y"
-{ yyval._int = 1; ;
+#line 330 "Parser.y"
+{ yyval._uint = 1; ;
     break;}
 case 51:
-#line 322 "Parser.y"
-{ yyval._int = yyvsp[-1]._int + 1; ;
+#line 331 "Parser.y"
+{ yyval._uint = yyvsp[-1]._uint + 1; ;
     break;}
 case 52:
-#line 327 "Parser.y"
+#line 336 "Parser.y"
 {
         Gto::DataType t = Gto::DataType(READER->properties().back().type);
 
@@ -1088,6 +1094,25 @@ case 52:
               yyval._number._double = yyvsp[0]._double;
               READER->addToPropertyBuffer(float(yyvsp[0]._double));
               break;
+
+          case Gto::Double:
+              yyval._number.type = Gto::Double;
+              yyval._number._double = yyvsp[0]._double;
+              READER->addToPropertyBuffer(double(yyvsp[0]._double));
+              break;
+
+#ifdef GTO_SUPPORT_HALF
+          case Gto::Half:
+              yyval._number.type = Gto::Half;
+              yyval._number._double = yyvsp[0]._double;
+              READER->addToPropertyBuffer(half(yyvsp[0]._double));
+              break;
+#else
+          case Gto::Half:
+              GTOParseError(state, "numeric type '%s' is currently unsupported "
+                            "by the parser", typeName(t));
+              YYERROR;
+#endif
 
           case Gto::Short:
               if (yyvsp[0]._double != short(yyvsp[0]._double))
@@ -1120,11 +1145,17 @@ case 52:
                             "point number (%f) instead", yyvsp[0]._double);
               YYERROR;
               break;
+
+          default:
+              GTOParseError(state, "unsupported type '%s'; got a floating "
+                            "point number (%f) instead", typeName(t), yyvsp[0]._double);
+              YYERROR;
+              break;
         }
     ;
     break;}
 case 53:
-#line 386 "Parser.y"
+#line 420 "Parser.y"
 {
         Gto::DataType t = Gto::DataType(READER->properties().back().type);
 
@@ -1148,6 +1179,34 @@ case 53:
               yyval._number._double = yyvsp[0]._int;
               READER->addToPropertyBuffer(float(yyvsp[0]._int));
               break;
+
+          case Gto::Double:
+              if (yyvsp[0]._int != double(yyvsp[0]._int))
+              {
+                  GTOParseWarning(state, "integer cannot be represented "
+                                  "as double (%d => %f)",
+                                  yyvsp[0]._int, double(yyvsp[0]._int));
+              }
+              
+              yyval._number.type = Gto::Double;
+              yyval._number._double = yyvsp[0]._int;
+              READER->addToPropertyBuffer(double(yyvsp[0]._int));
+              break;
+
+#ifdef GTO_SUPPORT_HALF
+          case Gto::Half:
+              if (yyvsp[0]._int != half(yyvsp[0]._int))
+              {
+                  GTOParseWarning(state, "integer cannot be represented "
+                                  "as half (%d => %f)",
+                                  yyvsp[0]._int, float(yyvsp[0]._int));
+              }
+              
+              yyval._number.type = Gto::Half;
+              yyval._number._double = yyvsp[0]._int;
+              READER->addToPropertyBuffer(half(yyvsp[0]._int));
+              break;
+#endif
 
           case Gto::Short:
               if (yyvsp[0]._int != short(yyvsp[0]._int))
@@ -1180,23 +1239,35 @@ case 53:
                             "(%d) instead", yyvsp[0]._int);
               YYERROR;
               break;
+
+          case Gto::Boolean:
+              GTOParseError(state, "numeric type '%s' is currently unsupported "
+                            "by the parser", typeName(t));
+              YYERROR;
+              break;
+
+          default:
+              GTOParseError(state, "unsupported type '%s'; got an integer "
+                            "(%d) instead", typeName(t), yyvsp[0]._int);
+              YYERROR;
+              break;
         }
     ;
     break;}
 case 54:
-#line 446 "Parser.y"
+#line 520 "Parser.y"
 { yyval._double = yyvsp[0]._double; ;
     break;}
 case 55:
-#line 447 "Parser.y"
+#line 521 "Parser.y"
 { yyval._double = -yyvsp[0]._double; ;
     break;}
 case 56:
-#line 451 "Parser.y"
+#line 525 "Parser.y"
 { yyval._int = yyvsp[0]._int; ;
     break;}
 case 57:
-#line 452 "Parser.y"
+#line 526 "Parser.y"
 { yyval._int = -yyvsp[0]._int; ;
     break;}
 }
@@ -1421,7 +1492,7 @@ yyerrhandle:
     }
   return 1;
 }
-#line 456 "Parser.y"
+#line 530 "Parser.y"
 
 
 int yylex(void* yylval, void* state)
@@ -1435,7 +1506,7 @@ void
 GTOParseError(void* state, const char *text, ...)
 {
     char temp[256];
-    GTOFlexLexer* lexer = reinterpret_cast<GTOFlexLexer*>(state);
+    //GTOFlexLexer* lexer = reinterpret_cast<GTOFlexLexer*>(state);
 
     va_list ap;
     va_start(ap,text);
@@ -1449,7 +1520,7 @@ void
 GTOParseWarning(void* state, const char *text, ...)
 {
     char temp[256];
-    GTOFlexLexer* lexer = (GTOFlexLexer*)state;
+    //GTOFlexLexer* lexer = (GTOFlexLexer*)state;
 
     va_list ap;
     va_start(ap,text);

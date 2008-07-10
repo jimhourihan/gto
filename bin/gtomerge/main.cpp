@@ -31,12 +31,12 @@ const char *stripNamePrefix( const std::string &name, const char *prefix )
 void
 propertyMerge(Component *out, Component *in)
 {
-    for (int i=0; i < in->properties.size(); i++)
+    for (size_t i=0; i < in->properties.size(); i++)
     {
         Property *p = in->properties[i];
         bool found = false;
 
-        for (int q=0; q < out->properties.size(); q++)
+        for (size_t q=0; q < out->properties.size(); q++)
         {
             if (out->properties[q]->name == p->name)
             {
@@ -57,12 +57,12 @@ propertyMerge(Component *out, Component *in)
 void
 componentMerge(Object *out, Object *in)
 {
-    for (int i=0; i < in->components.size(); i++)
+    for (size_t i=0; i < in->components.size(); i++)
     {
         Component *c = in->components[i];
         bool found = false;
 
-        for (int q=0; q < out->components.size(); q++)
+        for (size_t q=0; q < out->components.size(); q++)
         {
             if (out->components[q]->name == c->name)
             {
@@ -86,14 +86,14 @@ objectMerge(RawDataBase *out, RawDataBase *in, const char *stripPrefix)
 {
     if( stripPrefix )
     {
-        for (int i=0; i < in->objects.size(); i++)
+        for (size_t i=0; i < in->objects.size(); i++)
         {
             Object *o = in->objects[i];
             bool found = false;
 
             std::string mungedNameIn( stripNamePrefix( o->name, stripPrefix ) );
 
-            for (int q=0; q < out->objects.size(); q++)
+            for (size_t q=0; q < out->objects.size(); q++)
             {
                 std::string mungedNameOut( stripNamePrefix( out->objects[q]->name, stripPrefix ) );
                 if (mungedNameOut == mungedNameIn)
@@ -115,12 +115,12 @@ objectMerge(RawDataBase *out, RawDataBase *in, const char *stripPrefix)
     }
     else
     {
-        for (int i=0; i < in->objects.size(); i++)
+        for (size_t i=0; i < in->objects.size(); i++)
         {
             Object *o = in->objects[i];
             bool found = false;
 
-            for (int q=0; q < out->objects.size(); q++)
+            for (size_t q=0; q < out->objects.size(); q++)
             {
                 if (out->objects[q]->name == o->name)
                 {
@@ -157,7 +157,6 @@ int main(int argc, char *argv[])
 {
     vector<string> inputFiles;
     char *outFile = NULL;
-    int replace = 0;
     RawDataBase outObjects;
     char *stripPrefix = NULL;
     int text = 0;
@@ -208,7 +207,7 @@ int main(int argc, char *argv[])
         usage();
     }
 
-    for (int i=0; i < inputFiles.size(); i++)
+    for (size_t i=0; i < inputFiles.size(); i++)
     {
         RawDataBaseReader reader;
         cout << "Reading input file " << inputFiles[i] << "..." << endl;

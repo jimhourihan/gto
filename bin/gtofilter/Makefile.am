@@ -8,4 +8,4 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib
 bin_PROGRAMS = gtofilter
 
 gtofilter_SOURCES = main.cpp
-gtofilter_LDADD = $(top_srcdir)/lib/Gto/libGto.la @LIBS@
+gtofilter_LDADD = $(top_builddir)/lib/Gto/libGto.la @LIBS@

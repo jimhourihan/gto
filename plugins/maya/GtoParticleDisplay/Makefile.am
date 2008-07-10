@@ -23,7 +23,7 @@ GtoParticleDisplay_so_SOURCES = GtoParticleDisplay.cpp  pluginMain.cpp
 noinst_HEADERS = GtoParticleDisplay.h
 
 GtoParticleDisplay_so_LDFLAGS = -shared \
-                   -L$(top_srcdir)/lib/Gto \
+                   -L$(top_builddir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
                    -lImage \
