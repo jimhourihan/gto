@@ -1,11 +1,31 @@
+//******************************************************************************
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
+//******************************************************************************
+
 #ifdef SWIGPYTHON
 
 %{  // Begin verbatim
 
 #include <stdexcept>
-#include "Header.h"
-#include "Reader.h"
-#include "RawData.h"
+#include <Gto/Header.h>
+#include <Gto/Reader.h>
+#include <Gto/RawData.h>
+#include "GtoDB.h"
 
 using namespace Gto;
 
@@ -16,7 +36,7 @@ using namespace Gto;
 // one item in a given property.  If property width is > 1, result will be
 // a tuple.
 //
-PyObject *getItem(const Property* prop, long index)
+PyObject *gtoDB_getItem(const Property* prop, long index)
 {
     if(prop->width == 1)
     {
@@ -84,18 +104,18 @@ PyObject *getItem(const Property* prop, long index)
 // Utility function, not exposed to Python.  Build a python representation of
 // a slice of items in a given property.  Always returns a tuple.
 //
-PyObject *getSlice(const Property* prop, long start, long stop, 
+PyObject *gtoDB_getSlice(const Property* prop, long start, long stop, 
                    long step, long size)
 {
-    PyObject *dataTuple = PyTuple_New(size);
+    PyObject *tuple = PyTuple_New(size);
     for(long dataIndex = start, tupleIndex = 0; 
         dataIndex < stop; 
         tupleIndex++, dataIndex += step)
     {
-        PyObject *item = getItem(prop, dataIndex);
-        PyTuple_SetItem(dataTuple, tupleIndex, item);
+        PyObject *item = gtoDB_getItem(prop, dataIndex);
+        PyTuple_SetItem(tuple, tupleIndex, item);
     }
-    return dataTuple;
+    return tuple;
 }
 
 
@@ -284,6 +304,24 @@ Property* createPropertyFromPyObject(const std::string name,
 // *****************************************************************************
 // *****************************************************************************
 
+%define PROPERTY_DOCSTRING
+"Represents a single GTO Property and the data it contains.  Property
+data can be accessed like so:
+
+    property()       # Returns data in its native form (int, float, str, tuple)
+    property[i]      # Returns a single item of the property's data
+    property[i:j]    # Returns a slice of the property's data
+
+Information about the Property itself can be had via the attributes name, interp,
+size, width, and type.).  A Property's name and interp string can be changed, 
+but the size, width, and data type cannot.  Property data can be changed:
+        
+    property[0] = 'hello'
+    property[0:2] = (0.1, 0.2)
+
+"
+%enddef
+%feature("autodoc", PROPERTY_DOCSTRING);
 struct Property
 {
     // Because we always want to allocate memory when creating Properties
@@ -296,10 +334,11 @@ struct Property
     size_t          size;  // Can't dynamically change a Property's size
     size_t          width; // Can't dynamically change a Property's width
     Gto::DataType   type;  // Can't dynamically change a Property's data type
-};
-#ifdef SWIGPYTHON
-%extend Property {
 
+#ifdef SWIGPYTHON
+%extend {
+
+    %feature("autodoc", "1");
     Property(const std::string name, const std::string interp, 
              Gto::DataType type, size_t size, size_t width=1)
     {
@@ -321,7 +360,24 @@ struct Property
         return new Property( name, type, size, width, true ); 
     }
 
+%define PROPERTY_CONTSTRUCTOR_DOCSTRING
+"
 
+Variants of the contstructor that accept a PyObject parameter will auto-
+detect the data type, size, and width parameters for the new Property based
+on the type and structure of the Python object, and set the property data
+accordingly.  For example:
+
+    Property('a', 'hello')          => type=string, size=1, width=1
+    Property('b', ('hello', 'bye')  => type=string, size=2, width=1
+    Property('c', 3.14159)          => type=float, size=1, width=1
+    Property('d', (1, 2))           => type=int, size=2, width=1
+    Property('e', ((1, 2), (3, 4))) => type=int, size=2, width=2
+    Property('f', range(10))        => type=int, size=10, width=1
+"
+%enddef 
+
+    %feature("docstring", PROPERTY_CONTSTRUCTOR_DOCSTRING);
     Property(const std::string name, const std::string interp, PyObject *data) 
     {
         return createPropertyFromPyObject(name, interp, data);
@@ -332,8 +388,10 @@ struct Property
     {
         return createPropertyFromPyObject(name, "", data);
     }
+    %feature("docstring", "");
 
 
+    %feature("autodoc", "0");
     char *__repr__()
     {
         static const char typeStr[][16] = { "int", "float", "double", "half",
@@ -351,10 +409,11 @@ struct Property
     }
 
 
+    %feature("autodoc", "0");
     long __cmp__(PyObject *other)
     {
         Property *otherProp = NULL;
-        PYOBJECT_CAST(Property, other, otherProp);
+        CAST_PYOBJECT_TO_C(Property, other, otherProp);
         if($self == otherProp)
         {
             return 0;
@@ -370,12 +429,28 @@ struct Property
     }
 
     
+    %feature("autodoc", "Equivalent to property.size");
     long __len__()
     {
         return long($self->size);
     }
 
 
+    %feature("autodoc", "Returns all property data in its native form (int, float, str, tuple)");
+    PyObject *__call__()
+    {
+        if( $self->size == 1 )
+        {
+            return gtoDB_getItem($self, 0);
+        }
+        else
+        {
+            return gtoDB_getSlice($self, 0, $self->size, 1, $self->size);
+        }
+    }
+
+
+    %feature("autodoc", "0");
     PyObject *__getitem__(PyObject *key)
     {
         if( PySlice_Check(key) )
@@ -388,7 +463,7 @@ struct Property
                 PyErr_SetString(PyExc_IndexError, "GTO Property invalid slice");
                 return NULL;
             }
-            return getSlice($self, start, stop, step, slicelength);
+            return gtoDB_getSlice($self, start, stop, step, slicelength);
         }
         else if( PyInt_Check(key) )
         {
@@ -402,7 +477,7 @@ struct Property
                 PyErr_SetString(PyExc_IndexError, "GTO Property index out of range");
                 return NULL;
             }
-            return getItem($self, index);
+            return gtoDB_getItem($self, index);
         }
         else if( ($self->size > 1) && PyTuple_Check(key) && (PyTuple_Size(key) == 2) )
         {
@@ -431,10 +506,13 @@ struct Property
                     PyErr_SetString(PyExc_IndexError, "GTO Property index out of range");
                     return NULL;
                 }
-                PyObject *tuple = getItem($self, xindex);
+                PyObject *tuple = gtoDB_getItem($self, xindex);
                 assert(PyTuple_Check(tuple));
                 assert(yindex < PyTuple_Size(tuple));
-                return PyTuple_GetItem(tuple, yindex);
+
+                PyObject *result = PyTuple_GetItem(tuple, yindex);
+                Py_INCREF(result);
+                return result;
             }
         }
 
@@ -443,6 +521,7 @@ struct Property
     }
 
 
+    %feature("autodoc", "0");
     void __setitem__(PyObject *key, PyObject *value)
     {
         if( PyInt_Check(key) )
@@ -479,6 +558,7 @@ struct Property
     // This function is big and annoying, and is not strictly necessary, since
     // Python will use __getitem__ to search for values if we don't provide it.
     // However, doing it ourselves here is MUCH, MUCH faster.
+    %feature("autodoc", "0");
     bool __contains__(PyObject *item)
     {
         if(PyString_Check(item) && ($self->type == Gto::String))
@@ -663,9 +743,8 @@ struct Property
         return false;
     }
 
+};   // End %extend
 
-};
 #endif // SWIGPYTHON
 
-%template(PropertyVector) std::vector<Property *>;
-typedef std::vector<Property*> Properties;
+};  // End struct Property

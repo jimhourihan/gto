@@ -5,7 +5,7 @@ set verbose
 swig -c++ \
      -fcompact \
      -python \
-     -I../../../../lib/Gto/ \
-     -o gtoDB.cpp \
-     gtoDB.i
+     -I../../../../lib/ \
+     -o swig.cpp \
+     main.i
 

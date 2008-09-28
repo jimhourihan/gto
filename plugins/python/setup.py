@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 
 gtoDB_module = Extension('_gtoDB',
                            sources=['src/gtoDB/gtoDB.cpp'],
-                           include_dirs=["../../lib/Gto"],
+                           include_dirs=["../../lib"],
                            library_dirs=["../../lib/Gto/.libs"],
                            libraries=["Gto", "z"],
                            extra_compile_args=["-Wno-unused-variable"],

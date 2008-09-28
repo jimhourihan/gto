@@ -5,7 +5,66 @@
 # This file is compatible with both classic and new-style classes.
 
 """
-Python interface to the GTO RawData C++ class.
+This module defines a generic GtoDB class.  This class can be used to
+work with GTO data at an extremely high level, without the need to derive a new
+reader class or change your workflow to accomodate the somewhat restrictive GTO
+I/O routines.
+
+The gtoDB module is intended to replace the older gtoContainer module.  It's a
+lot faster, since it doesn't convert data into Python objects until needed.
+It also doesn't try to be quite as fancy, so accessing objects, components,
+and properties as if they were attributes is no longer supported.
+
+Perhaps the best introduction to what gtoDB can do is
+with a few examples.  Here's a simple one that prints the names of every
+object, component, and property in a file:
+
+    from gtoDB import *
+
+    for object in GtoDB('foo.gto'):
+        for component in object:
+            for property in component:
+                print object, component, property
+
+Let's say that you want to check every object for the existence of a particular
+component/property and print the stored data if it's there:
+
+    for obj in GtoDB( 'foo.gto' ):
+        if 'channels' in obj and 'diff' in obj['channels']:
+            print obj['channels']['diff']()
+
+
+Let's say we want to start fresh and make a really simple gto file:
+
+    #!/usr/bin/env python
+    
+    from gtoDB import *
+
+    gtoFile = GtoDB()
+
+    obj = Object('myobject', 'objprotocol', 1)
+    gtoFile.append(obj)
+
+    comp = Component('mycomponent')
+    obj.append(comp)
+    
+    comp.append(Property('intProp', range(1,11)))
+    comp.append(Property('strProp', 'hello'))
+    comp.append(Property('floatProp', (1.1, 2.2)))
+
+    gtoFile.write('test.gto')
+
+
+One very important note:  GtoDB maintains a separate C++ database of data in
+memory (using Gto::RawData).  Objects, Components, and most importantly
+Properties (and their data) are converted into Python objects on-demand. 
+Also, each of these containers delete their contents when destroyed. 
+Therefore, don't hang on to a Property instance, for example, after the GtoDB
+object has gone out of scope.  The data-access methods on the Property object
+will return a copy of the data that *is* safe to hang on to after the Property
+itself is gone.
+
+
 """
 
 import _gtoDB
@@ -85,153 +144,8 @@ GTO_MAGICl = _gtoDB.GTO_MAGICl
 GTO_MAGIC_TEXT = _gtoDB.GTO_MAGIC_TEXT
 GTO_MAGIC_TEXTl = _gtoDB.GTO_MAGIC_TEXTl
 GTO_VERSION = _gtoDB.GTO_VERSION
-class Header(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, Header, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, Header, name)
-    __repr__ = _swig_repr
-    MagicText = _gtoDB.Header_MagicText
-    CigamText = _gtoDB.Header_CigamText
-    Magic = _gtoDB.Header_Magic
-    Cigam = _gtoDB.Header_Cigam
-    __swig_setmethods__["magic"] = _gtoDB.Header_magic_set
-    __swig_getmethods__["magic"] = _gtoDB.Header_magic_get
-    if _newclass:magic = _swig_property(_gtoDB.Header_magic_get, _gtoDB.Header_magic_set)
-    __swig_setmethods__["numStrings"] = _gtoDB.Header_numStrings_set
-    __swig_getmethods__["numStrings"] = _gtoDB.Header_numStrings_get
-    if _newclass:numStrings = _swig_property(_gtoDB.Header_numStrings_get, _gtoDB.Header_numStrings_set)
-    __swig_setmethods__["numObjects"] = _gtoDB.Header_numObjects_set
-    __swig_getmethods__["numObjects"] = _gtoDB.Header_numObjects_get
-    if _newclass:numObjects = _swig_property(_gtoDB.Header_numObjects_get, _gtoDB.Header_numObjects_set)
-    __swig_setmethods__["version"] = _gtoDB.Header_version_set
-    __swig_getmethods__["version"] = _gtoDB.Header_version_get
-    if _newclass:version = _swig_property(_gtoDB.Header_version_get, _gtoDB.Header_version_set)
-    __swig_setmethods__["flags"] = _gtoDB.Header_flags_set
-    __swig_getmethods__["flags"] = _gtoDB.Header_flags_get
-    if _newclass:flags = _swig_property(_gtoDB.Header_flags_get, _gtoDB.Header_flags_set)
-    def __init__(self, *args): 
-        this = _gtoDB.new_Header(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_Header
-    __del__ = lambda self : None;
-Header_swigregister = _gtoDB.Header_swigregister
-Header_swigregister(Header)
-
-class ObjectHeader(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, ObjectHeader, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, ObjectHeader, name)
-    __repr__ = _swig_repr
-    __swig_setmethods__["name"] = _gtoDB.ObjectHeader_name_set
-    __swig_getmethods__["name"] = _gtoDB.ObjectHeader_name_get
-    if _newclass:name = _swig_property(_gtoDB.ObjectHeader_name_get, _gtoDB.ObjectHeader_name_set)
-    __swig_setmethods__["protocolName"] = _gtoDB.ObjectHeader_protocolName_set
-    __swig_getmethods__["protocolName"] = _gtoDB.ObjectHeader_protocolName_get
-    if _newclass:protocolName = _swig_property(_gtoDB.ObjectHeader_protocolName_get, _gtoDB.ObjectHeader_protocolName_set)
-    __swig_setmethods__["protocolVersion"] = _gtoDB.ObjectHeader_protocolVersion_set
-    __swig_getmethods__["protocolVersion"] = _gtoDB.ObjectHeader_protocolVersion_get
-    if _newclass:protocolVersion = _swig_property(_gtoDB.ObjectHeader_protocolVersion_get, _gtoDB.ObjectHeader_protocolVersion_set)
-    __swig_setmethods__["numComponents"] = _gtoDB.ObjectHeader_numComponents_set
-    __swig_getmethods__["numComponents"] = _gtoDB.ObjectHeader_numComponents_get
-    if _newclass:numComponents = _swig_property(_gtoDB.ObjectHeader_numComponents_get, _gtoDB.ObjectHeader_numComponents_set)
-    __swig_setmethods__["pad"] = _gtoDB.ObjectHeader_pad_set
-    __swig_getmethods__["pad"] = _gtoDB.ObjectHeader_pad_get
-    if _newclass:pad = _swig_property(_gtoDB.ObjectHeader_pad_get, _gtoDB.ObjectHeader_pad_set)
-    def __init__(self, *args): 
-        this = _gtoDB.new_ObjectHeader(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_ObjectHeader
-    __del__ = lambda self : None;
-ObjectHeader_swigregister = _gtoDB.ObjectHeader_swigregister
-ObjectHeader_swigregister(ObjectHeader)
-
-class ObjectHeader_v2(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, ObjectHeader_v2, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, ObjectHeader_v2, name)
-    __repr__ = _swig_repr
-    __swig_setmethods__["name"] = _gtoDB.ObjectHeader_v2_name_set
-    __swig_getmethods__["name"] = _gtoDB.ObjectHeader_v2_name_get
-    if _newclass:name = _swig_property(_gtoDB.ObjectHeader_v2_name_get, _gtoDB.ObjectHeader_v2_name_set)
-    __swig_setmethods__["protocolName"] = _gtoDB.ObjectHeader_v2_protocolName_set
-    __swig_getmethods__["protocolName"] = _gtoDB.ObjectHeader_v2_protocolName_get
-    if _newclass:protocolName = _swig_property(_gtoDB.ObjectHeader_v2_protocolName_get, _gtoDB.ObjectHeader_v2_protocolName_set)
-    __swig_setmethods__["protocolVersion"] = _gtoDB.ObjectHeader_v2_protocolVersion_set
-    __swig_getmethods__["protocolVersion"] = _gtoDB.ObjectHeader_v2_protocolVersion_get
-    if _newclass:protocolVersion = _swig_property(_gtoDB.ObjectHeader_v2_protocolVersion_get, _gtoDB.ObjectHeader_v2_protocolVersion_set)
-    __swig_setmethods__["numComponents"] = _gtoDB.ObjectHeader_v2_numComponents_set
-    __swig_getmethods__["numComponents"] = _gtoDB.ObjectHeader_v2_numComponents_get
-    if _newclass:numComponents = _swig_property(_gtoDB.ObjectHeader_v2_numComponents_get, _gtoDB.ObjectHeader_v2_numComponents_set)
-    def __init__(self, *args): 
-        this = _gtoDB.new_ObjectHeader_v2(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_ObjectHeader_v2
-    __del__ = lambda self : None;
-ObjectHeader_v2_swigregister = _gtoDB.ObjectHeader_v2_swigregister
-ObjectHeader_v2_swigregister(ObjectHeader_v2)
-
 Transposed = _gtoDB.Transposed
 Matrix = _gtoDB.Matrix
-class ComponentHeader(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, ComponentHeader, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, ComponentHeader, name)
-    __repr__ = _swig_repr
-    __swig_setmethods__["name"] = _gtoDB.ComponentHeader_name_set
-    __swig_getmethods__["name"] = _gtoDB.ComponentHeader_name_get
-    if _newclass:name = _swig_property(_gtoDB.ComponentHeader_name_get, _gtoDB.ComponentHeader_name_set)
-    __swig_setmethods__["numProperties"] = _gtoDB.ComponentHeader_numProperties_set
-    __swig_getmethods__["numProperties"] = _gtoDB.ComponentHeader_numProperties_get
-    if _newclass:numProperties = _swig_property(_gtoDB.ComponentHeader_numProperties_get, _gtoDB.ComponentHeader_numProperties_set)
-    __swig_setmethods__["flags"] = _gtoDB.ComponentHeader_flags_set
-    __swig_getmethods__["flags"] = _gtoDB.ComponentHeader_flags_get
-    if _newclass:flags = _swig_property(_gtoDB.ComponentHeader_flags_get, _gtoDB.ComponentHeader_flags_set)
-    __swig_setmethods__["interpretation"] = _gtoDB.ComponentHeader_interpretation_set
-    __swig_getmethods__["interpretation"] = _gtoDB.ComponentHeader_interpretation_get
-    if _newclass:interpretation = _swig_property(_gtoDB.ComponentHeader_interpretation_get, _gtoDB.ComponentHeader_interpretation_set)
-    __swig_setmethods__["pad"] = _gtoDB.ComponentHeader_pad_set
-    __swig_getmethods__["pad"] = _gtoDB.ComponentHeader_pad_get
-    if _newclass:pad = _swig_property(_gtoDB.ComponentHeader_pad_get, _gtoDB.ComponentHeader_pad_set)
-    def __init__(self, *args): 
-        this = _gtoDB.new_ComponentHeader(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_ComponentHeader
-    __del__ = lambda self : None;
-ComponentHeader_swigregister = _gtoDB.ComponentHeader_swigregister
-ComponentHeader_swigregister(ComponentHeader)
-
-class ComponentHeader_v2(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, ComponentHeader_v2, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, ComponentHeader_v2, name)
-    __repr__ = _swig_repr
-    __swig_setmethods__["name"] = _gtoDB.ComponentHeader_v2_name_set
-    __swig_getmethods__["name"] = _gtoDB.ComponentHeader_v2_name_get
-    if _newclass:name = _swig_property(_gtoDB.ComponentHeader_v2_name_get, _gtoDB.ComponentHeader_v2_name_set)
-    __swig_setmethods__["numProperties"] = _gtoDB.ComponentHeader_v2_numProperties_set
-    __swig_getmethods__["numProperties"] = _gtoDB.ComponentHeader_v2_numProperties_get
-    if _newclass:numProperties = _swig_property(_gtoDB.ComponentHeader_v2_numProperties_get, _gtoDB.ComponentHeader_v2_numProperties_set)
-    __swig_setmethods__["flags"] = _gtoDB.ComponentHeader_v2_flags_set
-    __swig_getmethods__["flags"] = _gtoDB.ComponentHeader_v2_flags_get
-    if _newclass:flags = _swig_property(_gtoDB.ComponentHeader_v2_flags_get, _gtoDB.ComponentHeader_v2_flags_set)
-    def __init__(self, *args): 
-        this = _gtoDB.new_ComponentHeader_v2(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_ComponentHeader_v2
-    __del__ = lambda self : None;
-ComponentHeader_v2_swigregister = _gtoDB.ComponentHeader_v2_swigregister
-ComponentHeader_v2_swigregister(ComponentHeader_v2)
-
 Int = _gtoDB.Int
 Float = _gtoDB.Float
 Double = _gtoDB.Double
@@ -242,67 +156,70 @@ Short = _gtoDB.Short
 Byte = _gtoDB.Byte
 NumberOfDataTypes = _gtoDB.NumberOfDataTypes
 ErrorType = _gtoDB.ErrorType
-class PropertyHeader(_object):
+class Strings(_object):
     __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, PropertyHeader, name, value)
+    __setattr__ = lambda self, name, value: _swig_setattr(self, Strings, name, value)
     __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, PropertyHeader, name)
+    __getattr__ = lambda self, name: _swig_getattr(self, Strings, name)
     __repr__ = _swig_repr
-    __swig_setmethods__["name"] = _gtoDB.PropertyHeader_name_set
-    __swig_getmethods__["name"] = _gtoDB.PropertyHeader_name_get
-    if _newclass:name = _swig_property(_gtoDB.PropertyHeader_name_get, _gtoDB.PropertyHeader_name_set)
-    __swig_setmethods__["size"] = _gtoDB.PropertyHeader_size_set
-    __swig_getmethods__["size"] = _gtoDB.PropertyHeader_size_get
-    if _newclass:size = _swig_property(_gtoDB.PropertyHeader_size_get, _gtoDB.PropertyHeader_size_set)
-    __swig_setmethods__["type"] = _gtoDB.PropertyHeader_type_set
-    __swig_getmethods__["type"] = _gtoDB.PropertyHeader_type_get
-    if _newclass:type = _swig_property(_gtoDB.PropertyHeader_type_get, _gtoDB.PropertyHeader_type_set)
-    __swig_setmethods__["width"] = _gtoDB.PropertyHeader_width_set
-    __swig_getmethods__["width"] = _gtoDB.PropertyHeader_width_get
-    if _newclass:width = _swig_property(_gtoDB.PropertyHeader_width_get, _gtoDB.PropertyHeader_width_set)
-    __swig_setmethods__["interpretation"] = _gtoDB.PropertyHeader_interpretation_set
-    __swig_getmethods__["interpretation"] = _gtoDB.PropertyHeader_interpretation_get
-    if _newclass:interpretation = _swig_property(_gtoDB.PropertyHeader_interpretation_get, _gtoDB.PropertyHeader_interpretation_set)
-    __swig_setmethods__["pad"] = _gtoDB.PropertyHeader_pad_set
-    __swig_getmethods__["pad"] = _gtoDB.PropertyHeader_pad_get
-    if _newclass:pad = _swig_property(_gtoDB.PropertyHeader_pad_get, _gtoDB.PropertyHeader_pad_set)
+    def iterator(*args): return _gtoDB.Strings_iterator(*args)
+    def __iter__(self): return self.iterator()
+    def __nonzero__(*args): return _gtoDB.Strings___nonzero__(*args)
+    def __len__(*args): return _gtoDB.Strings___len__(*args)
+    def pop(*args): return _gtoDB.Strings_pop(*args)
+    def __getslice__(*args): return _gtoDB.Strings___getslice__(*args)
+    def __setslice__(*args): return _gtoDB.Strings___setslice__(*args)
+    def __delslice__(*args): return _gtoDB.Strings___delslice__(*args)
+    def __delitem__(*args): return _gtoDB.Strings___delitem__(*args)
+    def __getitem__(*args): return _gtoDB.Strings___getitem__(*args)
+    def __setitem__(*args): return _gtoDB.Strings___setitem__(*args)
+    def append(*args): return _gtoDB.Strings_append(*args)
+    def empty(*args): return _gtoDB.Strings_empty(*args)
+    def size(*args): return _gtoDB.Strings_size(*args)
+    def clear(*args): return _gtoDB.Strings_clear(*args)
+    def swap(*args): return _gtoDB.Strings_swap(*args)
+    def get_allocator(*args): return _gtoDB.Strings_get_allocator(*args)
+    def begin(*args): return _gtoDB.Strings_begin(*args)
+    def end(*args): return _gtoDB.Strings_end(*args)
+    def rbegin(*args): return _gtoDB.Strings_rbegin(*args)
+    def rend(*args): return _gtoDB.Strings_rend(*args)
+    def pop_back(*args): return _gtoDB.Strings_pop_back(*args)
+    def erase(*args): return _gtoDB.Strings_erase(*args)
     def __init__(self, *args): 
-        this = _gtoDB.new_PropertyHeader(*args)
+        this = _gtoDB.new_Strings(*args)
         try: self.this.append(this)
         except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_PropertyHeader
+    def push_back(*args): return _gtoDB.Strings_push_back(*args)
+    def front(*args): return _gtoDB.Strings_front(*args)
+    def back(*args): return _gtoDB.Strings_back(*args)
+    def assign(*args): return _gtoDB.Strings_assign(*args)
+    def resize(*args): return _gtoDB.Strings_resize(*args)
+    def insert(*args): return _gtoDB.Strings_insert(*args)
+    def reserve(*args): return _gtoDB.Strings_reserve(*args)
+    def capacity(*args): return _gtoDB.Strings_capacity(*args)
+    __swig_destroy__ = _gtoDB.delete_Strings
     __del__ = lambda self : None;
-PropertyHeader_swigregister = _gtoDB.PropertyHeader_swigregister
-PropertyHeader_swigregister(PropertyHeader)
-
-class PropertyHeader_v2(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, PropertyHeader_v2, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, PropertyHeader_v2, name)
-    __repr__ = _swig_repr
-    __swig_setmethods__["name"] = _gtoDB.PropertyHeader_v2_name_set
-    __swig_getmethods__["name"] = _gtoDB.PropertyHeader_v2_name_get
-    if _newclass:name = _swig_property(_gtoDB.PropertyHeader_v2_name_get, _gtoDB.PropertyHeader_v2_name_set)
-    __swig_setmethods__["size"] = _gtoDB.PropertyHeader_v2_size_set
-    __swig_getmethods__["size"] = _gtoDB.PropertyHeader_v2_size_get
-    if _newclass:size = _swig_property(_gtoDB.PropertyHeader_v2_size_get, _gtoDB.PropertyHeader_v2_size_set)
-    __swig_setmethods__["type"] = _gtoDB.PropertyHeader_v2_type_set
-    __swig_getmethods__["type"] = _gtoDB.PropertyHeader_v2_type_get
-    if _newclass:type = _swig_property(_gtoDB.PropertyHeader_v2_type_get, _gtoDB.PropertyHeader_v2_type_set)
-    __swig_setmethods__["width"] = _gtoDB.PropertyHeader_v2_width_set
-    __swig_getmethods__["width"] = _gtoDB.PropertyHeader_v2_width_get
-    if _newclass:width = _swig_property(_gtoDB.PropertyHeader_v2_width_get, _gtoDB.PropertyHeader_v2_width_set)
-    def __init__(self, *args): 
-        this = _gtoDB.new_PropertyHeader_v2(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    __swig_destroy__ = _gtoDB.delete_PropertyHeader_v2
-    __del__ = lambda self : None;
-PropertyHeader_v2_swigregister = _gtoDB.PropertyHeader_v2_swigregister
-PropertyHeader_v2_swigregister(PropertyHeader_v2)
+Strings_swigregister = _gtoDB.Strings_swigregister
+Strings_swigregister(Strings)
 
 class Property(_object):
+    """
+    Represents a single GTO Property and the data it contains.  Property
+    data can be accessed like so:
+
+        property()       # Returns data in its native form (int, float, str, tuple)
+        property[i]      # Returns a single item of the property's data
+        property[i:j]    # Returns a slice of the property's data
+
+    Information about the Property itself can be had via the attributes name, interp,
+    size, width, and type.).  A Property's name and interp string can be changed, 
+    but the size, width, and data type cannot.  Property data can be changed:
+            
+        property[0] = 'hello'
+        property[0:2] = (0.1, 0.2)
+
+
+    """
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, Property, name, value)
     __swig_getmethods__ = {}
@@ -320,67 +237,84 @@ class Property(_object):
     __swig_getmethods__["type"] = _gtoDB.Property_type_get
     if _newclass:type = _swig_property(_gtoDB.Property_type_get)
     def __init__(self, *args): 
+        """
+        __init__(self, string name, string interp, DataType type, size_t size, 
+            size_t width=1) -> Property
+        __init__(self, string name, string interp, DataType type, size_t size) -> Property
+        __init__(self, string name, DataType type, size_t size, size_t width=1) -> Property
+        __init__(self, string name, DataType type, size_t size) -> Property
+        __init__(self, string name, string interp, PyObject data) -> Property
+        __init__(self, string name, PyObject data) -> Property
+
+        Variants of the contstructor that accept a PyObject parameter will auto-
+        detect the data type, size, and width parameters for the new Property based
+        on the type and structure of the Python object, and set the property data
+        accordingly.  For example:
+
+            Property('a', 'hello')          => type=string, size=1, width=1
+            Property('b', ('hello', 'bye')  => type=string, size=2, width=1
+            Property('c', 3.14159)          => type=float, size=1, width=1
+            Property('d', (1, 2))           => type=int, size=2, width=1
+            Property('e', ((1, 2), (3, 4))) => type=int, size=2, width=2
+            Property('f', range(10))        => type=int, size=10, width=1
+
+        """
         this = _gtoDB.new_Property(*args)
         try: self.this.append(this)
         except: self.this = this
-    def __repr__(*args): return _gtoDB.Property___repr__(*args)
-    def __cmp__(*args): return _gtoDB.Property___cmp__(*args)
-    def __len__(*args): return _gtoDB.Property___len__(*args)
-    def __getitem__(*args): return _gtoDB.Property___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.Property___setitem__(*args)
-    def __contains__(*args): return _gtoDB.Property___contains__(*args)
+    def __repr__(*args):
+        """__repr__(self) -> char"""
+        return _gtoDB.Property___repr__(*args)
+
+    def __cmp__(*args):
+        """__cmp__(self, other) -> long"""
+        return _gtoDB.Property___cmp__(*args)
+
+    def __len__(*args):
+        """Equivalent to property.size"""
+        return _gtoDB.Property___len__(*args)
+
+    def __call__(*args):
+        """Returns all property data in its native form (int, float, str, tuple)"""
+        return _gtoDB.Property___call__(*args)
+
+    def __getitem__(*args):
+        """__getitem__(self, key) -> PyObject"""
+        return _gtoDB.Property___getitem__(*args)
+
+    def __setitem__(*args):
+        """__setitem__(self, key, value)"""
+        return _gtoDB.Property___setitem__(*args)
+
+    def __contains__(*args):
+        """__contains__(self, item) -> bool"""
+        return _gtoDB.Property___contains__(*args)
+
     __swig_destroy__ = _gtoDB.delete_Property
     __del__ = lambda self : None;
 Property_swigregister = _gtoDB.Property_swigregister
 Property_swigregister(Property)
 
-class PropertyVector(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, PropertyVector, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, PropertyVector, name)
-    __repr__ = _swig_repr
-    def iterator(*args): return _gtoDB.PropertyVector_iterator(*args)
-    def __iter__(self): return self.iterator()
-    def __nonzero__(*args): return _gtoDB.PropertyVector___nonzero__(*args)
-    def __len__(*args): return _gtoDB.PropertyVector___len__(*args)
-    def pop(*args): return _gtoDB.PropertyVector_pop(*args)
-    def __getslice__(*args): return _gtoDB.PropertyVector___getslice__(*args)
-    def __setslice__(*args): return _gtoDB.PropertyVector___setslice__(*args)
-    def __delslice__(*args): return _gtoDB.PropertyVector___delslice__(*args)
-    def __delitem__(*args): return _gtoDB.PropertyVector___delitem__(*args)
-    def __getitem__(*args): return _gtoDB.PropertyVector___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.PropertyVector___setitem__(*args)
-    def append(*args): return _gtoDB.PropertyVector_append(*args)
-    def empty(*args): return _gtoDB.PropertyVector_empty(*args)
-    def size(*args): return _gtoDB.PropertyVector_size(*args)
-    def clear(*args): return _gtoDB.PropertyVector_clear(*args)
-    def swap(*args): return _gtoDB.PropertyVector_swap(*args)
-    def get_allocator(*args): return _gtoDB.PropertyVector_get_allocator(*args)
-    def begin(*args): return _gtoDB.PropertyVector_begin(*args)
-    def end(*args): return _gtoDB.PropertyVector_end(*args)
-    def rbegin(*args): return _gtoDB.PropertyVector_rbegin(*args)
-    def rend(*args): return _gtoDB.PropertyVector_rend(*args)
-    def pop_back(*args): return _gtoDB.PropertyVector_pop_back(*args)
-    def erase(*args): return _gtoDB.PropertyVector_erase(*args)
-    def __init__(self, *args): 
-        this = _gtoDB.new_PropertyVector(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    def push_back(*args): return _gtoDB.PropertyVector_push_back(*args)
-    def front(*args): return _gtoDB.PropertyVector_front(*args)
-    def back(*args): return _gtoDB.PropertyVector_back(*args)
-    def assign(*args): return _gtoDB.PropertyVector_assign(*args)
-    def resize(*args): return _gtoDB.PropertyVector_resize(*args)
-    def insert(*args): return _gtoDB.PropertyVector_insert(*args)
-    def reserve(*args): return _gtoDB.PropertyVector_reserve(*args)
-    def capacity(*args): return _gtoDB.PropertyVector_capacity(*args)
-    __swig_destroy__ = _gtoDB.delete_PropertyVector
-    __del__ = lambda self : None;
-PropertyVector_swigregister = _gtoDB.PropertyVector_swigregister
-PropertyVector_swigregister(PropertyVector)
-
 class Component(_object):
+    """
+    Represents a single GTO Component which may contain any number of 
+    properties.  Information about the object itself is had via
+    the attributes name, interp, and flags.
+
+    This class can operate as either a dictionary or a list:
+
+       property   = component[0]
+       property   = component['position'] 
+       properties = component[0:2]
+       numProperties = len(component)
+
+       if 'position' in component:   
+           del component['position']
+
+    Most standard list/dictionary methods are supported.
+
+    If a Component is deleted, it will delete all the Properties it contains.
+    """
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, Component, name, value)
     __swig_getmethods__ = {}
@@ -395,78 +329,94 @@ class Component(_object):
     __swig_getmethods__["flags"] = _gtoDB.Component_flags_get
     if _newclass:flags = _swig_property(_gtoDB.Component_flags_get, _gtoDB.Component_flags_set)
     def __init__(self, *args): 
+        """
+        __init__(self, string name, string interp, int flags) -> Component
+        __init__(self, string name, int flags) -> Component
+        __init__(self, string name, string interp) -> Component
+        __init__(self, string name) -> Component
+        """
         this = _gtoDB.new_Component(*args)
         try: self.this.append(this)
         except: self.this = this
-    def __repr__(*args): return _gtoDB.Component___repr__(*args)
-    def __len__(*args): return _gtoDB.Component___len__(*args)
-    def __cmp__(*args): return _gtoDB.Component___cmp__(*args)
-    def __getitem__(*args): return _gtoDB.Component___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.Component___setitem__(*args)
-    def __delitem__(*args): return _gtoDB.Component___delitem__(*args)
-    def __contains__(*args): return _gtoDB.Component___contains__(*args)
-    def keys(*args): return _gtoDB.Component_keys(*args)
-    def values(*args): return _gtoDB.Component_values(*args)
-    def items(*args): return _gtoDB.Component_items(*args)
-    def append(*args): return _gtoDB.Component_append(*args)
-    def extend(*args): return _gtoDB.Component_extend(*args)
+    def __repr__(*args):
+        """__repr__(self) -> char"""
+        return _gtoDB.Component___repr__(*args)
+
+    def __len__(*args):
+        """Returns the number of Properties in this component"""
+        return _gtoDB.Component___len__(*args)
+
+    def __cmp__(*args):
+        """Compares component names *only*"""
+        return _gtoDB.Component___cmp__(*args)
+
+    def __getitem__(*args):
+        """__getitem__(self, key) -> PyObject"""
+        return _gtoDB.Component___getitem__(*args)
+
+    def __setitem__(*args):
+        """__setitem__(self, key, value)"""
+        return _gtoDB.Component___setitem__(*args)
+
+    def __delitem__(*args):
+        """__delitem__(self, key)"""
+        return _gtoDB.Component___delitem__(*args)
+
+    def __contains__(*args):
+        """__contains__(self, item) -> bool"""
+        return _gtoDB.Component___contains__(*args)
+
+    def keys(*args):
+        """keys(self) -> PyObject"""
+        return _gtoDB.Component_keys(*args)
+
+    def values(*args):
+        """values(self) -> Properties"""
+        return _gtoDB.Component_values(*args)
+
+    def items(*args):
+        """items(self) -> PyObject"""
+        return _gtoDB.Component_items(*args)
+
+    def append(*args):
+        """append(self, item)"""
+        return _gtoDB.Component_append(*args)
+
+    def extend(*args):
+        """extend(self, sequence)"""
+        return _gtoDB.Component_extend(*args)
+
     __swig_destroy__ = _gtoDB.delete_Component
     __del__ = lambda self : None;
 Component_swigregister = _gtoDB.Component_swigregister
 Component_swigregister(Component)
 
-class ComponentVector(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, ComponentVector, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, ComponentVector, name)
-    __repr__ = _swig_repr
-    def iterator(*args): return _gtoDB.ComponentVector_iterator(*args)
-    def __iter__(self): return self.iterator()
-    def __nonzero__(*args): return _gtoDB.ComponentVector___nonzero__(*args)
-    def __len__(*args): return _gtoDB.ComponentVector___len__(*args)
-    def pop(*args): return _gtoDB.ComponentVector_pop(*args)
-    def __getslice__(*args): return _gtoDB.ComponentVector___getslice__(*args)
-    def __setslice__(*args): return _gtoDB.ComponentVector___setslice__(*args)
-    def __delslice__(*args): return _gtoDB.ComponentVector___delslice__(*args)
-    def __delitem__(*args): return _gtoDB.ComponentVector___delitem__(*args)
-    def __getitem__(*args): return _gtoDB.ComponentVector___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.ComponentVector___setitem__(*args)
-    def append(*args): return _gtoDB.ComponentVector_append(*args)
-    def empty(*args): return _gtoDB.ComponentVector_empty(*args)
-    def size(*args): return _gtoDB.ComponentVector_size(*args)
-    def clear(*args): return _gtoDB.ComponentVector_clear(*args)
-    def swap(*args): return _gtoDB.ComponentVector_swap(*args)
-    def get_allocator(*args): return _gtoDB.ComponentVector_get_allocator(*args)
-    def begin(*args): return _gtoDB.ComponentVector_begin(*args)
-    def end(*args): return _gtoDB.ComponentVector_end(*args)
-    def rbegin(*args): return _gtoDB.ComponentVector_rbegin(*args)
-    def rend(*args): return _gtoDB.ComponentVector_rend(*args)
-    def pop_back(*args): return _gtoDB.ComponentVector_pop_back(*args)
-    def erase(*args): return _gtoDB.ComponentVector_erase(*args)
-    def __init__(self, *args): 
-        this = _gtoDB.new_ComponentVector(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    def push_back(*args): return _gtoDB.ComponentVector_push_back(*args)
-    def front(*args): return _gtoDB.ComponentVector_front(*args)
-    def back(*args): return _gtoDB.ComponentVector_back(*args)
-    def assign(*args): return _gtoDB.ComponentVector_assign(*args)
-    def resize(*args): return _gtoDB.ComponentVector_resize(*args)
-    def insert(*args): return _gtoDB.ComponentVector_insert(*args)
-    def reserve(*args): return _gtoDB.ComponentVector_reserve(*args)
-    def capacity(*args): return _gtoDB.ComponentVector_capacity(*args)
-    __swig_destroy__ = _gtoDB.delete_ComponentVector
-    __del__ = lambda self : None;
-ComponentVector_swigregister = _gtoDB.ComponentVector_swigregister
-ComponentVector_swigregister(ComponentVector)
-
 class Object(_object):
+    """
+    Represents a single GTO Object which may contain any number of 
+    components.  Information about the object itself is had via
+    the attributes name, protocol, and protocolVersion.
+
+    This class can operate as either a dictionary or a list:
+
+       component  = object[0]
+       component  = object['points'] 
+       components = object[0:2]
+       numComponents = len(object)
+
+       if 'points' in object:   
+           del object['points']
+
+    Most standard list/dictionary methods are supported.
+
+    If an Object is deleted, it will delete all the Components it contains.
+    """
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, Object, name, value)
     __swig_getmethods__ = {}
     __getattr__ = lambda self, name: _swig_getattr(self, Object, name)
     def __init__(self, *args): 
+        """__init__(self, string name, string protocol, unsigned int protocolVersion) -> Object"""
         this = _gtoDB.new_Object(*args)
         try: self.this.append(this)
         except: self.this = this
@@ -481,113 +431,74 @@ class Object(_object):
     __swig_setmethods__["protocolVersion"] = _gtoDB.Object_protocolVersion_set
     __swig_getmethods__["protocolVersion"] = _gtoDB.Object_protocolVersion_get
     if _newclass:protocolVersion = _swig_property(_gtoDB.Object_protocolVersion_get, _gtoDB.Object_protocolVersion_set)
-    def __repr__(*args): return _gtoDB.Object___repr__(*args)
-    def __len__(*args): return _gtoDB.Object___len__(*args)
-    def __cmp__(*args): return _gtoDB.Object___cmp__(*args)
-    def __getitem__(*args): return _gtoDB.Object___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.Object___setitem__(*args)
-    def __delitem__(*args): return _gtoDB.Object___delitem__(*args)
-    def __contains__(*args): return _gtoDB.Object___contains__(*args)
-    def keys(*args): return _gtoDB.Object_keys(*args)
-    def values(*args): return _gtoDB.Object_values(*args)
-    def append(*args): return _gtoDB.Object_append(*args)
-    def extend(*args): return _gtoDB.Object_extend(*args)
+    def __repr__(*args):
+        """__repr__(self) -> char"""
+        return _gtoDB.Object___repr__(*args)
+
+    def __len__(*args):
+        """Returns the number of Components in this object"""
+        return _gtoDB.Object___len__(*args)
+
+    def __cmp__(*args):
+        """Compares object names *only*"""
+        return _gtoDB.Object___cmp__(*args)
+
+    def __getitem__(*args):
+        """__getitem__(self, key) -> PyObject"""
+        return _gtoDB.Object___getitem__(*args)
+
+    def __setitem__(*args):
+        """__setitem__(self, key, value)"""
+        return _gtoDB.Object___setitem__(*args)
+
+    def __delitem__(*args):
+        """__delitem__(self, key)"""
+        return _gtoDB.Object___delitem__(*args)
+
+    def __contains__(*args):
+        """__contains__(self, item) -> bool"""
+        return _gtoDB.Object___contains__(*args)
+
+    def keys(*args):
+        """keys(self) -> PyObject"""
+        return _gtoDB.Object_keys(*args)
+
+    def values(*args):
+        """values(self) -> Components"""
+        return _gtoDB.Object_values(*args)
+
+    def append(*args):
+        """append(self, item)"""
+        return _gtoDB.Object_append(*args)
+
+    def extend(*args):
+        """extend(self, sequence)"""
+        return _gtoDB.Object_extend(*args)
+
 Object_swigregister = _gtoDB.Object_swigregister
 Object_swigregister(Object)
 
-class ObjectVector(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, ObjectVector, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, ObjectVector, name)
-    __repr__ = _swig_repr
-    def iterator(*args): return _gtoDB.ObjectVector_iterator(*args)
-    def __iter__(self): return self.iterator()
-    def __nonzero__(*args): return _gtoDB.ObjectVector___nonzero__(*args)
-    def __len__(*args): return _gtoDB.ObjectVector___len__(*args)
-    def pop(*args): return _gtoDB.ObjectVector_pop(*args)
-    def __getslice__(*args): return _gtoDB.ObjectVector___getslice__(*args)
-    def __setslice__(*args): return _gtoDB.ObjectVector___setslice__(*args)
-    def __delslice__(*args): return _gtoDB.ObjectVector___delslice__(*args)
-    def __delitem__(*args): return _gtoDB.ObjectVector___delitem__(*args)
-    def __getitem__(*args): return _gtoDB.ObjectVector___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.ObjectVector___setitem__(*args)
-    def append(*args): return _gtoDB.ObjectVector_append(*args)
-    def empty(*args): return _gtoDB.ObjectVector_empty(*args)
-    def size(*args): return _gtoDB.ObjectVector_size(*args)
-    def clear(*args): return _gtoDB.ObjectVector_clear(*args)
-    def swap(*args): return _gtoDB.ObjectVector_swap(*args)
-    def get_allocator(*args): return _gtoDB.ObjectVector_get_allocator(*args)
-    def begin(*args): return _gtoDB.ObjectVector_begin(*args)
-    def end(*args): return _gtoDB.ObjectVector_end(*args)
-    def rbegin(*args): return _gtoDB.ObjectVector_rbegin(*args)
-    def rend(*args): return _gtoDB.ObjectVector_rend(*args)
-    def pop_back(*args): return _gtoDB.ObjectVector_pop_back(*args)
-    def erase(*args): return _gtoDB.ObjectVector_erase(*args)
-    def __init__(self, *args): 
-        this = _gtoDB.new_ObjectVector(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    def push_back(*args): return _gtoDB.ObjectVector_push_back(*args)
-    def front(*args): return _gtoDB.ObjectVector_front(*args)
-    def back(*args): return _gtoDB.ObjectVector_back(*args)
-    def assign(*args): return _gtoDB.ObjectVector_assign(*args)
-    def resize(*args): return _gtoDB.ObjectVector_resize(*args)
-    def insert(*args): return _gtoDB.ObjectVector_insert(*args)
-    def reserve(*args): return _gtoDB.ObjectVector_reserve(*args)
-    def capacity(*args): return _gtoDB.ObjectVector_capacity(*args)
-    __swig_destroy__ = _gtoDB.delete_ObjectVector
-    __del__ = lambda self : None;
-ObjectVector_swigregister = _gtoDB.ObjectVector_swigregister
-ObjectVector_swigregister(ObjectVector)
-
-class StringVector(_object):
-    __swig_setmethods__ = {}
-    __setattr__ = lambda self, name, value: _swig_setattr(self, StringVector, name, value)
-    __swig_getmethods__ = {}
-    __getattr__ = lambda self, name: _swig_getattr(self, StringVector, name)
-    __repr__ = _swig_repr
-    def iterator(*args): return _gtoDB.StringVector_iterator(*args)
-    def __iter__(self): return self.iterator()
-    def __nonzero__(*args): return _gtoDB.StringVector___nonzero__(*args)
-    def __len__(*args): return _gtoDB.StringVector___len__(*args)
-    def pop(*args): return _gtoDB.StringVector_pop(*args)
-    def __getslice__(*args): return _gtoDB.StringVector___getslice__(*args)
-    def __setslice__(*args): return _gtoDB.StringVector___setslice__(*args)
-    def __delslice__(*args): return _gtoDB.StringVector___delslice__(*args)
-    def __delitem__(*args): return _gtoDB.StringVector___delitem__(*args)
-    def __getitem__(*args): return _gtoDB.StringVector___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.StringVector___setitem__(*args)
-    def append(*args): return _gtoDB.StringVector_append(*args)
-    def empty(*args): return _gtoDB.StringVector_empty(*args)
-    def size(*args): return _gtoDB.StringVector_size(*args)
-    def clear(*args): return _gtoDB.StringVector_clear(*args)
-    def swap(*args): return _gtoDB.StringVector_swap(*args)
-    def get_allocator(*args): return _gtoDB.StringVector_get_allocator(*args)
-    def begin(*args): return _gtoDB.StringVector_begin(*args)
-    def end(*args): return _gtoDB.StringVector_end(*args)
-    def rbegin(*args): return _gtoDB.StringVector_rbegin(*args)
-    def rend(*args): return _gtoDB.StringVector_rend(*args)
-    def pop_back(*args): return _gtoDB.StringVector_pop_back(*args)
-    def erase(*args): return _gtoDB.StringVector_erase(*args)
-    def __init__(self, *args): 
-        this = _gtoDB.new_StringVector(*args)
-        try: self.this.append(this)
-        except: self.this = this
-    def push_back(*args): return _gtoDB.StringVector_push_back(*args)
-    def front(*args): return _gtoDB.StringVector_front(*args)
-    def back(*args): return _gtoDB.StringVector_back(*args)
-    def assign(*args): return _gtoDB.StringVector_assign(*args)
-    def resize(*args): return _gtoDB.StringVector_resize(*args)
-    def insert(*args): return _gtoDB.StringVector_insert(*args)
-    def reserve(*args): return _gtoDB.StringVector_reserve(*args)
-    def capacity(*args): return _gtoDB.StringVector_capacity(*args)
-    __swig_destroy__ = _gtoDB.delete_StringVector
-    __del__ = lambda self : None;
-StringVector_swigregister = _gtoDB.StringVector_swigregister
-StringVector_swigregister(StringVector)
-
 class GtoDB(_object):
+    """
+    Represents a single GTO file which may contain any number of objects.
+
+    This class can operate as either a dictionary or a list:
+        
+        object  = gtoDB[0]
+        objects = gtoDB[0:3]
+        object  = gtoDB['pSphere1']
+
+        gtoDB[0] = object
+        gtoDB[0:3] = objects
+
+       if 'pSphere1' in gtoDB:   
+           del gtoDB['pSphere1']
+
+    Most standard list/dictionary methods are supported.
+
+    If a GtoDB is deleted, it will delete all the Objects it contains.
+
+    """
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, GtoDB, name, value)
     __swig_getmethods__ = {}
@@ -597,22 +508,75 @@ class GtoDB(_object):
     CompressedGTO = _gtoDB.GtoDB_CompressedGTO
     TextGTO = _gtoDB.GtoDB_TextGTO
     def __init__(self, *args): 
+        """
+        __init__(self) -> GtoDB
+        __init__(self, string filename) -> GtoDB
+        """
         this = _gtoDB.new_GtoDB(*args)
         try: self.this.append(this)
         except: self.this = this
-    def read(*args): return _gtoDB.GtoDB_read(*args)
-    def write(*args): return _gtoDB.GtoDB_write(*args)
-    def __len__(*args): return _gtoDB.GtoDB___len__(*args)
-    def __getitem__(*args): return _gtoDB.GtoDB___getitem__(*args)
-    def __setitem__(*args): return _gtoDB.GtoDB___setitem__(*args)
-    def __delitem__(*args): return _gtoDB.GtoDB___delitem__(*args)
-    def __contains__(*args): return _gtoDB.GtoDB___contains__(*args)
-    def keys(*args): return _gtoDB.GtoDB_keys(*args)
-    def values(*args): return _gtoDB.GtoDB_values(*args)
-    def items(*args): return _gtoDB.GtoDB_items(*args)
-    def append(*args): return _gtoDB.GtoDB_append(*args)
-    def extend(*args): return _gtoDB.GtoDB_extend(*args)
-    def dumpInfo(*args): return _gtoDB.GtoDB_dumpInfo(*args)
+    def read(*args):
+        """
+        read(self, string filename)
+
+        If called multiple times, this function will merge data
+        into the existing database.  This is equivalent to the command-
+        line 'gtomerge' tool.
+
+        """
+        return _gtoDB.GtoDB_read(*args)
+
+    def write(*args):
+        """
+        write(self, string filename, FileType mode=CompressedGTO)
+        write(self, string filename)
+        """
+        return _gtoDB.GtoDB_write(*args)
+
+    def __len__(*args):
+        """Returns the number of Objects in this database"""
+        return _gtoDB.GtoDB___len__(*args)
+
+    def __getitem__(*args):
+        """__getitem__(self, key) -> PyObject"""
+        return _gtoDB.GtoDB___getitem__(*args)
+
+    def __setitem__(*args):
+        """__setitem__(self, key, value)"""
+        return _gtoDB.GtoDB___setitem__(*args)
+
+    def __delitem__(*args):
+        """__delitem__(self, key)"""
+        return _gtoDB.GtoDB___delitem__(*args)
+
+    def __contains__(*args):
+        """__contains__(self, item) -> bool"""
+        return _gtoDB.GtoDB___contains__(*args)
+
+    def keys(*args):
+        """keys(self) -> PyObject"""
+        return _gtoDB.GtoDB_keys(*args)
+
+    def values(*args):
+        """values(self) -> Objects"""
+        return _gtoDB.GtoDB_values(*args)
+
+    def items(*args):
+        """items(self) -> PyObject"""
+        return _gtoDB.GtoDB_items(*args)
+
+    def append(*args):
+        """append(self, item)"""
+        return _gtoDB.GtoDB_append(*args)
+
+    def extend(*args):
+        """extend(self, sequence)"""
+        return _gtoDB.GtoDB_extend(*args)
+
+    def clear(*args):
+        """clear(self)"""
+        return _gtoDB.GtoDB_clear(*args)
+
     __swig_destroy__ = _gtoDB.delete_GtoDB
     __del__ = lambda self : None;
 GtoDB_swigregister = _gtoDB.GtoDB_swigregister

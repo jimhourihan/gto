@@ -1,18 +1,57 @@
-// *****************************************************************************
+//******************************************************************************
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation; either version 2 of
+// the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+// USA
+//
+//******************************************************************************
 
+%define OBJECT_DOCSTRING
+"Represents a single GTO Object which may contain any number of 
+components.  Information about the object itself is had via
+the attributes name, protocol, and protocolVersion.
+
+This class can operate as either a dictionary or a list:
+
+   component  = object[0]
+   component  = object['points'] 
+   components = object[0:2]
+   numComponents = len(object)
+
+   if 'points' in object:   
+       del object['points']
+
+Most standard list/dictionary methods are supported.
+
+If an Object is deleted, it will delete all the Components it contains."
+%enddef
+%feature("autodoc", OBJECT_DOCSTRING);
 struct Object
 {
-    Object(const std::string& n, const std::string& p, unsigned int v)
-        : name(n), protocol(p), protocolVersion(v) {}
+    %feature("autodoc", "1");
+    Object(const std::string& name, const std::string& protocol, unsigned int protocolVersion)
+        : name(name), protocol(protocol), protocolVersion(protocolVersion) {}
     ~Object();
 
     std::string     name;
     std::string     protocol;
     unsigned int    protocolVersion;
-};
-#ifdef SWIGPYTHON
-%extend Object {
 
+#ifdef SWIGPYTHON
+%extend {
+
+    %feature("autodoc", "0");
     char *__repr__() {
         static char tmp[256];
         snprintf(tmp, 256, "<GTO Object '%s' protocol '%s' v%d at %p>", 
@@ -25,16 +64,18 @@ struct Object
     }
 
 
+    %feature("autodoc", "Returns the number of Components in this object");
     long __len__()
     {
         return long($self->components.size());
     }
 
 
+    %feature("autodoc", "Compares object names *only*");
     long __cmp__(PyObject *other)
     {
         Object *otherObj = NULL;
-        PYOBJECT_CAST(Object, other, otherObj);
+        CAST_PYOBJECT_TO_C(Object, other, otherObj);
         if($self == otherObj)
         {
             return 0;
@@ -48,8 +89,10 @@ struct Object
             return -1;
         }
     }
+    %feature("autodoc", "");
 
 
+    %feature("autodoc", "0");
     PyObject *__getitem__(PyObject *key)
     {
         if( PyString_Check (key) )
@@ -60,7 +103,7 @@ struct Object
                 Gto::Component *c = $self->components[i];
                 if( c->name == keystr )
                 {
-                    return CAST_PYOBJECT(c, Component);
+                    return CAST_C_TO_PYOBJECT(c, Component);
                 }
             }
             throw std::out_of_range("GTO Object KeyError");
@@ -76,7 +119,7 @@ struct Object
             {
                 throw std::out_of_range("GTO Object index out of range");
             }
-            return CAST_PYOBJECT($self->components[index], Component);
+            return CAST_C_TO_PYOBJECT($self->components[index], Component);
         }
         else if( PySlice_Check(key) )
         {
@@ -100,7 +143,7 @@ struct Object
                 dataIndex < stop; dataIndex += step, ++tupleIndex)
             {
                 Component *c = $self->components[dataIndex];
-                PyObject *co = CAST_PYOBJECT(c, Component);
+                PyObject *co = CAST_C_TO_PYOBJECT(c, Component);
                 PyTuple_SetItem(tuple, tupleIndex, co);
             }
             return tuple;
@@ -109,10 +152,11 @@ struct Object
     }
 
 
+    %feature("autodoc", "0");
     void __setitem__(PyObject *key, PyObject *value)
     {
         Component *comp = NULL;
-        PYOBJECT_CAST(Component, value, comp);
+        CAST_PYOBJECT_TO_C(Component, value, comp);
 
         if( PyInt_Check(key) )
         {
@@ -142,6 +186,7 @@ struct Object
     }
 
 
+    %feature("autodoc", "0");
     void __delitem__(PyObject *key)
     {
         if( PyString_Check(key) )
@@ -194,6 +239,7 @@ struct Object
     }
 
 
+    %feature("autodoc", "0");
     bool __contains__(PyObject *item)
     {
         if( PyString_Check(item) )
@@ -211,6 +257,7 @@ struct Object
     }
 
 
+    %feature("autodoc", "0");
     PyObject *keys()
     {
         PyObject *tuple = PyTuple_New($self->components.size());
@@ -223,16 +270,18 @@ struct Object
     }
 
     
+    %feature("autodoc", "0");
     Components values()
     {
         return $self->components;
     }
 
 
-    void append(PyObject *value)
+    %feature("autodoc", "0");
+    void append(PyObject *item)
     {
         Component *comp = NULL;
-        PYOBJECT_CAST(Component, value, comp);
+        CAST_PYOBJECT_TO_C(Component, item, comp);
 
         for(size_t i = 0; i < $self->components.size(); ++i)
         {
@@ -241,20 +290,21 @@ struct Object
                 throw std::invalid_argument("GTO Object duplicate component name");
             }
         }
-        Py_INCREF(value);
+        Py_INCREF(item);
         $self->components.push_back(comp);
     }
 
 
-    void extend(PyObject *value)
+    %feature("autodoc", "0");
+    void extend(PyObject *sequence)
     {
-        if(PySequence_Check(value) && (! PyString_Check(value)))
+        if(PySequence_Check(sequence) && (! PyString_Check(sequence)))
         {
-            for(size_t i = 0; i < PySequence_Length(value); ++i )
+            for(size_t i = 0; i < PySequence_Length(sequence); ++i )
             {
-                PyObject *pyComp = PySequence_GetItem(value, i);
+                PyObject *pyComp = PySequence_GetItem(sequence, i);
                 Component *comp = NULL;
-                PYOBJECT_CAST(Component, pyComp, comp);
+                CAST_PYOBJECT_TO_C(Component, pyComp, comp);
 
                 for(size_t i = 0; i < $self->components.size(); ++i)
                 {
@@ -275,8 +325,7 @@ struct Object
 
    
 }   //  End %extend Object
+
 #endif // SWIGPYTHON
 
-%template(ObjectVector) std::vector<Object *>;
-typedef std::vector<std::Object*> Objects;
-
+}; // End struct Object
