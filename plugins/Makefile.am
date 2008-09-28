@@ -3,5 +3,13 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = maya rman
+SUBDIRS = 
+
+if GTO_BUILD_MAYA
+SUBDIRS += maya
+endif
+
+if GTO_BUILD_RMAN
+SUBDIRS += rman
+endif
 

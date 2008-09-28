@@ -33,6 +33,9 @@ public:
 
     static bool canExport( MPlug &plug, int depth=0 );
 
+    static bool sortByComponent(const GtoMayaAttribute* s1, 
+                                const GtoMayaAttribute* s2 );
+
 private:
     MObjectHandle m_nodeObj;
     MObjectHandle m_attrObj;
@@ -48,15 +51,6 @@ private:
 
 typedef std::vector<GtoMayaAttribute *> GtoMayaAttributes;
 typedef std::vector<const GtoMayaAttribute *> ConstGtoMayaAttributes;
-
-static struct 
-{
-  bool operator()( GtoMayaAttribute* s1, GtoMayaAttribute* s2 ) const
-  {
-      if( ! ( s1 && s2 ) ) return false;
-      return (s1->componentName() < s2->componentName());
-  }
-} sortByComponent;
 
 
 } // End namespace GtoIOPlugin

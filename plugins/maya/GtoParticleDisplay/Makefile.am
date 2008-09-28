@@ -3,14 +3,15 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(gto_maya_location)/include
+include $(DEVKIT_LOCATION)/plug-ins/buildconfig
 
-AM_CXXFLAGS = -fno-exceptions -D_BOOL -D__USER__=\"$$USER\"
+AM_CPPFLAGS = -I$(top_srcdir)/lib \
+              $(CFLAGS)
+
+AM_CXXFLAGS = -fno-exceptions -D__USER__=\"$$USER\"
 
 plugindir = $(gto_maya_location)/bin/plug-ins
 meldir = $(gto_maya_location)/scripts/others
-
-if GTO_BUILD_MAYA
 
 dist_mel_SCRIPTS = AEGtoParticleDisplayCommon.mel			\
 AEGtoParticleDisplayTemplate.mel AEGtoParticleDisplayInclude.mel	\
@@ -22,13 +23,11 @@ GtoParticleDisplay_so_SOURCES = GtoParticleDisplay.cpp  pluginMain.cpp
 
 noinst_HEADERS = GtoParticleDisplay.h
 
-GtoParticleDisplay_so_LDFLAGS = -shared \
-                   -L$(top_builddir)/lib/Gto \
+GtoParticleDisplay_so_LDFLAGS = $(LFLAGS) \
+                   -L$(top_srcdir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
                    -lImage \
                    -lOpenMaya \
                    -lOpenMayaAnim \
                    -lOpenMayaRender 
-
-endif

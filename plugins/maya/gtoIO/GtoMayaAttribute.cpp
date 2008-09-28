@@ -350,4 +350,12 @@ bool GtoMayaAttribute::canExport( MPlug &plug, int depth )
 }
 
 
+// *****************************************************************************
+bool GtoMayaAttribute::sortByComponent(const GtoMayaAttribute* s1, 
+                                       const GtoMayaAttribute* s2 )
+{
+    if( ! ( s1 && s2 ) ) return false;
+    return (s1->componentName() < s2->componentName());
+}
+
 }  //  End namespace GtoIOPlugin

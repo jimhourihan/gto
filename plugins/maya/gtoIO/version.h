@@ -23,24 +23,7 @@
 #include <maya/MTypes.h>
 
 // Check for correct compiler version
-#ifndef WIN32
-    #if MAYA_API_VERSION < 500
-        #if ! ( ( __GNUC__ == 2 )  \
-              && ( __GNUC_MINOR__ == 96 ) \
-              && ( __GNUC_PATCHLEVEL__ == 0 ) )
-        #error ------------------------------------------
-        #error This plugin must be compiled with gcc 2.96
-        #error ------------------------------------------
-        #endif
-    #else
-        #if ! ( ( __GNUC__ == 3 )  \
-              && ( __GNUC_MINOR__ >= 2 ) )
-        #error ------------------------------------------
-        #error This plugin must be compiled with gcc 3.2+
-        #error ------------------------------------------
-        #endif
-    #endif
-#else
+#ifdef WIN32
     // Work around stupid microsoft bugs
     #pragma warning (disable : 4786)
     #define for if(0);else for

@@ -3,6 +3,9 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = GtoDeformer GtoCacheEmitter GtoParticleDisplay GtoParticleExport \
-	  gtoIO
+SUBDIRS = GtoDeformer \
+          gtoIO
 
+#          GtoParticleExport 
+#          GtoParticleDisplay 
+#          GtoCacheEmitter 

@@ -28,7 +28,8 @@ Property::Property(const std::string& n,
                    size_t s,
                    size_t w,
                    bool allocate)
-    : name(n), interp(i), type(t), size(s), width(w), voidData(0)
+    : name(n), interp(i), type(t), size(s), width(w), voidData(0),
+      _allocated(allocate)
 {
     if (allocate)
     {
@@ -48,7 +49,8 @@ Property::Property(const std::string& n,
                    size_t s,
                    size_t w,
                    bool allocate)
-    : name(n), interp(""), type(t), size(s), width(w), voidData(0)
+    : name(n), interp(""), type(t), size(s), width(w), voidData(0),
+      _allocated(allocate)
 {
     if (allocate)
     {
@@ -65,13 +67,16 @@ Property::Property(const std::string& n,
 
 Property::~Property()
 {
-    if (type == Gto::String)
+    if (_allocated)
     {
-        delete [] stringData;
-    }
-    else
-    {
-        delete [] (char*)voidData;
+        if (type == Gto::String)
+        {
+            delete [] stringData;
+        }
+        else
+        {
+            delete [] (char*)voidData;
+        }
     }
 }
 
@@ -172,10 +177,10 @@ RawDataBaseReader::property(const string& name,
                             const string& interp,
                             const PropertyInfo& info)
 {
-    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = new Property(name, interp, 
-                                (DataType)info.type, info.size, info.width);
+                                (DataType)info.type, info.size, info.width, 
+                                false);
     c->properties.push_back(p);
     return Request(true, p);
 }
@@ -183,17 +188,16 @@ RawDataBaseReader::property(const string& name,
 void*
 RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 {
-    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
-    //Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
-    if( bytes == 0 )
+    if (bytes == 0)
     {
         p->voidData = NULL;
     }
     else
     {
         p->voidData = new char[bytes];
+        p->_allocated = true;
     }
     return p->voidData;
 }
@@ -201,8 +205,6 @@ RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 void
 RawDataBaseReader::dataRead(const PropertyInfo& info)
 {
-    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
-    //Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
     p->size = info.size;
@@ -212,6 +214,7 @@ RawDataBaseReader::dataRead(const PropertyInfo& info)
         int* ints = p->int32Data;
         size_t numItems = p->size * p->width;
         p->stringData = new string[numItems];
+        p->_allocated = true;
 
         for (size_t i=0; i < numItems; i++)
         {

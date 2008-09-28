@@ -1,15 +1,6 @@
-#!/usr/bin/env python2
-#*******************************************************************************
-# Copyright (c) 2001-2003 Tweak Inc. All rights reserved.
-#*******************************************************************************
+#!/usr/bin/env python
 
 import sys
-
-#
-# You can get this module from:  http://cgkit.sourceforge.net/
-# If you can't get it, just change all the vec3(x,x,x) to (x,x,x) in this file
-#
-from cgtypes import *
 
 import gto
 
@@ -59,9 +50,9 @@ writer.endObject()
 #         tuple(mat4(1))  It will be silently transposed (a bug in the
 #         cgtypes code?).  ADDING it to a tuple or list is fine:  (mat4(1),)
 #
-adata = ( (1.0, 2.8), (3.6, 4.4), (5.2, 6), 7, vec3( 8, 9, 10 ) )
+adata = ( (1.0, 2.8), (3.6, 4.4), (5.2, 6), 7, ( 8, 9, 10 ) )
 bdata = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-cdata = ( mat4(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16), )
+cdata = ( (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16), )
 
 # All strings MUST be registered before beginData() is called.  intern()
 # can accept individual strings, tuples, or lists.  Dupes are OK.  Try it.
@@ -86,7 +77,7 @@ writer.propertyData( strings )
 writer.propertyData( adata )
 writer.propertyData( adata )
 writer.propertyData( bdata )
-writer.propertyData( ( vec3( 1, 2, 3 ), vec3( 4, 5, 6 )  ) )
+writer.propertyData( ( ( 1, 2, 3 ), ( 4, 5, 6 )  ) )
 writer.endData()
 
 # Close the file. Since Python uses garbage collection, you can never be

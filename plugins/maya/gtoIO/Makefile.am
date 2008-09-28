@@ -3,14 +3,15 @@
 #*******************************************************************************
 ## Process this file with automake to produce Makefile.in
 
-AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(gto_maya_location)/include
+include $(DEVKIT_LOCATION)/plug-ins/buildconfig
 
-AM_CXXFLAGS = -fno-exceptions -D_BOOL -D__USER__=\"$$USER\"
+AM_CPPFLAGS = -I$(top_srcdir)/lib \
+              $(CFLAGS)
+
+AM_CXXFLAGS = -fno-exceptions -D__USER__=\"$$USER\"
 
 plugindir = $(gto_maya_location)/bin/plug-ins
 meldir = $(gto_maya_location)/scripts/others
-
-if GTO_BUILD_MAYA
 
 dist_mel_SCRIPTS = gtoExportOptions.mel
 
@@ -24,6 +25,7 @@ GtoIO_so_SOURCES = GtoInDataBase.cpp \
                    GtoInReader.cpp \
                    GtoInSet.cpp \
                    GtoInTransform.cpp \
+                   GtoInCamera.cpp \
                    GtoIO.cpp \
                    GtoOut.cpp \
                    version.cpp \
@@ -39,6 +41,7 @@ noinst_HEADERS = GtoInDataBase.h \
                  GtoInReader.h \
                  GtoInSet.h \
                  GtoInTransform.h \
+                 GtoInCamera.h \
                  GtoIO.h \
                  GtoOut.h \
                  version.h \
@@ -46,7 +49,7 @@ noinst_HEADERS = GtoInDataBase.h \
                  GtoAnimCurve.h \
                  TwkMaya.h
 
-GtoIO_so_LDFLAGS = -shared \
+GtoIO_so_LDFLAGS = $(LFLAGS) \
                    -L$(top_srcdir)/lib/Gto \
                    -L$(gto_maya_location)/lib \
                    -lGto \
@@ -55,4 +58,4 @@ GtoIO_so_LDFLAGS = -shared \
                    -lOpenMayaAnim \
                    -lOpenMayaRender 
 
-endif
+plugin_DATA = $(DEVKIT_LOCATION)/plug-ins/buildconfig

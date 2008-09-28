@@ -58,6 +58,7 @@ struct Property
     Gto::DataType   type;
     size_t          size;
     size_t          width;
+    bool            _allocated;
 
     union
     {

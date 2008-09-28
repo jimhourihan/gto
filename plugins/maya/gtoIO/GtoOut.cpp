@@ -512,7 +512,8 @@ void GtoExporter::output( MDagPath &dp, bool data, int recursionLevel )
             findTransformAttributes( dp, attrs );
         }
         
-        std::sort( attrs->begin(), attrs->end(), sortByComponent );
+        std::sort( attrs->begin(), attrs->end(), 
+                   GtoMayaAttribute::sortByComponent );
     }
     
 
