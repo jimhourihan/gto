@@ -3,7 +3,8 @@
 from distutils.core import setup, Extension
 
 gtoDB_module = Extension('_gtoDB',
-                           sources=['src/gtoDB/gtoDB.cpp'],
+                           sources=['src/gtoDB/gtoDB.cpp',
+                                    'src/gtoDB/swig.cpp'],
                            include_dirs=["../../lib"],
                            library_dirs=["../../lib/Gto/.libs"],
                            libraries=["Gto", "z"],
