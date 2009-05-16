@@ -291,21 +291,32 @@ Reader::dataRead( const PropertyInfo &info )
 }
 
 //-*****************************************************************************
+// The algorithm is to search for the highest numbered handler, prioritizing
+// metaproperties later in the list.
 const MetaProperty *
 Reader::findMetaProperty( Layout lyt, size_t wdth,
                           const std::string &interp ) const
 {
+    const MetaProperty *found = NULL;
+    int foundScore = 0;
+    
     for ( MetaProperties::const_reverse_iterator iter =
               m_metaProperties.rbegin();
           iter != m_metaProperties.rend(); ++iter )
     {
-        if ( (*iter)->canHandle( lyt, wdth, interp ) > 0 )
+        const MetaProperty *mp = (*iter);
+        int score = mp->canHandle( lyt, wdth, interp );
+        if ( score > 0 )
         {
-            return (*iter);
+            if ( score > foundScore )
+            {
+                found = mp;
+                foundScore = score;
+            }
         }
     }
 
-    return NULL;
+    return found;
 }
 
 } // End namespace GtoContainer

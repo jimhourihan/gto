@@ -197,7 +197,7 @@ bool Component::isPersistent() const
     for ( int i = 0; i < m_properties.size(); ++i )
     {
         Property *p = m_properties[i];
-        if ( !p->isPersistent() )
+        if ( p->isPersistent() )
         {
             return true;
         }

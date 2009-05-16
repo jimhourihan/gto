@@ -93,6 +93,9 @@ PropertyContainer::copy() const
 
         c->add( m_components[i]->copy() );
     }
+
+    c->setName( name() );
+    c->setProtocol( protocol() );
     
     return c;
 }
@@ -112,6 +115,9 @@ PropertyContainer::copy( const PropertyContainer *container )
             c->copy( other );
         }
     }
+
+    setName( container->name() );
+    setProtocol( container->protocol() );
 }
 
 //-*****************************************************************************

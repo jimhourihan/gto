@@ -49,6 +49,17 @@ struct SampleTypedPropertyTraits
 };
 
 //-*****************************************************************************
+// All typed properties have containers, and should be at least theoretically
+// reservable. Default does nothing.
+class ReservableProperty : public Property
+{
+public:
+    ReservableProperty( const std::string &nme ) : Property( nme ) {}
+
+    virtual void reserve( size_t num ) {}
+};  
+
+//-*****************************************************************************
 //-*****************************************************************************
 // We don't want to have a reference to the metaclass in the property,
 // otherwise it's difficult to create a new instance of a property without
@@ -57,7 +68,7 @@ struct SampleTypedPropertyTraits
 // Therefore, information about the property travels from the property,
 // which we allow users to create themselves, up to the MetaProperty.
 template <class TRAITS>
-class TypedProperty : public Property
+class TypedProperty : public ReservableProperty
 {
 public:
     typedef TRAITS                                      traits_type;
@@ -79,7 +90,7 @@ public:
     typedef typename Container::const_reference		const_reference;
 
     TypedProperty( const std::string &nme )
-      : Property( nme ),
+      : ReservableProperty( nme ),
         m_container(),
         m_default( TRAITS::defaultValue() )
     {

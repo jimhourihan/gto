@@ -99,6 +99,9 @@ public:
 
     virtual void *data( const PropertyInfo &, size_t bytes );
     virtual void dataRead( const PropertyInfo & );
+    // To accomodate some GTO base library implementations which have changed
+    // the dataRead signature.
+    virtual void dataRead( const PropertyInfo &p, char * ) { dataRead( p ); }
 
     // The reader uses reverse ordering with the meta properties.
     // The last ones are consulted first.
@@ -110,11 +113,13 @@ public:
                                                   size_t width,
                                                   const std::string &nt ) const;
 
+protected:
+    MetaProperties      m_metaProperties;
+
 private:
     bool                m_useExisting;
     ObjectVector*       m_objects;
     std::vector<int>    m_tempstrings;
-    MetaProperties      m_metaProperties;
 };
 
 } // End namespace GtoContainer

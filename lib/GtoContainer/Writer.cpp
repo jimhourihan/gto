@@ -162,11 +162,13 @@ Writer::write( const char *filename,
         return false;
     }
 
+    // Intern the stamp.
     if ( m_stamp != "" )
     {
         m_writer.intern( m_stamp );
     }
 
+    // Intern useful build info.
     m_writer.intern( "(GtoContainer::Writer compiled " __DATE__
                      " " __TIME__ " )" );
 
@@ -201,8 +203,13 @@ Writer::write( const char *filename,
 	m_writer.endObject();
     }
 
+#ifdef GTO_ORDERED_STRING_TABLE
+    std::string orderedStrings = "";
+    m_writer.beginData( &orderedStrings, 1 );
+#else
     m_writer.beginData();
-
+#endif
+    
     for ( int i = 0; i < objects.size(); ++i )
     {
 	const PropertyContainer *g = objects[i];

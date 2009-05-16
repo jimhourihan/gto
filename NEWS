@@ -1,4 +1,9 @@
 
+* Version 3.5.2
+
+    * Minor patches to GtoContainer C++ lib
+
+
 * Version 3.5.1
 
     o Fixed autoconf/automake:

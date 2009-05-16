@@ -22,6 +22,7 @@
 
 #include <Gto/Writer.h>
 #include <string>
+#include <vector>
 
 namespace GtoContainer {
 
@@ -55,6 +56,8 @@ private:
 private:
     std::string             m_stamp;
     Gto::Writer             m_writer;
+
+    std::vector<std::string> m_orderedStrings;
 };
 
 } // End namespace GtoContainer
