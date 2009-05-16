@@ -382,6 +382,7 @@ private:
     int                 m_charnum;
     ByteArray           m_buffer;
     TypeSpec            m_currentType;
+    size_t              m_currentReadOffset;
 };
 
 template <typename T>

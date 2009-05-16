@@ -51,7 +51,8 @@ Reader::Reader(unsigned int mode)
       m_error(false), 
       m_mode(mode),
       m_linenum(0),
-      m_charnum(0)
+      m_charnum(0),
+      m_currentReadOffset(0)
 {
 }
 
@@ -680,25 +681,34 @@ Reader::readProperty(PropertyInfo& prop)
     //  Cache the offset pointer
     //
 
-    prop.offset = tell();
+    if( m_currentReadOffset == 0 )
+    {
+        // Offset can never be zero here, so it must be
+        // uninitialized.  Set it to the real file position.
+        m_currentReadOffset = tell();
+    }
+
+    prop.offset = m_currentReadOffset;
     bool readok = false;
 
     if (prop.requested)
     {
         if ((buffer = (char*)data(prop, bytes)))
         {
+            // Do we need to be somewhere else?
+            if(m_currentReadOffset != tell())
+            {
+                // If so, move the actual file pointer there.
+                seekForward(m_currentReadOffset - tell());
+            }
             read(buffer, bytes);
             readok = true;
         }
-        else
-        {
-            seekForward(bytes);
-        }
     }
-    else
-    {
-        seekForward(bytes);
-    }
+
+    // Move the 'virtual' file offset forward by  the data
+    // size of this property, whether we read it or not.
+    m_currentReadOffset += bytes; 
 
     if (m_error) return false;
 
@@ -920,6 +930,11 @@ void Reader::seekTo(size_t bytes)
         gzseek(m_gzfile, bytes, SEEK_SET);
     }
 #endif
+
+    //
+    // Copy the 'real' file pointer to our virtual one.
+    //
+    m_currentReadOffset = tell();
 }
 
 int Reader::tell()
