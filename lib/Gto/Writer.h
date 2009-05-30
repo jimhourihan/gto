@@ -54,6 +54,7 @@ public:
     typedef std::vector<PropertyHeader>     Properties;
     typedef std::vector<ObjectHeader>       Objects;
     typedef std::map<size_t, PropertyPath>  PropertyMap;
+    typedef std::vector<unsigned int>       DataOffsets;
 
     enum FileType
     {
@@ -71,7 +72,8 @@ public:
     //
 
     bool            open(const char* filename,
-                         FileType mode = CompressedGTO);
+                         FileType mode = CompressedGTO,
+                         bool writeIndex=true);
     
     //
     //  Deprecated open API
@@ -211,11 +213,15 @@ private:
     void            writeMaybeQuotedString(const std::string&);
     void            flush();
 
+    void            prepIndexTable();
+    void            writeIndexTable();
+
     bool            propertySanityCheck(const char*, int, int);
 
 private:
     std::ostream*   m_out;
     void*           m_gzfile;
+    int             m_gzRawFd;
     Objects         m_objects;
     Components      m_components;
     Properties      m_properties;
@@ -232,6 +238,9 @@ private:
     bool            m_beginDataCalled   : 1;
     bool            m_objectActive      : 1;
     bool            m_componentActive   : 1;
+    bool            m_writeIndexTable   : 1;
+    size_t          m_bytesWritten;
+    DataOffsets     m_dataOffsets;
 };
 
 template<typename T>

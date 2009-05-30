@@ -170,14 +170,19 @@ Reader::descriptionComplete()
         {
             if (big)
             {
-                if (isSwapped()) cout << "little endian binary\n";
-                else cout << "big endian binary\n";
+                if (isSwapped()) cout << "little endian binary";
+                else cout << "big endian binary";
             }
             else
             {
-                if (isSwapped()) cout << "big endian binary\n";
-                else cout << "little endian binary\n";
+                if (isSwapped()) cout << "big endian binary";
+                else cout << "little endian binary";
             }
+            if (hasIndex())
+            {
+                cout << ", indexed";
+            }
+            cout << std::endl;
         }
 
         for (Gto::Reader::Properties::const_iterator p = properties().begin();

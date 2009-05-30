@@ -84,12 +84,13 @@ public:
     struct PropertyInfo : PropertyHeader
     {
         void*                propertyData;
-        int                  offset;    // file offset
+        unsigned int         offset;    // file offset
 
         const ComponentInfo* component;
 
     private:
         bool                 requested;
+        size_t               index;
         friend class Reader;
     };
 
@@ -99,6 +100,7 @@ public:
     typedef std::vector<std::string>   StringTable;
     typedef std::vector<unsigned char> ByteArray;
     typedef std::map<std::string,int>  StringMap;
+    typedef std::vector<unsigned int>  DataOffsets;
 
 
     //
@@ -167,6 +169,7 @@ public:
     const StringTable&  stringTable() { return m_strings; }
 
     bool                isSwapped() const { return m_swapped; }
+    bool                hasIndex() const { return !m_dataOffsets.empty(); }
     unsigned int        readMode() const { return m_mode; }
 
     const std::string&  infileName() const { return m_inName; }
@@ -351,13 +354,14 @@ private:
     void                readObjects();
     void                readComponents();
     void                readProperties();
+    void                readIndexTable();
 
     void                read(char *, size_t);
     void                get(char &);
     bool                notEOF();
     void                seekForward(size_t);
     int                 tell();
-    void                seekTo(size_t);
+    void                seekTo(const PropertyInfo &p);
 
 private:
     Header              m_header;
@@ -383,6 +387,7 @@ private:
     ByteArray           m_buffer;
     TypeSpec            m_currentType;
     size_t              m_currentReadOffset;
+    DataOffsets         m_dataOffsets;
 };
 
 template <typename T>

@@ -52,6 +52,9 @@ Number asNumber(void*, Gto::DataType);
 
 bool isGTOFile(const char*);
 
+void swapWords(void *data, size_t size);
+void swapShorts(void *data, size_t size);
+
 
 } // Gto
 

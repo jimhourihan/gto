@@ -143,4 +143,37 @@ bool isGTOFile(const char* infile)
             header.magic == GTO_MAGIC_TEXTl;
 }
 
+void
+swapWords(void *data, size_t size)
+{
+    struct bytes { char c[4]; };
+
+    bytes* ip = reinterpret_cast<bytes*>(data);
+
+    for (size_t i=0; i<size; i++)
+    {
+        bytes temp = ip[i];
+        ip[i].c[0] = temp.c[3];
+        ip[i].c[1] = temp.c[2];
+        ip[i].c[2] = temp.c[1];
+        ip[i].c[3] = temp.c[0];
+    }
+}
+
+void
+swapShorts(void *data, size_t size)
+{
+    struct bytes { char c[2]; };
+
+    bytes* ip = reinterpret_cast<bytes*>(data);
+
+    for (size_t i=0; i<size; i++)
+    {
+        bytes temp = ip[i];
+        ip[i].c[0] = temp.c[1];
+        ip[i].c[1] = temp.c[0];
+    }
+}
+
+
 } // Gto

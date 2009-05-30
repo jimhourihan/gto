@@ -10,9 +10,9 @@ SUBDIRS = test
 lib_LTLIBRARIES = libGto.la
 
 libGto_la_SOURCES = FlexLexer.cpp Parser.cpp Writer.cpp Reader.cpp	\
-RawData.cpp Utilities.cpp
+RawData.cpp Utilities.cpp zhacks.cpp
 
-noinst_HEADERS = Parser.h FlexLexer.h
+noinst_HEADERS = Parser.h FlexLexer.h zhacks.h
 
 libGto_la_LIBS = @LIBS@
 

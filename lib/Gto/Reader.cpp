@@ -17,6 +17,7 @@
 // USA
 //
 
+#include "zhacks.h"
 #include "Reader.h"
 #include "Utilities.h"
 #include <fstream>
@@ -274,38 +275,6 @@ Reader::property(const string& name,
     return property(name, p);
 }
 
-static void
-swapWords(void *data, size_t size)
-{
-    struct bytes { char c[4]; };
-
-    bytes* ip = reinterpret_cast<bytes*>(data);
-
-    for (size_t i=0; i<size; i++)
-    {
-        bytes temp = ip[i];
-        ip[i].c[0] = temp.c[3];
-        ip[i].c[1] = temp.c[2];
-        ip[i].c[2] = temp.c[1];
-        ip[i].c[3] = temp.c[0];
-    }
-}
-
-static void
-swapShorts(void *data, size_t size)
-{
-    struct bytes { char c[2]; };
-
-    bytes* ip = reinterpret_cast<bytes*>(data);
-
-    for (size_t i=0; i<size; i++)
-    {
-        bytes temp = ip[i];
-        ip[i].c[0] = temp.c[1];
-        ip[i].c[1] = temp.c[0];
-    }
-}
-
 void
 Reader::readMagicNumber()
 {
@@ -491,6 +460,7 @@ Reader::readComponents()
 void
 Reader::readProperties()
 {
+    size_t index = 0;
     for (Components::iterator i = m_components.begin();
          i != m_components.end();
          ++i)
@@ -500,6 +470,8 @@ Reader::readProperties()
         for (uint32 q=0; q < c.numProperties; q++)
         {
             PropertyInfo p;
+            
+            p.index = index++;
             
             if (m_header.version == 2)
             {
@@ -554,7 +526,7 @@ Reader::accessProperty(PropertyInfo& p)
 
     if (p.requested)
     {
-        seekTo(p.offset);
+        seekTo(p);
         readProperty(p);
     }
 
@@ -627,6 +599,7 @@ Reader::readTextGTO()
 bool
 Reader::readBinaryGTO()
 {
+    readIndexTable();      // OK to continue if this fails
     readHeader();           if (m_error) return false; 
     readStringTable();      if (m_error) return false;
     readObjects();          if (m_error) return false;
@@ -695,11 +668,18 @@ Reader::readProperty(PropertyInfo& prop)
     {
         if ((buffer = (char*)data(prop, bytes)))
         {
-            // Do we need to be somewhere else?
-            if(m_currentReadOffset != tell())
+            if(prop.index < m_dataOffsets.size())
             {
-                // If so, move the actual file pointer there.
-                seekForward(m_currentReadOffset - tell());
+                seekTo(prop);
+            }
+            else
+            {
+                // Do we need to be somewhere else?
+                if(m_currentReadOffset != tell())
+                {
+                    // If so, move the actual file pointer there.
+                    seekForward(m_currentReadOffset - tell());
+                }
             }
             read(buffer, bytes);
             readok = true;
@@ -811,7 +791,6 @@ Reader::read(char *buffer, size_t size)
     {
         char *buffer_pos = buffer;
         size_t remaining = size;
-        //while (true)
         while (remaining != 0)
         {
             int retval = gzread(m_gzfile, buffer_pos, remaining);
@@ -906,8 +885,9 @@ void Reader::seekForward(size_t bytes)
 #endif
 }
 
-void Reader::seekTo(size_t bytes)
+void Reader::seekTo(const PropertyInfo &p)
 {
+    size_t bytes = p.offset;
     if (m_inRAM)
     {
         if (bytes > m_inRAMSize)
@@ -927,7 +907,14 @@ void Reader::seekTo(size_t bytes)
 #ifdef GTO_SUPPORT_ZIP
     else
     {
-        gzseek(m_gzfile, bytes, SEEK_SET);
+        if(p.index < m_dataOffsets.size())
+        {
+            gzseek_raw(m_gzfile, m_dataOffsets[p.index]);
+        }
+        else
+        {
+            gzseek(m_gzfile, p.offset, SEEK_SET);
+        }
     }
 #endif
 
@@ -1192,6 +1179,90 @@ void Reader::endProperty()
 void Reader::endFile()
 {
     m_header.numStrings = m_strings.size();
+}
+
+
+void Reader::readIndexTable()
+{
+    // See zhacks.h for details
+
+    m_dataOffsets.clear();
+    
+    FILE *file = fopen(m_inName.c_str(), "rb");
+
+    //
+    // Read the FLG header field
+    //
+    unsigned char flags = 0;
+    fseek(file, 3L, SEEK_SET);
+    fread(&flags, sizeof(unsigned char), 1, file);
+    if ( ! (flags & EXTRA_FIELD) )
+    {
+        // No offsets in this file
+        fclose(file);
+        return;
+    }
+
+    // According to RFC 1952, gzip header byte order is always little-endian
+
+    //
+    // Read the XLEN extra field length
+    //
+    unsigned char xlen_bytes[2];
+    fseek(file, 10L, SEEK_SET);
+    fread(xlen_bytes, sizeof(unsigned char), 2, file);
+    unsigned short xlen = xlen_bytes[0] + (xlen_bytes[1] << 8);
+
+    if( xlen != (2 * sizeof(unsigned int)) )
+    {
+        std::cerr << "Warning: ignoring malformed index table." << std::endl;
+        fclose(file);
+        return;
+    }
+
+    //
+    // Read the index table offset and size
+    //
+    unsigned int indexTableOffset = 0;
+    unsigned int indexTableSize = 0;
+    fread(&indexTableOffset, sizeof(unsigned int), 1, file);
+    fread(&indexTableSize, sizeof(unsigned int), 1, file);
+    fclose(file);
+
+    unsigned short needsSwap = 0xFF00;
+    if( *(unsigned char*)(&needsSwap) )
+    {
+        swapWords(&indexTableOffset, 1);
+        swapWords(&indexTableSize, 1);
+    }
+    
+    //
+    // Read the offset table
+    //
+    m_dataOffsets.resize(indexTableSize);
+    unsigned int restore_gz_pos = gztell(m_gzfile);
+    gzseek_raw(m_gzfile, indexTableOffset);
+    int r = gzread(m_gzfile, &m_dataOffsets.front(), 
+                   indexTableSize * sizeof(unsigned int));
+
+    //
+    // Offsets are always stored as little-endian
+    //
+    if( *(unsigned char*)(&needsSwap) )
+    {
+        swapWords(&m_dataOffsets.front(), m_dataOffsets.size());
+    }
+
+    //
+    // Rewind and seek past the GTO magic number
+    //
+    // Note: I can't figure out how to reset the gzip stream
+    // to 'normal' after a gzseek_raw, so I'm closing and re-
+    // opening it.
+    //
+    gzclose(m_gzfile);
+    m_gzfile = gzopen(m_inName.c_str(), "rb");
+    gzseek(m_gzfile, restore_gz_pos, SEEK_SET);
 }
 
 } // Gto
