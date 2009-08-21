@@ -1,34 +1,35 @@
 
-The GTO library and included programs are provided under the terms of the
-GNU Library General Public License (aka LGPL, see COPYING.LESSER) with the
-following exceptions (derived from the FLTK LGPL exceptions):
+  Copyright (c) 2009, Tweak Software
+  All rights reserved.
+ 
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
 
-  1. Modifications to the GTO configure script, config header file, and
-     makefiles by themselves to support a specific platform do not
-     constitute a modified or derivative work.
+     * Redistributions of source code must retain the above
+       copyright notice, this list of conditions and the following
+       disclaimer.
 
-     The authors do request that such modifications be contributed to
-     the GTO project.
+     * Redistributions in binary form must reproduce the above
+       copyright notice, this list of conditions and the following
+       disclaimer in the documentation and/or other materials
+       provided with the distribution.
 
-  2. Static linking of applications or shared libraries to the GTO
-     library does not constitute a derivative work and does not require
-     the author to provide source code for the application or library,
-     use the shared GTO libraries, or link their applications or shared
-     library against a user-supplied version of GTO.
-
-     If you link the application or shared library to a modified
-     version of GTO , then the changes to GTO must be provided under
-     the terms of the LGPL in sections 1, 2, and 4.
-
-  3. You do not have to provide a copy of the GTO license with programs
-     that are linked to the GTO library, nor do you have to identify
-     the GTO license in your program or documentation as required by
-     section 6 of the LGPL.
-
-     However, programs must still identify their use of GTO. The
-     following example statement can be included in user documentation
-     to satisfy this requirement:
-
-     [program/shared library] is based in part on the work of the GTO
-     project.
+     * Neither the name of the Tweak Software nor the names of its
+       contributors may be used to endorse or promote products
+       derived from this software without specific prior written
+       permission.
+ 
+  THIS SOFTWARE IS PROVIDED BY Tweak Software ''AS IS'' AND ANY EXPRESS
+  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL Tweak Software BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+  OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+  DAMAGE.
 

@@ -1,12 +1,4 @@
-.deps
-/config.guess
-/config.sub
-/configure
-Makefile
-Makefile.in
-aclocal.m4
-autom4te-2.53.cache
-config
-config.log
-config.status
-libtool
+gto.info
+gto.info-1
+gto.info-2
+gto.info-3

@@ -94,13 +94,7 @@ later in this document is different and more involved than the above example.)
 
 2. License Brief
 
-    The GTO library and included programs are provided under the terms of
-the GNU Library General Public License (aka LGPL, see COPYING.LESSER) with
-the exceptions for static linking (see LICENSE for details).
-
-    If you extend, repair, or invent a new protocol for the Gto format and
-would like it incorporated in our tree drop us a line at gto@tweakfilms.com.
-Or just drop us a line telling us you're using it. 
+    GTO is licensed under the terms of the New BSD License.
 
 
 -----
