@@ -42,6 +42,7 @@
 #ifdef GTO_SUPPORT_HALF
 #include <half.h>
 #endif
+#include <stdlib.h>
 
 namespace Gto {
 using namespace std;
@@ -63,9 +64,35 @@ static unsigned int Csizes[] =
 };
 
 size_t
-dataSize(Gto::uint32 type)
+dataSizeInBytes(Gto::uint32 type)
 {
     return Csizes[type * 2 + 1];
+}
+
+size_t
+bufferSizeInBytes(Gto::uint32 type, const Dimensions& dims)
+{
+    return dataSizeInBytes(type) * elementSize(dims);
+}
+
+size_t 
+elementSize(const Dimensions& dims)
+{
+    size_t xs = dims.x? dims.x: 1;
+    size_t ys = dims.y? dims.y: 1;
+    size_t zs = dims.z? dims.z: 1;
+    size_t ws = dims.w? dims.w: 1;
+
+    return xs * ys * zs * ws;
+}
+
+size_t 
+elementSize(const TypeSpec& spec)
+{
+    return elementSize(Dimensions(spec.dims.x,
+                                  spec.dims.y,
+                                  spec.dims.z,
+                                  spec.dims.w));
 }
 
 const char* 
@@ -107,7 +134,7 @@ asNumber(void* data, Gto::DataType t)
           break;
       case Double: 
           n._double = *reinterpret_cast<double*>(data);
-          n.type = Float;
+          n.type = Double;
           break;
 #ifdef GTO_SUPPORT_HALF
       case Half: 
@@ -160,37 +187,8 @@ bool isGTOFile(const char* infile)
             header.magic == GTO_MAGIC_TEXTl;
 }
 
-void
-swapWords(void *data, size_t size)
+void splitComponentName(const char* name, vector<string>& buffer)
 {
-    struct bytes { char c[4]; };
-
-    bytes* ip = reinterpret_cast<bytes*>(data);
-
-    for (size_t i=0; i<size; i++)
-    {
-        bytes temp = ip[i];
-        ip[i].c[0] = temp.c[3];
-        ip[i].c[1] = temp.c[2];
-        ip[i].c[2] = temp.c[1];
-        ip[i].c[3] = temp.c[0];
-    }
 }
-
-void
-swapShorts(void *data, size_t size)
-{
-    struct bytes { char c[2]; };
-
-    bytes* ip = reinterpret_cast<bytes*>(data);
-
-    for (size_t i=0; i<size; i++)
-    {
-        bytes temp = ip[i];
-        ip[i].c[0] = temp.c[1];
-        ip[i].c[1] = temp.c[0];
-    }
-}
-
 
 } // Gto

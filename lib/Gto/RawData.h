@@ -55,6 +55,10 @@ namespace Gto {
 
 struct Property
 {
+    //
+    //  These are deprecated constructors from v3
+    //
+
     Property(const std::string& n,
              const std::string& i,
              Gto::DataType t,
@@ -68,14 +72,33 @@ struct Property
              size_t w,
              bool allocate=false);
 
+    //
+    //  New constructors take all three dimensions
+    //
+
+    Property(const std::string& n,
+             const std::string& fn,
+             const std::string& i,
+             Gto::DataType t,
+             size_t s,
+             const Dimensions& d,
+             bool allocate=false);
+
+    Property(const std::string& n,
+             const std::string& fn,
+             Gto::DataType t,
+             size_t s,
+             const Dimensions& d,
+             bool allocate=false);
+
     ~Property();
 
     std::string     name;
+    std::string     fullName;
     std::string     interp;
     Gto::DataType   type;
     size_t          size;
-    size_t          width;
-    bool            _allocated;
+    Dimensions      dims;
 
     union
     {
@@ -94,6 +117,9 @@ typedef std::vector<Property*> Properties;
 
 //----------------------------------------------------------------------
 
+struct Component;
+typedef std::vector<Component*> Components;
+
 struct Component
 {
     Component(const std::string& n, 
@@ -104,12 +130,12 @@ struct Component
     ~Component();
 
     std::string     name;
+    std::string     fullName;
     std::string     interp;
     uint16          flags;
     Properties      properties;
+    Components      components;
 };
-
-typedef std::vector<Component*> Components;
 
 //----------------------------------------------------------------------
 
@@ -157,6 +183,8 @@ struct RawDataBase
 class RawDataBaseReader : public Reader
 {
 public:
+    typedef std::vector<Component*> ComponentStack;
+
     explicit RawDataBaseReader(unsigned int mode = None);
     virtual ~RawDataBaseReader();
 
@@ -183,7 +211,8 @@ protected:
     virtual void        dataRead(const PropertyInfo&);
 
 protected:
-    RawDataBase*        m_dataBase;
+    RawDataBase*   m_dataBase;
+    ComponentStack m_componentStack;
 };
 
 

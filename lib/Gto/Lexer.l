@@ -58,6 +58,7 @@ WhiteSpace		[[:blank:]]+
 NonWhiteSpace		[^[:blank:]]+
 FloatNumA 		[[:digit:]]*\.[[:digit:]]+([Ee][+-]?[[:digit:]]+)?
 FloatNumB 		[[:digit:]]+\.?([Ee][+-]?[[:digit:]]+)?
+FloatNumC               nan(0x[[:xdigit:]]+)?
 IntNum			[[:digit:]]+
 HexNum			0x[[:xdigit:]]+
 UnicodeEsc		\\u[[:xdigit:]][[:xdigit:]][[:xdigit:]][[:xdigit:]]+
@@ -129,6 +130,12 @@ OctalEsc		\\[0-3][0-7][0-7]
 {FloatNumA} |
 {FloatNumB}             {
 			    LVAL->_double = atof(yytext);
+			    reader->m_charnum += yyleng;
+			    return GTO_FLOATCONST;
+			}
+
+{FloatNumC}             {
+                            LVAL->_double = 0;
 			    reader->m_charnum += yyleng;
 			    return GTO_FLOATCONST;
 			}
