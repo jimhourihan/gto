@@ -52,7 +52,7 @@ namespace Gto {
 #define GTO_MAGICl      0x9f020000
 #define GTO_MAGIC_TEXT  0x47544f61
 #define GTO_MAGIC_TEXTl 0x614f5447
-#define GTO_VERSION     3
+#define GTO_VERSION     4
 
 typedef unsigned int        uint32;
 typedef int                 int32;
@@ -60,6 +60,17 @@ typedef unsigned short      uint16;
 typedef unsigned char       uint8;
 typedef float               float32;
 typedef double              float64;
+
+struct Dimensions
+{
+    Dimensions(uint32 _x=1, uint32 _y=0, uint32 _z=0, uint32 _w=0)
+        : x(_x), y(_y), z(_z), w(_w) { }
+
+    uint32 x;
+    uint32 y;
+    uint32 z;
+    uint32 w;
+};
 
 //
 //  File Header
@@ -116,7 +127,7 @@ struct ComponentHeader
     uint32        numProperties;
     uint32        flags;
     uint32        interpretation;
-    uint32        pad;
+    uint32        childLevel;
 };
 
 struct ComponentHeader_v2
@@ -145,8 +156,17 @@ enum DataType
     ErrorType
 };
 
-
 struct PropertyHeader
+{
+    PropertyHeader() : dims(0,0,0,0) {}
+    uint32        name;             // string
+    uint32        size;
+    uint32        type;
+    Dimensions    dims;
+    uint32        interpretation;   // string
+};
+
+struct PropertyHeader_v3
 {
     uint32        name;             // string
     uint32        size;

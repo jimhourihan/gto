@@ -48,6 +48,7 @@
 
 #include "FlexLexer.h"
 #include <iostream>
+#include "Header.h"
 #include "Reader.h"
 #include "Utilities.h"
 #include <stdarg.h>
@@ -142,25 +143,21 @@ object:
     {
         READER->beginObject($1, READER->internString("object"));
     }
-    component_list '}'
+    component_list_opt '}'
 
     | GTO_STRINGCONST ':' GTO_STRINGCONST '{' 
     {
         READER->beginObject($1, $3);
     }
-    component_list '}'
+    component_list_opt '}'
 
     | GTO_STRINGCONST ':' GTO_STRINGCONST '(' GTO_INTCONST ')' '{' 
     {
         READER->beginObject($1, $3, $5);
     }
-    component_list '}'
+    component_list_opt '}'
 ;
 
-component_list:
-    component
-    | component_list component
-;
 
 interp_string_opt:
     /* empty */
@@ -174,30 +171,66 @@ interp_string_opt:
     }
 ;
 
+property_list:
+      property
+    | property_list property
+;
+
+component_list:
+      component
+    | component_list component
+;
+
+component_list_opt:
+      /* empty */
+    | component_list
+;
+
+component_block:
+    /* empty */
+    | property_list 
+    | component_list
+    | property_list component_list
+    | component_list property_list
+    {
+        GTOParseError(state, "property declarations must proceed component declarations in same scope");
+        YYERROR;
+    }
+    | property_list component_list property_list
+    {
+        GTOParseError(state, "property declarations must proceed component declarations in same scope");
+        YYERROR;
+    }
+;
+
 component:
     GTO_STRINGCONST interp_string_opt '{' 
     {
         READER->beginComponent($1, $2);
     }
-    property_list '}'
-;
-
-property_list:
-    property
-    | property_list property
+    component_block component_list_opt '}'
+    {        
+        READER->endComponent();
+    }
 ;
 
 property:
     type GTO_STRINGCONST interp_string_opt '=' 
     {
-        READER->beginProperty($2, $3, $1.width, $1.size, $1.type);
+        READER->beginProperty($2, $3, $1.size, $1.type, Gto::Dimensions($1.dims.x,
+                                                                        $1.dims.y,
+                                                                        $1.dims.z,
+                                                                        $1.dims.w));
     }
     atomic_value
     {
-        if (READER->currentType().width != 1)
+        if (READER->currentType().dims.x != 1 &&
+            READER->currentType().dims.y != 0 &&
+            READER->currentType().dims.z != 0 &&
+            READER->currentType().dims.w != 0)
         {
-            GTOParseError(state, "expected data width of %d, found 1",
-                          READER->currentType().width);
+            GTOParseError(state, "expected data width (xsize) of %d, found 1",
+                          READER->currentType().dims.x);
             YYERROR;
         }
         else if ($1.size != 0 && 
@@ -217,7 +250,10 @@ property:
 
     | type GTO_STRINGCONST interp_string_opt '=' 
     {
-        READER->beginProperty($2, $3, $1.width, $1.size, $1.type);
+        READER->beginProperty($2, $3, $1.size, $1.type, Gto::Dimensions($1.dims.x,
+                                                                        $1.dims.y,
+                                                                        $1.dims.z,
+                                                                        $1.dims.w));
     }
     '[' complex_element_list ']'
     {
@@ -255,23 +291,92 @@ property:
 type:
     basic_type
     {
-        $$.type  = $1.type;
-        $$.width = 1;
-        $$.size  = 0;
+        $$.type   = $1.type;
+        $$.size   = 0;
+        $$.dims.x = 1;
+        $$.dims.y = 0;
+        $$.dims.z = 0;
+        $$.dims.w = 0;
     }
 
     | basic_type '[' GTO_INTCONST ']'
     {
-        $$.type  = $1.type;
-        $$.width = $3;
-        $$.size  = 0;
+        $$.type   = $1.type;
+        $$.size   = 0;
+        $$.dims.x = $3;
+        $$.dims.y = 0;
+        $$.dims.z = 0;
+        $$.dims.w = 0;
+    }
+
+    | basic_type '[' GTO_INTCONST ',' GTO_INTCONST ']'
+    {
+        $$.type   = $1.type;
+        $$.size   = 0;
+        $$.dims.x = $3;
+        $$.dims.y = $5;
+        $$.dims.z = 0;
+        $$.dims.w = 0;
+    }
+
+    | basic_type '[' GTO_INTCONST ',' GTO_INTCONST ',' GTO_INTCONST ']'
+    {
+        $$.type   = $1.type;
+        $$.size   = 0;
+        $$.dims.x = $3;
+        $$.dims.y = $5;
+        $$.dims.z = $7;
+        $$.dims.w = 0;
+    }
+
+    | basic_type '[' GTO_INTCONST ',' GTO_INTCONST ',' GTO_INTCONST ',' GTO_INTCONST ']'
+    {
+        $$.type   = $1.type;
+        $$.size   = 0;
+        $$.dims.x = $3;
+        $$.dims.y = $5;
+        $$.dims.z = $7;
+        $$.dims.w = $9;
     }
 
     | basic_type '[' GTO_INTCONST ']' '[' GTO_INTCONST ']'
     {
-        $$.type  = $1.type;
-        $$.width = $3;
-        $$.size  = $6;
+        $$.type   = $1.type;
+        $$.size   = $6;
+        $$.dims.x = $3;
+        $$.dims.y = 0;
+        $$.dims.z = 0;
+        $$.dims.w = 0;
+    }
+
+    | basic_type '[' GTO_INTCONST ',' GTO_INTCONST ']' '[' GTO_INTCONST ']'
+    {
+        $$.type   = $1.type;
+        $$.size   = $8;
+        $$.dims.x = $3;
+        $$.dims.y = $5;
+        $$.dims.z = 0;
+        $$.dims.w = 0;
+    }
+
+    | basic_type '[' GTO_INTCONST ',' GTO_INTCONST ',' GTO_INTCONST ']' '[' GTO_INTCONST ']'
+    {
+        $$.type   = $1.type;
+        $$.size   = $10;
+        $$.dims.x = $3;
+        $$.dims.y = $5;
+        $$.dims.z = $7;
+        $$.dims.w = 0;
+    }
+
+    | basic_type '[' GTO_INTCONST ',' GTO_INTCONST ',' GTO_INTCONST ',' GTO_INTCONST ']' '[' GTO_INTCONST ']'
+    {
+        $$.type   = $1.type;
+        $$.size   = $12;
+        $$.dims.x = $3;
+        $$.dims.y = $5;
+        $$.dims.z = $7;
+        $$.dims.w = $9;
     }
 ;
 
@@ -301,10 +406,10 @@ element:
     atomic_value
     | '[' atomic_value_list ']'
     {
-        if ($2 != READER->currentType().width)
+        if ($2 != elementSize(READER->currentType()))
         {
-            GTOParseError(state, "expected data width of %d, found %d",
-                          READER->currentType().width, $2);
+            GTOParseError(state, "expected %d scalar elements, found %d",
+                          elementSize(READER->currentType()), $2);
             YYERROR;
         }
     }

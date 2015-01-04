@@ -87,8 +87,10 @@ public:
 
     struct ComponentInfo : ComponentHeader
     {
-        void*               componentData; // return value of component()
-        const ObjectInfo*   object;
+        void*                componentData; // return value of component()
+        const ObjectInfo*    object;
+        std::string          fullName;
+        const ComponentInfo* parent;
 
         int propertyOffset() const { return poffset; }
 
@@ -101,23 +103,24 @@ public:
     struct PropertyInfo : PropertyHeader
     {
         void*                propertyData;
-        unsigned int         offset;    // file offset
+        int                  offset;    // file offset
+        std::string          fullName;
 
         const ComponentInfo* component;
 
     private:
         bool                 requested;
-        size_t               index;
         friend class Reader;
     };
 
     typedef std::vector<ObjectInfo>    Objects;
     typedef std::vector<ComponentInfo> Components;
+    typedef std::vector<std::string>   NameStack;
+    typedef std::vector<size_t>        IndexStack;
     typedef std::vector<PropertyInfo>  Properties;
     typedef std::vector<std::string>   StringTable;
     typedef std::vector<unsigned char> ByteArray;
     typedef std::map<std::string,int>  StringMap;
-    typedef std::vector<unsigned int>  DataOffsets;
 
 
     //
@@ -171,7 +174,8 @@ public:
 
     virtual bool        open(void const *pData, size_t dataSize, const char *name);
     virtual bool        open(const char *filename);
-    virtual bool        open(std::istream&, const char *name, 
+    virtual bool        open(std::istream&,
+                             const char *name, 
                              unsigned int ormode = 0);
     void                close();
 
@@ -183,10 +187,10 @@ public:
     const std::string&  why() const { return m_why; }
 
     const std::string&  stringFromId(unsigned int i);
+    unsigned int        idFromString(const std::string&);
     const StringTable&  stringTable() { return m_strings; }
 
     bool                isSwapped() const { return m_swapped; }
-    bool                hasIndex() const { return !m_dataOffsets.empty(); }
     unsigned int        readMode() const { return m_mode; }
 
     const std::string&  infileName() const { return m_inName; }
@@ -331,10 +335,11 @@ public:
 
     void                beginProperty(unsigned int name,
                                       unsigned int interp,
-                                      unsigned int width,
                                       unsigned int size,
-                                      DataType type);
+                                      DataType type,
+                                      const Dimensions& dims);
 
+    void                endComponent();
     void                endProperty();
     void                endFile();
 
@@ -371,19 +376,20 @@ private:
     void                readObjects();
     void                readComponents();
     void                readProperties();
-    void                readIndexTable();
 
     void                read(char *, size_t);
     void                get(char &);
     bool                notEOF();
     void                seekForward(size_t);
     int                 tell();
-    void                seekTo(const PropertyInfo &p);
+    void                seekTo(size_t);
 
 private:
     Header              m_header;
     Objects             m_objects;
     Components          m_components;
+    NameStack           m_nameStack;
+    IndexStack          m_indexStack;
     Properties          m_properties;
     StringTable         m_strings;
     StringMap           m_stringMap;
@@ -403,8 +409,6 @@ private:
     int                 m_charnum;
     ByteArray           m_buffer;
     TypeSpec            m_currentType;
-    size_t              m_currentReadOffset;
-    DataOffsets         m_dataOffsets;
 };
 
 template <typename T>

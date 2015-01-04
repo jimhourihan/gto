@@ -38,18 +38,17 @@
 #define _GNU_SOURCE
 #endif
 
-#include "zhacks.h"
 #include "Writer.h"
 #include "Utilities.h"
 #include <fstream>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdexcept>
+#include <sstream>
 
 #define GTO_DEBUG 0
 
 #ifdef GTO_SUPPORT_ZIP
-#include <fcntl.h>
 #include <zlib.h>
 #endif
 
@@ -61,11 +60,10 @@ namespace Gto {
 using namespace std;
 
 
-Writer::Writer()
-    : m_out(0),
+Writer::Writer() 
+    : m_out(0), 
       m_gzfile(0),
-      m_gzRawFd(-1),
-      m_needsClosing(false),
+      m_needsClosing(false), 
       m_error(false),
       m_tableFinished(false),
       m_currentProperty(0),
@@ -78,12 +76,11 @@ Writer::Writer()
     init(0);
 }
 
-Writer::Writer(ostream &o)
-    : m_out(0),
+Writer::Writer(ostream &o) 
+    : m_out(0), 
       m_gzfile(0),
-      m_gzRawFd(-1),
-      m_needsClosing(true),
-      m_error(false),
+      m_needsClosing(false), 
+      m_error(false), 
       m_tableFinished(false),
       m_currentProperty(0),
       m_type(CompressedGTO),
@@ -107,19 +104,26 @@ Writer::init(ostream *o)
 }
 
 bool
-Writer::open(const char* filename, FileType type, bool writeIndex)
+Writer::open(ostream& out, FileType type)
 {
-    if (m_out || m_gzfile) return false;
+    init(&out);
+    return open("", type);
+}
 
-    m_outName         = filename;
-    m_type            = type;
-    m_writeIndexTable = writeIndex;
+bool
+Writer::open(const char* filename, FileType type)
+{
+    m_outName      = filename;
+    m_type         = type;
+    m_needsClosing = false;
+
+    if (m_outName != "" && (m_out || m_gzfile)) return false;
 
 #ifndef GTO_SUPPORT_ZIP
     if (type == CompressedGTO) type = BinaryGTO;
 #endif
 
-    if (type == BinaryGTO || type == TextGTO)
+    if (!m_out && (type == BinaryGTO || type == TextGTO))
     {
         if (type == BinaryGTO)
         {
@@ -129,6 +133,8 @@ Writer::open(const char* filename, FileType type, bool writeIndex)
         {
             m_out = new ofstream(filename, ios::out);
         }
+
+        m_needsClosing = true;
 
         if (!(*m_out))
         {
@@ -140,19 +146,18 @@ Writer::open(const char* filename, FileType type, bool writeIndex)
 #ifdef GTO_SUPPORT_ZIP
     else if (type == CompressedGTO)
     {
-        m_gzRawFd = ::open(filename, O_WRONLY|O_CREAT|O_TRUNC, 0666);
+        m_gzfile = gzopen(filename, "wb");
+        m_needsClosing = true;
 
-        if (m_gzRawFd < 0)
+        if (!m_gzfile)
         {
             m_gzfile = 0;
-            m_gzRawFd = -1;
             m_error  = true;
             return false;
         }
     }
 #endif
 
-    m_needsClosing = true;
     m_error = false;
     return true;
 }
@@ -160,7 +165,7 @@ Writer::open(const char* filename, FileType type, bool writeIndex)
 void
 Writer::close()
 {
-    if (m_beginDataCalled && !m_endDataCalled)
+    if (m_beginDataCalled && !m_endDataCalled) 
     {
         //
         //  Should this be an error? We can gracefully finish like
@@ -178,13 +183,16 @@ Writer::close()
         delete m_out;
     }
 #ifdef GTO_SUPPORT_ZIP
-    else if ((m_gzRawFd > 0) && m_needsClosing)
+    else if (m_gzfile && m_needsClosing)
     {
-        ::close(m_gzRawFd);
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            gzclose((gzFile_s*)m_gzfile);
+        #else
+            gzclose(m_gzfile);
+        #endif
     }
 
     m_gzfile = 0;
-    m_gzRawFd = -1;
 #endif
     m_out    = 0;
 }
@@ -197,7 +205,7 @@ Writer::beginData()
 }
 
 void
-Writer::beginData(const std::string *orderedStrings, int num)
+Writer::beginData(const std::string *orderedStrings, size_t num)
 {
     m_currentProperty = 0;
     constructStringTable(orderedStrings, num);
@@ -208,11 +216,6 @@ Writer::beginData(const std::string *orderedStrings, int num)
     }
     else
     {
-        if(m_type == CompressedGTO)
-        {
-            m_gzfile = gzdopen(dup(m_gzRawFd), "w");
-            prepIndexTable();
-        }
         writeHead();
     }
 
@@ -224,11 +227,21 @@ Writer::endData()
 {
     if (m_type == TextGTO)
     {
-        writeText("    }\n}\n");
-    }
-    else if (m_type == CompressedGTO)
-    {
-        writeIndexTable();
+        PropertyPath p0 = m_propertyMap[m_currentProperty-1];
+
+        //
+        //  Close off existing scope
+        //
+
+        size_t s = p0.componentScope.size();
+
+        for (int i = 0; i < s; i++)
+        {
+            writeIndent((s - i) * 4);
+            writeFormatted("}\n");
+        }
+
+        writeFormatted("}\n");
     }
 
     m_endDataCalled = true;
@@ -258,7 +271,7 @@ Writer::intern(const string& s)
     m_strings[s] = -1;
 }
 
-int
+uint32
 Writer::lookup(const char* s) const
 {
     if (m_tableFinished)
@@ -267,7 +280,7 @@ Writer::lookup(const char* s) const
 
         if (i == m_strings.end())
         {
-            return -1;
+            return uint32(-1);
         }
         else
         {
@@ -280,7 +293,7 @@ Writer::lookup(const char* s) const
     }
 }
 
-int
+uint32
 Writer::lookup(const string& s) const
 {
     if (m_tableFinished)
@@ -289,7 +302,7 @@ Writer::lookup(const string& s) const
 
         if (i == m_strings.end())
         {
-            return -1;
+            return uint32(-1);
         }
         else
         {
@@ -303,16 +316,16 @@ Writer::lookup(const string& s) const
 }
 
 std::string
-Writer::lookup(int n) const
+Writer::lookup(uint32 n) const
 {
-    if (n < 0 || (size_t)n >= m_names.size()) return "*bad-lookup*";
+    if ((size_t)n >= m_names.size()) return "*bad-lookup*";
     return m_names[n];
 }
 
 void
-Writer::beginObject(const char* name,
-                    const char *protocol,
-                    unsigned int version)
+Writer::beginObject(const char* name, 
+                    const char *protocol, 
+                    uint32 version)
 {
     if (m_objectActive)
     {
@@ -341,15 +354,15 @@ Writer::beginObject(const char* name,
 }
 
 void
-Writer::beginComponent(const char* name, unsigned int flags)
+Writer::beginComponent(const char* name, uint32 flags)
 {
-    beginComponent(name, "", flags);
+    beginComponent(name, NULL, flags);
 }
 
 void
-Writer::beginComponent(const char* name,
+Writer::beginComponent(const char* name, 
                        const char* interp,
-                       unsigned int flags)
+                       uint32 flags)
 {
     if (!m_objectActive)
     {
@@ -357,34 +370,45 @@ Writer::beginComponent(const char* name,
                                  "you forgot to call beginObject()");
     }
 
-    if (m_componentActive)
+    string sname = name;
+    const bool fullyQualified = sname.find('.') != string::npos;
+
+    if (fullyQualified)
     {
         throw std::runtime_error("ERROR: Gto::Writer::beginComponent() -- "
-                                 "you forgot to call endComponent()");
+                                 "illegal character '.' in component name");
     }
+    else
+    {
+        m_componentScope.push_back(sname);
 
-    m_names.push_back(name);
-    m_objects.back().numComponents++;
-    ComponentHeader header;
-    memset(&header, 0, sizeof(ComponentHeader));
+        ostringstream str;
+    
+        str << name;
 
-    header.numProperties = 0;
-    header.flags         = flags;
-    header.name          = m_names.size() - 1;
-    header.pad           = 0;
+        m_names.push_back(str.str()); // full name
+        m_objects.back().numComponents++;
+        ComponentHeader header;
+        memset(&header, 0, sizeof(ComponentHeader));
+    
+        header.numProperties = 0;
+        header.flags         = flags;
+        header.name          = m_names.size() - 1;
+        header.childLevel    = m_componentScope.size() - 1;
 
-    if (!interp) interp = "";
-    m_names.push_back(interp);
-    header.interpretation = m_names.size() - 1;
+        m_names.push_back(interp ? interp : "");
+        header.interpretation = m_names.size() - 1;
 
-    m_components.push_back(header);
-    m_componentActive = true;
+        m_components.push_back(header);
+        m_componentActive = true;
+    }
 }
 
 void
 Writer::endComponent()
 {
     m_componentActive = false;
+    m_componentScope.pop_back();
 }
 
 void
@@ -397,7 +421,7 @@ void
 Writer::property(const char* name,
                  DataType type,
                  size_t numElements,
-                 size_t partsPerElement,
+                 const Dimensions& dims,
                  const char *interp)
 {
     if (!m_objectActive || !m_componentActive)
@@ -411,11 +435,10 @@ Writer::property(const char* name,
 
     PropertyHeader header;
     memset(&header, 0, sizeof(PropertyHeader));
-    header.size   = numElements;
-    header.type   = type;
-    header.width  = partsPerElement;
-    header.name   = m_names.size() - 1;
-    header.pad    = 0;
+    header.size = numElements;
+    header.type = type;
+    header.name = m_names.size() - 1;
+    header.dims = dims;
 
     if (!interp) interp = "";
     m_names.push_back(interp);
@@ -425,33 +448,22 @@ Writer::property(const char* name,
 
     if (m_type == TextGTO)
     {
-        PropertyPath ppath(m_objects.size() - 1,
-                           m_components.size() - 1);
+        PropertyPath ppath(m_objects.size() - 1, name, m_componentScope);
         m_propertyMap[m_properties.size() - 1] = ppath;
     }
 }
 
 
 void
-Writer::constructStringTable(const std::string *orderedStrings, int num)
+Writer::constructStringTable(const std::string *orderedStrings, size_t num)
 {
-    if (num < 0)
+    if (num > 0 && orderedStrings == 0) 
     {
         throw std::runtime_error("Gto::Writer::constructStringTable(): "
-                                 "ordered string list length was negative");
-    }
-
-    if (num > 0 && orderedStrings == 0)
-    {
-        throw std::runtime_error("Gto::Writer::constructStringTable(): "
-                                 "ordered string list length was positive "
+                                 "ordered string list length non-zero "
                                  "but string list was null");
     }
-
-    intern( "(Gto::Writer compiled " __DATE__
-            " " __TIME__
-            ", $Id: Writer.cpp,v 1.37 2008/04/11 23:25:24 src Exp $)" );
-
+    
     for (size_t i=0; i < m_names.size(); i++)
     {
         intern(m_names[i]);
@@ -470,7 +482,7 @@ Writer::constructStringTable(const std::string *orderedStrings, int num)
     // populate the first entries with the given ordered strings
     //
 
-    for (int i=0; i < num; ++i)
+    for (size_t i=0; i < num; ++i)
     {
         intern(orderedStrings[i]);
     }
@@ -488,7 +500,7 @@ Writer::constructStringTable(const std::string *orderedStrings, int num)
     }
 
     for (StringMap::iterator i = m_strings.begin();
-         i != m_strings.end();
+         i != m_strings.end(); 
          ++i)
     {
         if (i->second == -1) i->second = count++;
@@ -502,20 +514,20 @@ Writer::constructStringTable(const std::string *orderedStrings, int num)
     for (size_t o=0, c=0, p=0, n=0; o < m_objects.size(); o++)
     {
         ObjectHeader &oh = m_objects[o];
-        oh.name = m_strings[m_names[n++]];
-        oh.protocolName = m_strings[m_names[n++]];
+        oh.name          = m_strings[m_names[n++]];
+        oh.protocolName  = m_strings[m_names[n++]];
 
         for (size_t i=0; i < oh.numComponents; i++, c++)
         {
             ComponentHeader &ch = m_components[c];
-            ch.name = m_strings[m_names[n++]];
-            ch.interpretation = m_strings[m_names[n++]];
+            ch.name             = m_strings[m_names[n++]];
+            ch.interpretation   = m_strings[m_names[n++]];
 
             for (size_t q=0; q < ch.numProperties; q++, p++)
             {
                 PropertyHeader &ph = m_properties[p];
-                ph.name = m_strings[m_names[n++]];
-                ph.interpretation = m_strings[m_names[n++]];
+                ph.name            = m_strings[m_names[n++]];
+                ph.interpretation  = m_strings[m_names[n++]];
             }
         }
     }
@@ -570,7 +582,7 @@ Writer::writeMaybeQuotedString(const string& str)
             return;
         }
     }
-
+    
     if (gto_isalnum(str))
     {
         writeText(str);
@@ -585,46 +597,51 @@ void
 Writer::writeQuotedString(const string& str)
 {
     writeFormatted("\"");
-    static const char delim = '"';
+    static const char quote = '"';
+    static const char slash = '\\';
 
     for (size_t i=0; i < str.size(); i++)
     {
-        char c = str[i];
+	char c = str[i];
 
-        if (c == 0)
-        {
+	if (c == 0)
+	{
             write("");
-        }
-        else if (iscntrl(c))
-        {
-            switch (c)
-            {
-              case '\n': writeFormatted("\\n"); break;
-              case '\b': writeFormatted("\\b"); break;
-              case '\r': writeFormatted("\\r"); break;
-              case '\t': writeFormatted("\\t"); break;
-              default:
+	}
+	else if (iscntrl(c))
+	{
+	    switch (c)
+	    {
+	      case '\n': writeFormatted("\\n"); break;
+	      case '\b': writeFormatted("\\b"); break;
+	      case '\r': writeFormatted("\\r"); break;
+	      case '\t': writeFormatted("\\t"); break;
+	      default:
                   {
                       char temp[41];
                       temp[40] = 0;
                       snprintf(temp, 40, "\\%o", int(c));
                       writeFormatted(temp);
                   }
-                  break;
-            }
-        }
-        else if (c == delim)
-        {
-            writeFormatted("\\%c", delim);
-        }
+		  break;
+	    }
+	}
+	else if (c == quote)
+	{
+            writeFormatted("\\%c", quote);
+	}
+	else if (c == slash)
+	{
+            writeFormatted("\\%c", slash);
+	}
         else if (c & 0x80)
         {
             // UTF-8
         }
-        else
-        {
+	else
+	{
             write(&c, sizeof(char));
-        }
+	}
     }
 
     writeFormatted("\"");
@@ -640,9 +657,22 @@ Writer::writeText(const std::string& s)
 #ifdef GTO_SUPPORT_ZIP
     else if (m_gzfile)
     {
-        gzwrite(m_gzfile, (void*)s.c_str(), s.size());
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            gzwrite((gzFile_s*)m_gzfile, (void*)s.c_str(), s.size());
+        #else
+            gzwrite(m_gzfile, (void*)s.c_str(), s.size());
+        #endif
     }
 #endif
+}
+
+void
+Writer::writeIndent(size_t n)
+{
+    ostringstream str;
+    for (size_t i = 0; i < n; i++) str << " ";
+    string s = str.str();
+    write(s.c_str(), s.size());
 }
 
 void
@@ -650,13 +680,11 @@ Writer::writeFormatted(const char* format, ...)
 {
     va_list ap;
     va_start(ap, format);
-    char* m;
-    /* AJG - windows vsnprintf hacko */
-    m = (char*)(malloc(1024*10*sizeof(char)));
+    char* m = new char[1024*10]; 
     // vasprintf(&m, format, ap);
     vsprintf(m, format, ap);
     write(m, strlen(m));
-    free(m);
+    delete m;
 }
 
 void
@@ -670,7 +698,11 @@ Writer::write(const void* p, size_t s)
 #ifdef GTO_SUPPORT_ZIP
     else if (m_gzfile)
     {
-        gzwrite(m_gzfile, (void*)p, s);
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            gzwrite((gzFile_s*)m_gzfile, (void*)p, s);
+        #else
+            gzwrite(m_gzfile, (void*)p, s);
+        #endif
     }
 #endif
 }
@@ -686,7 +718,11 @@ Writer::write(const std::string& s)
 #ifdef GTO_SUPPORT_ZIP
     else if (m_gzfile)
     {
-        gzwrite(m_gzfile, (void*)s.c_str(), s.size() + 1);
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            gzwrite((gzFile_s*)m_gzfile, (void*)s.c_str(), s.size() + 1);
+        #else
+            gzwrite(m_gzfile, (void*)s.c_str(), s.size() + 1);
+        #endif
     }
 #endif
 }
@@ -701,11 +737,11 @@ void
 Writer::writeHead()
 {
     Header header;
-    header.magic         = GTO_MAGIC;
-    header.numObjects    = m_objects.size();
-    header.numStrings    = m_strings.size();
-    header.version       = GTO_VERSION;
-    header.flags         = 0;
+    header.magic      = GTO_MAGIC;
+    header.numObjects = m_objects.size();
+    header.numStrings = m_strings.size();
+    header.version    = GTO_VERSION;
+    header.flags      = 0;
 
     write(&header, sizeof(Header));
 
@@ -738,12 +774,15 @@ Writer::writeHead()
 }
 
 bool
-Writer::propertySanityCheck(const char *propertyName, int size, int width)
+Writer::propertySanityCheck(const char *propertyName, 
+                            uint32 size, 
+                            const Dimensions& dims)
 {
     if (!propertyName) return true;
     size_t p = m_currentProperty - 1;
 
-    if (propertyName != NULL && propertyName != m_names[m_properties[p].name])
+    if (propertyName != NULL && 
+        propertyName != m_names[m_properties[p].name])
     {
         std::cerr << "ERROR: Gto::Writer: propertyData expected '"
                   << m_names[m_properties[p].name] << "' but got data for '"
@@ -752,7 +791,8 @@ Writer::propertySanityCheck(const char *propertyName, int size, int width)
         return false;
     }
 
-    if (size > 0 && (size_t) size != m_properties[p].size)
+    if (size > 0 && 
+        size != m_properties[p].size)
     {
         std::cerr << "ERROR: Gto::Writer: propertyData expected data of size "
                   << m_properties[p].size << " but got data of size "
@@ -762,34 +802,47 @@ Writer::propertySanityCheck(const char *propertyName, int size, int width)
         return false;
     }
 
-    if (width > 0 && (size_t) width != m_properties[p].width)
+    if (dims.x > 0 && 
+        dims.x != m_properties[p].dims.x &&
+        dims.y != m_properties[p].dims.y &&
+        dims.z != m_properties[p].dims.z &&
+        dims.w != m_properties[p].dims.w)
     {
-        std::cerr << "ERROR: Gto::Writer: propertyData expected data of width "
-                  << m_properties[p].width << " but got data of width "
-                  << width << " instead while writing property '"
+        std::cerr << "ERROR: Gto::Writer: propertyData expected data of dimension "
+                  << m_properties[p].dims.x 
+                  << "x" << m_properties[p].dims.y 
+                  << "x" << m_properties[p].dims.z 
+                  << "x" << m_properties[p].dims.w 
+                  << " but got data of dimension "
+                  << dims.x
+                  << "x" << dims.y
+                  << "x" << dims.z
+                  << "x" << dims.w
+                  << " instead while writing property '"
                   << m_names[m_properties[p].name] << "'" << std::endl;
         m_error = true;
         return false;
     }
-
+    
     return true;
 }
 
-void
+void 
 Writer::propertyDataRaw(const void* data,
-                        const char *propertyName,
-                        int size,
-                        int width)
+                        const char *propertyName, 
+                        uint32 size, 
+                        const Dimensions& dims)
 {
     if (!m_beginDataCalled) beginData();
 
     size_t                p     = m_currentProperty++;
     const PropertyHeader& info  = m_properties[p];
-    size_t                n     = info.size * info.width;
-    size_t                ds    = dataSize(info.type);
+    size_t                esize = elementSize(info.dims);
+    size_t                n     = info.size * esize;
+    size_t                ds    = dataSizeInBytes(info.type);
     char*                 bdata = (char*)data;
 
-    if (propertySanityCheck(propertyName, size, width))
+    if (propertySanityCheck(propertyName, size, dims))
     {
         if (m_type == TextGTO)
         {
@@ -800,7 +853,15 @@ Writer::propertyDataRaw(const void* data,
             {
                 if (p != 0)
                 {
-                    writeFormatted("    }\n}\n\n");
+                    int s0 = p0.componentScope.size();
+
+                    for (size_t i = 0; i < s0; i++)
+                    {
+                        writeIndent((s0 - i) * 4);
+                        writeFormatted("}\n");
+                    }
+
+                    writeFormatted("}\n\n");
                 }
 
                 const ObjectHeader& o = m_objects[p1.objectIndex];
@@ -808,24 +869,114 @@ Writer::propertyDataRaw(const void* data,
                 writeFormatted(" : ");
                 writeMaybeQuotedString(lookup(o.protocolName));
                 writeFormatted(" (%d)\n{\n", o.protocolVersion);
-            }
+                p0 = PropertyPath();
 
-            if (p0.componentIndex != p1.componentIndex)
-            {
-                if (p != 0 && p0.objectIndex == p1.objectIndex)
+                //
+                //  Open up new scope
+                //
+
+                size_t s1 = p1.componentScope.size();
+                
+                for (int i = 0; i <= s1 - 1; i++)
                 {
-                    writeFormatted("    }\n\n");
+                    writeIndent((i+1) * 4);
+                    writeMaybeQuotedString(p1.componentScope[i].c_str());
+                    writeFormatted("\n");
+                    writeIndent((i+1) * 4);
+                    writeFormatted("{\n");
+                }
+            }
+            else
+            {
+                size_t s0 = p0.componentScope.size();
+                size_t s1 = p1.componentScope.size();
+                int dindex = s1 > s0 ? s0 : -1;
+
+                for (int i = 0; i < s0 && i < s1; i++)
+                {
+                    if (p0.componentScope[i] != p1.componentScope[i])
+                    {
+                        dindex = i;
+                        break;
+                    }
                 }
 
-                const ComponentHeader& c = m_components[p1.componentIndex];
-                writeText("    ");
-                writeMaybeQuotedString(lookup(c.name));
-                writeFormatted("\n    {\n");
+                if (s0 != s1 || dindex != -1)
+                {
+                    //
+                    //  Close off existing scope
+                    //
+
+                    if (dindex > -1 && dindex <= s0 - 1)
+                    {
+                        for (int i = dindex; i < s0; i++)
+                        {
+                            writeIndent((s0 - i) * 4);
+                            writeFormatted("}\n");
+                        }
+                    }
+
+                    //
+                    //  Open up new scope
+                    //
+
+                    for (int i = std::max(dindex,0); i <= s1 - 1; i++)
+                    {
+                        if (i == dindex) writeFormatted("\n");
+
+                        writeIndent((i+1) * 4);
+                        writeMaybeQuotedString(p1.componentScope[i].c_str());
+                        writeFormatted("\n");
+                        writeIndent((i+1) * 4);
+                        writeFormatted("{\n");
+                    }
+                }
             }
 
-            writeText("        ");
+            size_t childLevel1 = p1.componentScope.size();
+            writeIndent((childLevel1 + 1) * 4);
             writeText(typeName(Gto::DataType(info.type)));
-            if (info.width > 1) writeFormatted("[%d]", info.width);
+
+            //
+            //  NOTE: we're not handling cases like float[2,0,2] which
+            //  would be a 2x2 image in the X-Z plane. The assumption
+            //  here is that you can't have a degenerate dimension
+            //  before a non-degenerate one.
+            //
+
+            if (info.dims.x > 1 && 
+                info.dims.y == 0 && 
+                info.dims.z == 0)
+            {
+                writeFormatted("[%d]", info.dims.x);
+            }
+            else if (info.dims.x > 0 && 
+                     info.dims.y > 0 && 
+                     info.dims.z == 0)
+            {
+                writeFormatted("[%d,%d]", info.dims.x, info.dims.y);
+            }
+            else if (info.dims.x > 0 && 
+                     info.dims.y > 0 && 
+                     info.dims.z > 0)
+            {
+                writeFormatted("[%d,%d,%d]",
+                               info.dims.x,
+                               info.dims.y,
+                               info.dims.z);
+            }
+            else if (info.dims.x > 0 && 
+                     info.dims.y > 0 && 
+                     info.dims.z > 0 &&
+                     info.dims.w > 0)
+            {
+                writeFormatted("[%d,%d,%d,%d]", 
+                               info.dims.x,
+                               info.dims.y,
+                               info.dims.z,
+                               info.dims.w);
+            }
+
             writeText(" ");
             writeMaybeQuotedString(lookup(info.name));
 
@@ -842,9 +993,9 @@ Writer::propertyDataRaw(const void* data,
 
             for (size_t i = 0; i < n; i++)
             {
-                if (info.width > 1)
+                if (esize > 1)
                 {
-                    if (i % info.width == 0)
+                    if (i % esize == 0)
                     {
                         if (i) writeFormatted(" ]");
                         writeFormatted(" [");
@@ -853,16 +1004,20 @@ Writer::propertyDataRaw(const void* data,
 
                 if (isNumber(DataType(info.type)))
                 {
-                    Number num = asNumber(bdata + (i * ds),
+                    Number num = asNumber(bdata + (i * ds), 
                                           DataType(info.type));
 
                     if (num.type == Int)
                     {
                         writeFormatted(" %d", num._int);
                     }
+                    else if (num.type == Double)
+                    {
+                        writeFormatted(" %.18g", double(num._double));
+                    }
                     else
                     {
-                        writeFormatted(" %g", double(num._double));
+                        writeFormatted(" %.9g", double(num._double));
                     }
                 }
                 else
@@ -873,104 +1028,24 @@ Writer::propertyDataRaw(const void* data,
                 }
             }
 
-            if (n > 0 && info.width > 1) writeText(" ]");
+            if (n > 0 && (info.dims.x > 1 || 
+                          info.dims.y > 0 || 
+                          info.dims.z > 0 || 
+                          info.dims.w > 0)) 
+            {
+                writeText(" ]");
+            }
+
             if (n > 1) writeText(" ]");
 
             writeText("\n");
         }
         else
         {
-#ifdef GTO_SUPPORT_ZIP
-            if( (m_type == CompressedGTO) && m_writeIndexTable )
-            {
-                gzflush(m_gzfile, Z_FULL_FLUSH);
-                m_dataOffsets.push_back(lseek(m_gzRawFd, 0, SEEK_CUR));
-            }
-#endif
-            write(data, dataSize(m_properties[p].type) * n);
+            size_t bytes = dataSizeInBytes(m_properties[p].type) * n;
+            write(data, bytes);
         }
     }
-}
-
-
-void
-Writer::prepIndexTable()
-{
-    // See zhacks.h for details
-
-    if( ! m_writeIndexTable ) return;
-    gz_stream *s = (gz_stream*)m_gzfile;
-
-    //
-    // Write the FLG header field
-    //
-    fseek(s->file, 3L, SEEK_SET);
-    fprintf(s->file, "%c", EXTRA_FIELD);
-
-    //
-    // Write the XLEN extra field length
-    //
-    unsigned short xlen = 2 * sizeof(unsigned int);
-    fseek(s->file, 10L, SEEK_SET);
-    fwrite(&xlen, 1, sizeof(unsigned short), s->file);
-
-    //
-    // Leave space for the index table offset and size
-    //
-    unsigned int placeholders[2] = {0, 0};
-    fwrite(placeholders, sizeof(unsigned int), 2, s->file);
-
-    gzflush(m_gzfile, Z_FULL_FLUSH);
-    s->start = ftell(s->file);
-}
-
-
-void
-Writer::writeIndexTable()
-{
-    // See zhacks.h for details
-
-    if( ! m_writeIndexTable ) return;
-    assert(m_dataOffsets.size() == m_properties.size());
-
-    //
-    // Lay down a gzip marker and remember where it is
-    //    
-    gzflush(m_gzfile, Z_FULL_FLUSH);
-    unsigned int indexTableOffset = lseek(m_gzRawFd, 0, SEEK_CUR);
-    unsigned int indexTableSize = m_dataOffsets.size();
-
-    //
-    // Always store offsets as little-endian
-    //
-    unsigned short needsSwap = 0xFF00;
-    if( *(unsigned char*)(&needsSwap) )
-    {
-        swapWords(&m_dataOffsets.front(), m_dataOffsets.size());
-        swapWords(&indexTableOffset, 1);
-        swapWords(&indexTableSize, 1);
-    }
-
-    //
-    // Write the index table into the gzip stream
-    //    
-    int w = gzwrite(m_gzfile, &m_dataOffsets.front(),
-                    m_dataOffsets.size() * sizeof(unsigned int));
-
-    //
-    // Close the gzip file.  Must be done before lseeking back
-    // to the header in the next step.  I believe this writes 
-    // the CRC32 and ISIZE fields at the end of the file.
-    //    
-    gzclose(m_gzfile);
-
-    //
-    // Write the raw offset to the index table into the 
-    // 'extra' gzip header field.
-    //    
-    lseek(m_gzRawFd, 12L, SEEK_SET);
-    ::write(m_gzRawFd, &indexTableOffset, sizeof(unsigned int));
-    ::write(m_gzRawFd, &indexTableSize, sizeof(unsigned int));
 }
 
 

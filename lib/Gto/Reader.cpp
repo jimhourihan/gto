@@ -34,13 +34,15 @@
 //  DAMAGE.
 //
 
-#include "zhacks.h"
 #include "Reader.h"
 #include "Utilities.h"
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include <iterator>
 #ifdef GTO_SUPPORT_ZIP
 #include <zlib.h>
 #endif
@@ -69,8 +71,7 @@ Reader::Reader(unsigned int mode)
       m_error(false), 
       m_mode(mode),
       m_linenum(0),
-      m_charnum(0),
-      m_currentReadOffset(0)
+      m_charnum(0)
 {
 }
 
@@ -102,7 +103,7 @@ Reader::open(void const *pData, size_t dataSize, const char *name)
     {
         readMagicNumber();
 
-        if (m_header.magic != Header::Magic ||
+        if (m_header.magic != Header::Magic &&
             m_header.magic != Header::Cigam)
         {
             return false;
@@ -130,13 +131,16 @@ Reader::open(istream& i, const char *name, unsigned int ormode)
     {
         readMagicNumber();
 
-        if (m_header.magic != Header::Magic ||
+        if (m_header.magic != Header::Magic &&
             m_header.magic != Header::Cigam)
         {
-            return false;
+            i.seekg(0, std::ios::beg);
+            return readTextGTO();
         }
-
-        return readBinaryGTO();
+        else
+        {
+            return readBinaryGTO();
+        }
     }
 }
 
@@ -215,7 +219,15 @@ Reader::open(const char *filename)
             return false;
         }
 
-        return open(*m_in, filename, TextOnly);
+        //
+        //  Note that at this point m_needsClosing is true, but the below open()
+        //  will set it to false, so be sure to reset it to true, since we created
+        //  this istream and need to close it when we're done (prob when the Reader
+        //  object is destroyed).
+        //
+        bool ret = open(*m_in, filename, TextOnly);
+        m_needsClosing = true;
+        return ret;
     }
     else
     {
@@ -237,7 +249,11 @@ Reader::close()
 
         if (m_gzfile) 
         {
-            gzclose(m_gzfile);
+            #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+                gzclose((gzFile_s*)m_gzfile);
+            #else
+                gzclose(m_gzfile);
+            #endif
             m_gzfile = 0;
         }
 #endif
@@ -292,6 +308,38 @@ Reader::property(const string& name,
     return property(name, p);
 }
 
+static void
+swapWords(void *data, size_t size)
+{
+    struct bytes { char c[4]; };
+
+    bytes* ip = reinterpret_cast<bytes*>(data);
+
+    for (size_t i=0; i<size; i++)
+    {
+        bytes temp = ip[i];
+        ip[i].c[0] = temp.c[3];
+        ip[i].c[1] = temp.c[2];
+        ip[i].c[2] = temp.c[1];
+        ip[i].c[3] = temp.c[0];
+    }
+}
+
+static void
+swapShorts(void *data, size_t size)
+{
+    struct bytes { char c[2]; };
+
+    bytes* ip = reinterpret_cast<bytes*>(data);
+
+    for (size_t i=0; i<size; i++)
+    {
+        bytes temp = ip[i];
+        ip[i].c[0] = temp.c[1];
+        ip[i].c[1] = temp.c[0];
+    }
+}
+
 void
 Reader::readMagicNumber()
 {
@@ -321,7 +369,9 @@ Reader::readHeader()
         return;
     }
 
-    if (m_header.version != GTO_VERSION && m_header.version != 2)
+    if (m_header.version != GTO_VERSION && 
+        m_header.version != 3 &&
+        m_header.version != 2)
     {
         fail( "version mismatch" );
         cerr << "ERROR: Gto::Reader: gto file version == " 
@@ -428,14 +478,14 @@ Reader::readComponents()
     {
         const ObjectInfo &o = *i;
 
-        for (uint32 q=0; q < o.numComponents; q++)
+        for (uint32 q = 0; q < o.numComponents; q++)
         {
             ComponentInfo c;
 
             if (m_header.version == 2)
             {
                 read((char*)&c, sizeof(ComponentHeader_v2));
-                c.pad = 0;
+                c.childLevel = 0;
                 c.interpretation = 0;
             }
             else
@@ -447,9 +497,32 @@ Reader::readComponents()
 
             if (m_swapped) swapWords(&c, sizeof(ComponentHeader) / sizeof(int));
 
-            c.object = &o;
-            c.poffset = poffset;
-            poffset += c.numProperties;
+            c.object   = &o;
+            c.poffset  = poffset;
+            c.parent   = NULL;
+            poffset   += c.numProperties;
+
+            for (size_t ioffset = 1; c.parent == 0 && ioffset <= q; ioffset++)
+            {
+                const size_t index = m_components.size() - ioffset;
+
+                if (m_components[index].childLevel < c.childLevel)
+                {
+                    c.parent = &m_components[index];
+                    break;
+                }
+            }
+
+            if (c.parent)
+            {
+                ostringstream str;
+                str << c.parent->fullName << "." << stringFromId(c.name);
+                c.fullName = str.str();
+            }
+            else
+            {
+                c.fullName = stringFromId(c.name);
+            }
 
             if (o.requested && !(m_mode & RandomAccess))
             {
@@ -477,7 +550,6 @@ Reader::readComponents()
 void
 Reader::readProperties()
 {
-    size_t index = 0;
     for (Components::iterator i = m_components.begin();
          i != m_components.end();
          ++i)
@@ -488,27 +560,48 @@ Reader::readProperties()
         {
             PropertyInfo p;
             
-            p.index = index++;
-            
             if (m_header.version == 2)
             {
-                read((char*)&p, sizeof(PropertyHeader_v2));
-                p.pad = 0;
+                PropertyHeader_v2 pv2;
+                read((char*)&pv2, sizeof(PropertyHeader_v2));
+                if (m_swapped) swapWords(&pv2, sizeof(PropertyHeader_v2) / sizeof(uint32));
+
+                p.name           = pv2.name;
+                p.size           = pv2.size;
+                p.type           = pv2.type;
+                p.dims.x         = pv2.width;
+                p.dims.y         = 0;
+                p.dims.z         = 0;
+                p.dims.w         = 0;
                 p.interpretation = 0;
+            }
+            else if (m_header.version == 3)
+            {
+                PropertyHeader_v3 pv3;
+                read((char*)&pv3, sizeof(PropertyHeader_v3));
+                if (m_swapped) swapWords(&pv3, sizeof(PropertyHeader_v3) / sizeof(uint32));
+
+                p.name           = pv3.name;
+                p.size           = pv3.size;
+                p.type           = pv3.type;
+                p.dims.x         = pv3.width;
+                p.dims.y         = 0;
+                p.dims.z         = 0;
+                p.dims.w         = 0;
+                p.interpretation = pv3.interpretation;
             }
             else
             {
                 read((char*)&p, sizeof(PropertyHeader));
+                if (m_swapped) swapWords(&p, sizeof(PropertyHeader) / sizeof(uint32));
             }
 
             if (m_error) return;
 
-            if (m_swapped) 
-            {
-                swapWords(&p, sizeof(PropertyHeader) / sizeof(int));
-            }
-            
             p.component = &c;
+            p.fullName = c.fullName;
+            p.fullName += ".";
+            p.fullName += stringFromId(p.name);
 
             if (c.requested && !(m_mode & RandomAccess))
             {
@@ -543,7 +636,7 @@ Reader::accessProperty(PropertyInfo& p)
 
     if (p.requested)
     {
-        seekTo(p);
+        seekTo(p.offset);
         readProperty(p);
     }
 
@@ -616,7 +709,6 @@ Reader::readTextGTO()
 bool
 Reader::readBinaryGTO()
 {
-    readIndexTable();      // OK to continue if this fails
     readHeader();           if (m_error) return false; 
     readStringTable();      if (m_error) return false;
     readObjects();          if (m_error) return false;
@@ -663,49 +755,33 @@ Reader::readBinaryGTO()
 bool
 Reader::readProperty(PropertyInfo& prop)
 {
-    size_t num   = prop.size * prop.width;
-    size_t bytes = num * dataSize(prop.type);
+    size_t num   = prop.size * elementSize(prop.dims);
+    size_t bytes = dataSizeInBytes(prop.type) * num;
     char* buffer = 0;
 
     //
     //  Cache the offset pointer
     //
 
-    if( m_currentReadOffset == 0 )
-    {
-        // Offset can never be zero here, so it must be
-        // uninitialized.  Set it to the real file position.
-        m_currentReadOffset = tell();
-    }
-
-    prop.offset = m_currentReadOffset;
+    prop.offset = tell();
     bool readok = false;
 
     if (prop.requested)
     {
         if ((buffer = (char*)data(prop, bytes)))
         {
-            if(prop.index < m_dataOffsets.size())
-            {
-                seekTo(prop);
-            }
-            else
-            {
-                // Do we need to be somewhere else?
-                if(m_currentReadOffset != tell())
-                {
-                    // If so, move the actual file pointer there.
-                    seekForward(m_currentReadOffset - tell());
-                }
-            }
             read(buffer, bytes);
-            readok = true;
+            if (!m_error) readok = true;
+        }
+        else
+        {
+            seekForward(bytes);
         }
     }
-
-    // Move the 'virtual' file offset forward by  the data
-    // size of this property, whether we read it or not.
-    m_currentReadOffset += bytes; 
+    else
+    {
+        seekForward(bytes);
+    }
 
     if (m_error) return false;
 
@@ -752,7 +828,7 @@ Reader::notEOF()
     }
     else if (m_in) 
     {
-        return (*m_in);
+        return (!m_in->fail());
     }
 #ifdef GTO_SUPPORT_ZIP
     else if (m_gzfile)
@@ -792,7 +868,7 @@ Reader::read(char *buffer, size_t size)
     {
         m_in->read(buffer,size);
 
-#ifdef HAVE_FULL_IOSTREAMS
+#ifdef GTO_HAVE_FULL_IOSTREAMS
         if (m_in->fail())
         {
             std::cerr << "ERROR: Gto::Reader: Failed to read gto file: '";
@@ -808,14 +884,23 @@ Reader::read(char *buffer, size_t size)
     {
         char *buffer_pos = buffer;
         size_t remaining = size;
+        //while (true)
         while (remaining != 0)
         {
-            int retval = gzread(m_gzfile, buffer_pos, remaining);
+            #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+                int retval = gzread((gzFile_s*)m_gzfile, buffer_pos, remaining);
+            #else
+                int retval = gzread(m_gzfile, buffer_pos, remaining);
+            #endif
             if (retval <= 0)
             {
                 int zError = 0;
                 std::cerr << "ERROR: Gto::Reader: Failed to read gto file: ";
-                std::cerr << gzerror( m_gzfile, &zError );
+                #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+                    std::cerr << gzerror( (gzFile_s*)m_gzfile, &zError );
+                #else
+                    std::cerr << gzerror( m_gzfile, &zError );
+                #endif
                 std::cerr << std::endl;
                 memset( buffer, 0, size );
                 fail( "gzread fail" );
@@ -850,7 +935,11 @@ Reader::get(char &c)
 #ifdef GTO_SUPPORT_ZIP
     else if (m_gzfile)
     {
-        m_gzrval = gzgetc(m_gzfile);
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            m_gzrval = gzgetc((gzFile_s*)m_gzfile);
+        #else
+            m_gzrval = gzgetc(m_gzfile);
+        #endif
         c = char(m_gzrval);
     }
 #endif
@@ -865,7 +954,7 @@ void Reader::fail( std::string why )
 const std::string& Reader::stringFromId(unsigned int i)
 {
     static std::string empty( "" );
-    if (i < 0 || i >= m_strings.size())
+    if (i >= m_strings.size())
     {
         std::cerr << "WARNING: Gto::Reader: Malformed gto file: ";
         std::cerr << "invalid string index" << std::endl;
@@ -874,6 +963,21 @@ const std::string& Reader::stringFromId(unsigned int i)
     }
 
     return m_strings[i];
+}
+
+unsigned int Reader::idFromString(const std::string& s)
+{
+    if (m_stringMap.count(s) > 1)
+    {
+        return m_stringMap[s];
+    }
+    else
+    {
+        std::cerr << "WARNING: Gto::Reader: Malformed gto file: ";
+        std::cerr << "invalid string \"" << s << "\"" << std::endl;
+        fail( "malformed file, invalid string" );
+        return -1;
+    }
 }
 
 void Reader::seekForward(size_t bytes)
@@ -888,7 +992,7 @@ void Reader::seekForward(size_t bytes)
     }
     else if (m_in)
     {
-#ifdef HAVE_FULL_IOSTREAMS
+#ifdef GTO_HAVE_FULL_IOSTREAMS
         m_in->seekg(bytes, ios_base::cur);
 #else
         m_in->seekg(bytes, ios::cur);
@@ -897,14 +1001,17 @@ void Reader::seekForward(size_t bytes)
 #ifdef GTO_SUPPORT_ZIP
     else
     {
-        gzseek(m_gzfile, bytes, SEEK_CUR);
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            gzseek((gzFile_s*)m_gzfile, bytes, SEEK_CUR);
+        #else
+            gzseek(m_gzfile, bytes, SEEK_CUR);
+        #endif
     }
 #endif
 }
 
-void Reader::seekTo(const PropertyInfo &p)
+void Reader::seekTo(size_t bytes)
 {
-    size_t bytes = p.offset;
     if (m_inRAM)
     {
         if (bytes > m_inRAMSize)
@@ -915,7 +1022,7 @@ void Reader::seekTo(const PropertyInfo &p)
     }
     else if (m_in)
     {
-#ifdef HAVE_FULL_IOSTREAMS
+#ifdef GTO_HAVE_FULL_IOSTREAMS
         m_in->seekg(bytes, ios_base::beg);
 #else
         m_in->seekg(bytes, ios::beg);
@@ -924,21 +1031,13 @@ void Reader::seekTo(const PropertyInfo &p)
 #ifdef GTO_SUPPORT_ZIP
     else
     {
-        if(p.index < m_dataOffsets.size())
-        {
-            gzseek_raw(m_gzfile, m_dataOffsets[p.index]);
-        }
-        else
-        {
-            gzseek(m_gzfile, p.offset, SEEK_SET);
-        }
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            gzseek((gzFile_s*)m_gzfile, bytes, SEEK_SET);
+        #else
+            gzseek(m_gzfile, bytes, SEEK_SET);
+        #endif
     }
 #endif
-
-    //
-    // Copy the 'real' file pointer to our virtual one.
-    //
-    m_currentReadOffset = tell();
 }
 
 int Reader::tell()
@@ -954,7 +1053,11 @@ int Reader::tell()
 #ifdef GTO_SUPPORT_ZIP
     else
     {
-        return gztell(m_gzfile);
+        #if ZLIB_VERNUM >= UPDATED_ZLIB_VERNUM
+            return gztell((gzFile_s*)m_gzfile);
+        #else
+            return gztell(m_gzfile);
+        #endif
     }
 #else
     else
@@ -1026,6 +1129,14 @@ void Reader::addComponent(const ComponentInfo& info)
             size_t offset = i->component - startAddress;
             i->component = newStartAddress + offset;
         }
+
+        for (Components::iterator i = m_components.begin();
+             i != m_components.end();
+             ++i)
+        {
+            size_t offset = i->parent - startAddress;
+            i->parent = newStartAddress + offset;
+        }
     }
     else
     {
@@ -1057,24 +1168,39 @@ void Reader::beginObject(unsigned int name,
 }
 
 
-void Reader::beginComponent(unsigned int name,
-                            unsigned int interp)
+void Reader::beginComponent(unsigned int nameID,
+                            unsigned int interpID)
 {
+
+    ostringstream fullname;
+    string name = stringFromId(nameID);
+
+    for (int i = 0; i < m_nameStack.size(); i++)
+    {
+        fullname << m_nameStack[i] << ".";
+    }
+
+    fullname << name;
+
     ComponentInfo info;
-    info.name           = name;
+    info.name           = nameID;
     info.numProperties  = 0;
     info.flags          = 0;
-    info.interpretation = interp;
-    info.pad            = 0;
+    info.interpretation = interpID;
+    info.childLevel     = 0;
     info.poffset        = 0;
     info.object         = &m_objects.back();
+    info.childLevel     = m_nameStack.size();
+    info.fullName       = fullname.str();
 
+    m_nameStack.push_back(name);
+    m_indexStack.push_back(m_objects.back().numComponents);
     m_objects.back().numComponents++;
 
     if (info.object->requested)
     {
-        Request r = component(stringFromId(name),
-                              stringFromId(interp),
+        Request r = component(stringFromId(nameID),
+                              stringFromId(interpID),
                               info);
 
         info.requested     = r.want();
@@ -1089,27 +1215,36 @@ void Reader::beginComponent(unsigned int name,
     addComponent(info);
 }
 
+void Reader::endComponent()
+{
+    m_nameStack.pop_back();
+    m_indexStack.pop_back();
+}
+
 void Reader::beginProperty(unsigned int name,
                            unsigned int interp,
-                           unsigned int width,
                            unsigned int size,
-                           DataType type)
+                           DataType type,
+                           const Dimensions& dims)
 {
     PropertyInfo info;
     info.name           = name;
     info.interpretation = interp;
     info.size           = 0;
     info.type           = type;
-    info.width          = width;
+    info.dims           = dims;
     info.component      = &m_components.back();
+    info.fullName       = m_components.back().fullName;
+    info.fullName       += ".";
+    info.fullName       += stringFromId(name);
 
     m_components.back().numProperties++;
 
     m_buffer.clear();
 
-    m_currentType.type  = type;
-    m_currentType.size  = size;
-    m_currentType.width = width;
+    m_currentType.type = type;
+    m_currentType.size = size;
+    m_currentType.dims = makeDimStruct(dims);
 
     if (info.component->requested)
     {
@@ -1131,20 +1266,21 @@ void Reader::beginProperty(unsigned int name,
 
 size_t Reader::numAtomicValuesInBuffer() const
 {
-    return m_buffer.size() / dataSize(m_currentType.type);
+    return m_buffer.size() / dataSizeInBytes(m_currentType.type);
 }
 
 size_t Reader::numElementsInBuffer() const
 {
-    return numAtomicValuesInBuffer() / m_currentType.width;
+    return numAtomicValuesInBuffer() / elementSize(m_currentType);
 }
 
 void Reader::fillToSize(size_t size)
 {
-    size_t elementSize = dataSize(m_currentType.type) * m_currentType.width;
-    ByteArray element(elementSize);
+    size_t esize = dataSizeInBytes(m_currentType.type) * elementSize(m_currentType);
 
-    memcpy(&element[0], &m_buffer[m_buffer.size() - elementSize], elementSize);
+    ByteArray element(esize);
+
+    memcpy(&element[0], &m_buffer[m_buffer.size() - esize], esize);
 
     while (numElementsInBuffer() != size)
     {
@@ -1196,90 +1332,6 @@ void Reader::endProperty()
 void Reader::endFile()
 {
     m_header.numStrings = m_strings.size();
-}
-
-
-void Reader::readIndexTable()
-{
-    // See zhacks.h for details
-
-    m_dataOffsets.clear();
-    
-    FILE *file = fopen(m_inName.c_str(), "rb");
-
-    //
-    // Read the FLG header field
-    //
-    unsigned char flags = 0;
-    fseek(file, 3L, SEEK_SET);
-    fread(&flags, sizeof(unsigned char), 1, file);
-    if ( ! (flags & EXTRA_FIELD) )
-    {
-        // No offsets in this file
-        fclose(file);
-        return;
-    }
-
-    // According to RFC 1952, gzip header byte order is always little-endian
-
-    //
-    // Read the XLEN extra field length
-    //
-    unsigned char xlen_bytes[2];
-    fseek(file, 10L, SEEK_SET);
-    fread(xlen_bytes, sizeof(unsigned char), 2, file);
-    unsigned short xlen = xlen_bytes[0] + (xlen_bytes[1] << 8);
-
-    if( xlen != (2 * sizeof(unsigned int)) )
-    {
-        std::cerr << "Warning: ignoring malformed index table." << std::endl;
-        fclose(file);
-        return;
-    }
-
-    //
-    // Read the index table offset and size
-    //
-    unsigned int indexTableOffset = 0;
-    unsigned int indexTableSize = 0;
-    fread(&indexTableOffset, sizeof(unsigned int), 1, file);
-    fread(&indexTableSize, sizeof(unsigned int), 1, file);
-    fclose(file);
-
-    unsigned short needsSwap = 0xFF00;
-    if( *(unsigned char*)(&needsSwap) )
-    {
-        swapWords(&indexTableOffset, 1);
-        swapWords(&indexTableSize, 1);
-    }
-    
-    //
-    // Read the offset table
-    //
-    m_dataOffsets.resize(indexTableSize);
-    unsigned int restore_gz_pos = gztell(m_gzfile);
-    gzseek_raw(m_gzfile, indexTableOffset);
-    int r = gzread(m_gzfile, &m_dataOffsets.front(), 
-                   indexTableSize * sizeof(unsigned int));
-
-    //
-    // Offsets are always stored as little-endian
-    //
-    if( *(unsigned char*)(&needsSwap) )
-    {
-        swapWords(&m_dataOffsets.front(), m_dataOffsets.size());
-    }
-
-    //
-    // Rewind and seek past the GTO magic number
-    //
-    // Note: I can't figure out how to reset the gzip stream
-    // to 'normal' after a gzseek_raw, so I'm closing and re-
-    // opening it.
-    //
-    gzclose(m_gzfile);
-    m_gzfile = gzopen(m_inName.c_str(), "rb");
-    gzseek(m_gzfile, restore_gz_pos, SEEK_SET);
 }
 
 } // Gto

@@ -35,6 +35,8 @@
 //
 #include <Gto/RawData.h>
 #include <iostream>
+#include <stdlib.h>
+#include <sstream>
 
 namespace Gto {
 using namespace std;
@@ -45,8 +47,7 @@ Property::Property(const std::string& n,
                    size_t s,
                    size_t w,
                    bool allocate)
-    : name(n), interp(i), type(t), size(s), width(w), voidData(0),
-      _allocated(allocate)
+    : name(n), fullName(n), interp(i), type(t), size(s), dims(w,0,0,0), voidData(0)
 {
     if (allocate)
     {
@@ -56,7 +57,7 @@ Property::Property(const std::string& n,
         }
         else
         {
-            voidData = new char[dataSize(t) * w * s];
+            voidData = new char[dataSizeInBytes(t) * w * s];
         }
     }
 }
@@ -66,8 +67,7 @@ Property::Property(const std::string& n,
                    size_t s,
                    size_t w,
                    bool allocate)
-    : name(n), interp(""), type(t), size(s), width(w), voidData(0),
-      _allocated(allocate)
+    : name(n), fullName(n), interp(""), type(t), size(s), dims(w,0,0,0), voidData(0)
 {
     if (allocate)
     {
@@ -77,23 +77,63 @@ Property::Property(const std::string& n,
         }
         else
         {
-            voidData = new char[dataSize(t) * w * s];
+            voidData = new char[dataSizeInBytes(t) * w * s];
+        }
+    }
+}
+
+Property::Property(const std::string& n,
+                   const std::string& fn,
+                   const std::string& i,
+                   Gto::DataType t,
+                   size_t s,
+                   const Dimensions& d,
+                   bool allocate)
+    : name(n), fullName(fn), interp(i), type(t), size(s), dims(d), voidData(0)
+{
+    if (allocate)
+    {
+        if (t == String)
+        {
+            stringData = new string[elementSize(dims) * s];
+        }
+        else
+        {
+            voidData = new char[dataSizeInBytes(t) * elementSize(dims) * s];
+        }
+    }
+}
+
+Property::Property(const std::string& n,
+                   const std::string& fn,
+                   Gto::DataType t,
+                   size_t s,
+                   const Dimensions& d,
+                   bool allocate)
+    : name(n), fullName(fn), interp(""), type(t), size(s), dims(d), voidData(0)
+{
+    if (allocate)
+    {
+        if (t == String)
+        {
+            stringData = new string[elementSize(dims) * s];
+        }
+        else
+        {
+            voidData = new char[dataSizeInBytes(t) * elementSize(dims) * s];
         }
     }
 }
 
 Property::~Property()
 {
-    if (_allocated)
+    if (type == Gto::String)
     {
-        if (type == Gto::String)
-        {
-            delete [] stringData;
-        }
-        else
-        {
-            delete [] (char*)voidData;
-        }
+        delete [] stringData;
+    }
+    else
+    {
+        delete [] (char*)voidData;
     }
 }
 
@@ -185,7 +225,29 @@ RawDataBaseReader::component(const string& name,
 {
     Object *o    = reinterpret_cast<Object*>(info.object->objectData);
     Component *c = new Component(name, interp, info.flags);
-    o->components.push_back(c);
+
+    while (info.childLevel < m_componentStack.size() && !m_componentStack.empty())
+    {
+        while (m_componentStack.size() > info.childLevel) m_componentStack.pop_back();
+    }
+
+    if (m_componentStack.empty())
+    {
+        c->fullName = name;
+
+        m_componentStack.push_back(c);
+        o->components.push_back(c);
+    }
+    else
+    {
+        c->fullName = m_componentStack.back()->fullName;
+        c->fullName += ".";
+        c->fullName += name;
+
+        m_componentStack.back()->components.push_back(c);
+        m_componentStack.push_back(c);
+    }
+
     return Request(true, c);
 }
 
@@ -194,10 +256,16 @@ RawDataBaseReader::property(const string& name,
                             const string& interp,
                             const PropertyInfo& info)
 {
+    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
     Component *c = reinterpret_cast<Component*>(info.component->componentData);
-    Property *p  = new Property(name, interp, 
-                                (DataType)info.type, info.size, info.width, 
-                                false);
+
+    Property *p  = new Property(name, 
+                                info.fullName,
+                                interp, 
+                                (DataType)info.type, 
+                                info.size, 
+                                info.dims);
+
     c->properties.push_back(p);
     return Request(true, p);
 }
@@ -205,16 +273,17 @@ RawDataBaseReader::property(const string& name,
 void*
 RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 {
+    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
+    //Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
-    if (bytes == 0)
+    if( bytes == 0 )
     {
         p->voidData = NULL;
     }
     else
     {
         p->voidData = new char[bytes];
-        p->_allocated = true;
     }
     return p->voidData;
 }
@@ -222,6 +291,8 @@ RawDataBaseReader::data(const PropertyInfo& info, size_t bytes)
 void
 RawDataBaseReader::dataRead(const PropertyInfo& info)
 {
+    //Object *o    = reinterpret_cast<Object*>(info.component->object->objectData);
+    //Component *c = reinterpret_cast<Component*>(info.component->componentData);
     Property *p  = reinterpret_cast<Property*>(info.propertyData);
 
     p->size = info.size;
@@ -229,13 +300,25 @@ RawDataBaseReader::dataRead(const PropertyInfo& info)
     if (p->type == Gto::String)
     {
         int* ints = p->int32Data;
-        size_t numItems = p->size * p->width;
+        size_t numItems = p->size * elementSize(p->dims);
         p->stringData = new string[numItems];
-        p->_allocated = true;
 
         for (size_t i=0; i < numItems; i++)
         {
-            p->stringData[i] = stringTable()[ints[i]];
+            int index = ints[i];
+
+            if (index >= 0 && index < stringTable().size())
+            {
+                p->stringData[i] = stringTable()[ints[i]];
+            }
+            else
+            {
+                cout << "ERROR: string index out of range in "
+                     << p->name << " property: "
+                     << index << " is larger than string table size of "
+                     << stringTable().size()
+                     << endl;
+            }
         }
 
         delete [] (char*)ints;
@@ -253,12 +336,12 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
         m_writer.property(property->name.c_str(),
                           property->type,
                           property->size,
-                          property->width,
+                          property->dims,
                           property->interp.c_str());
 
         if (property->type == Gto::String)
         {
-            int numItems = property->size * property->width;
+            int numItems = property->size * elementSize(property->dims);
             const string* data = property->stringData;
 
             for (int i=0; i < numItems; i++)
@@ -292,19 +375,20 @@ RawDataBaseWriter::writeProperty(bool header, const Property *property)
               abort();    // not implemented;
           case Gto::String:
               {
-                  size_t numItems = property->size * property->width;
+                  size_t numItems = property->size * elementSize(property->dims);
                   vector<int> data(numItems);
 
                   for (size_t i=0; i < numItems; i++)
                   {
-                      int stringId = m_writer.lookup(property->stringData[i]);
+                      uint32 stringId = m_writer.lookup(property->stringData[i]);
 
-                      if (stringId == -1)
+                      if (stringId == uint32(-1))
                       {
                           cerr << "WARNING: writer detected bogus string id in "
                                << property->name 
                                << ", value is \"" << property->stringData[i]
                                << "\"" << endl;
+
                           stringId = 0;
                       }
 
@@ -322,22 +406,28 @@ void
 RawDataBaseWriter::writeComponent(bool header, const Component *component)
 {
     const Properties &props = component->properties;
+    const Gto::Components &comps = component->components;
 
-    if (props.size())
+    if (header) m_writer.beginComponent(component->name.c_str(),
+                                        component->interp.c_str());
+
+    for (size_t i=0; i < props.size(); i++)
     {
-        if (header) m_writer.beginComponent(component->name.c_str(),
-                                            component->interp.c_str());
-
-        for (size_t i=0; i < props.size(); i++)
+        if (const Property *p = props[i])
         {
-            if (const Property *p = props[i])
-            {
-                writeProperty(header, p);
-            }
+            writeProperty(header, p);
         }
-
-        if (header) m_writer.endComponent();
     }
+    
+    for (size_t i = 0; i < comps.size(); i++)
+    {
+        if (const Component* c = comps[i])
+        {
+            writeComponent(header, c);
+        }
+    }
+
+    if (header) m_writer.endComponent();
 }
 
 bool
