@@ -529,7 +529,6 @@ PyObject *gtoWriter_intern( PyObject *_self, PyObject *args )
     }
     assert( writer->m_writer != NULL );
 
-
     // Handle a single string
     if( PyString_Check( data ) )
     {
@@ -542,13 +541,32 @@ PyObject *gtoWriter_intern( PyObject *_self, PyObject *args )
         for( int i = 0; i < PySequence_Size( data ); ++i )
         {
             PyObject *pstr = PySequence_GetItem( data, i );
-            if( ! PyString_Check( pstr ) )
+            if( PyString_Check( pstr ) )
             {
-                PyErr_SetString( gtoError(), "Non-string in sequence" );
+                char *str = PyString_AsString( pstr );
+                writer->m_writer->intern( str );
+            }
+            else if( PySequence_Check( pstr ) )
+            {
+                for( int j = 0; j < PySequence_Size( pstr ); ++j )
+                {
+                    PyObject *ppstr = PySequence_GetItem( pstr, j );
+                    if( ! PyString_Check( ppstr ) )
+                    {
+                        PyErr_SetString( gtoError(),
+                                         "Non-string in sub-sequence" );
+                        return NULL;
+                    }
+                    char *str = PyString_AsString( ppstr );
+                    writer->m_writer->intern( str );
+                }
+            }
+            else
+            {
+                PyErr_SetString( gtoError(),
+                                 "Non-string or sequence in sequence" );
                 return NULL;
             }
-            char *str = PyString_AsString( pstr );
-            writer->m_writer->intern( str );
         }
     }
     // We can't handle what we were given
@@ -737,7 +755,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
     const char *currentPropName = (*writer->m_propertyNames)[writer->m_propCount].c_str();
 
     // Determine how many elements we have in the data
-    int dataSize = prop.size * prop.width;
+    int dataSize = prop.size * elementSize(prop.dims);
     
     // Write that data!
     if( prop.type == Gto::Int )
@@ -752,7 +770,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         {
             PyErr_Format( gtoError(), "Property '%s' was declared as having %d"
                           " x %d values, but %d values were given for writing",
-                          currentPropName, prop.size, prop.width,
+                          currentPropName, prop.size, int(elementSize(prop.dims)),
                           numItems );
             return NULL;
         }
@@ -778,7 +796,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         {
             PyErr_Format( gtoError(), "Property '%s' was declared as having %d"
                           " x %d values, but %d values were given for writing",
-                          currentPropName, prop.size, prop.width,
+                          currentPropName, prop.size, int(elementSize(prop.dims)),
                           numItems );
             return NULL;
         }
@@ -803,7 +821,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         {
             PyErr_Format( gtoError(), "Property '%s' was declared as having %d"
                           " x %d values, but %d values were given for writing",
-                          currentPropName, prop.size, prop.width,
+                          currentPropName, prop.size, int(elementSize(prop.dims)),
                           numItems );
             return NULL;
         }
@@ -828,7 +846,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         {
             PyErr_Format( gtoError(), "Property '%s' was declared as having %d"
                           " x %d values, but %d values were given for writing",
-                          currentPropName, prop.size, prop.width,
+                          currentPropName, prop.size, int(elementSize(prop.dims)),
                           numItems );
             return NULL;
         }
@@ -853,7 +871,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         {
             PyErr_Format( gtoError(), "Property '%s' was declared as having %d"
                           " x %d values, but %d values were given for writing",
-                          currentPropName, prop.size, prop.width,
+                          currentPropName, prop.size, int(elementSize(prop.dims)),
                           numItems );
             return NULL;
         }
@@ -878,7 +896,7 @@ PyObject *gtoWriter_propertyData( PyObject *_self, PyObject *args )
         {
             PyErr_Format( gtoError(), "Property '%s' was declared as having %d"
                           " x %d values, but %d values were given for writing",
-                          currentPropName, prop.size, prop.width,
+                          currentPropName, prop.size, int(elementSize(prop.dims)),
                           numItems );
             return NULL;
         }
