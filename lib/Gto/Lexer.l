@@ -34,7 +34,7 @@
 //  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 //  DAMAGE.
 //
-*/
+
 #include "Utilities.h"
 #include "Parser.h"
 #include "Reader.h"
