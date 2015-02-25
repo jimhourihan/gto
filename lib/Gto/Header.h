@@ -1,3 +1,5 @@
+//******************************************************************************
+// Copyright (c) 2002 Tweak Films. 
 //
 //  Copyright (c) 2009, Tweak Software
 //  All rights reserved.
