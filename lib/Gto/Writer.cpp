@@ -637,6 +637,7 @@ Writer::writeQuotedString(const string& str)
         else if (c & 0x80)
         {
             // UTF-8
+            write(&c, sizeof(char));
         }
 	else
 	{
