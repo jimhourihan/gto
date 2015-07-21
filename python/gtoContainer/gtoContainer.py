@@ -1032,7 +1032,8 @@ class gtoContainer( gto.Reader ):
         """
         objName = pinfo.component.object.name
         compName = pinfo.component.name
-        self[objName][compName][propName].setData( dataTuple )
+        self[objName][compName][propName].setData( dataTuple, pinfo.size,
+                                                   pinfo.width )
 
     #
     # End of GTO Reader virtual functions
