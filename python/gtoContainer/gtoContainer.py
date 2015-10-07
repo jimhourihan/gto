@@ -808,7 +808,10 @@ class gtoContainer( gto.Reader ):
         if filename == None:
             return
 
-        if deferredRead:
+        if self.__deferredRead:
+            if(open(self.__filename).readline().startswith("GTO")):
+                raise Exception("deferredRead is not supported for text files")
+
             # Defer reading property data until it's asked for.
             # To do this, we need to read in the header and build
             # Python Object/Component/Property instances so that
